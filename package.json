@@ -1,0 +1,15 @@
+{
+  "name": "living-artifacts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Editable, taggable documents that carry a structured model Claude reads back as intent.",
+  "scripts": {
+    "build": "node runtime/build.mjs build",
+    "extract": "node runtime/build.mjs extract",
+    "test": "node runtime/smoke.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "^24.1.0"
+  }
+}

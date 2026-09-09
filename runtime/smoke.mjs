@@ -1,0 +1,221 @@
+#!/usr/bin/env node
+/* Headless drive of the runtime. A published artifact cannot be debugged
+ * after the fact, so every handler is exercised here first — and the last
+ * test is the one that matters: a document the PAGE published must boot
+ * itself again, unchanged. */
+import { JSDOM } from 'jsdom';
+import { buildBody, extractModel, validate } from './build.mjs';
+
+let failed = 0;
+const ok = (name, cond, extra) => {
+  if (cond) console.log(`  ok   ${name}`);
+  else { console.log(`  FAIL ${name}${extra ? ' — ' + extra : ''}`); failed++; }
+};
+const eq = (name, a, b) => ok(name, a === b, `expected ${JSON.stringify(b)}, got ${JSON.stringify(a)}`);
+
+const fixture = () => ({
+  v: 1, docId: 'smoke-doc', title: 'Smoke Doc', thread: 'tests', component: 'Runtime',
+  rev: 3, style: { directives: [{ id: 's1', text: 'no hedging', rev: 1, active: true }] },
+  blocks: [
+    { id: 'b-one', type: 'heading', level: 2, text: 'First', tags: [], author: 'claude' },
+    { id: 'b-two', type: 'para', text: 'Body text with **bold** and `code`.', tags: ['for:sales'], author: 'claude' },
+    { id: 'b-three', type: 'list', items: ['alpha', 'beta'], tags: [], author: 'claude' },
+    { id: 'b-four', type: 'table', head: ['A', 'B'], rows: [['1', '2']], tags: [], author: 'claude' },
+    { id: 'b-five', type: 'para', text: 'Doomed block.', tags: [], author: 'claude' }
+  ]
+});
+
+const wrap = (body, title) =>
+  `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${title}</title></head><body>${body}</body></html>`;
+
+function boot(html, opts = {}) {
+  const published = [], dbWrites = [];
+  let release = () => {};
+  const gate = opts.gated ? new Promise((r) => { release = r; }) : Promise.resolve();
+  const fakeDoc = (path) => ({ set: async (data) => { dbWrites.push({ path, data }); } });
+  const defaultUse = async (name) => {
+    if (name === 'artifact') return Object.freeze({
+      publish: async (h) => { published.push(h); return { version: 'v' + published.length }; }
+    });
+    if (name === 'db') return Object.freeze({ doc: fakeDoc, collection: () => ({ doc: fakeDoc }) });
+    return null;
+  };
+  const use = async (name) => { await gate; return (opts.use || defaultUse)(name); };
+  const dom = new JSDOM(html, {
+    runScripts: 'dangerously', url: 'https://example.test/',
+    /* must exist BEFORE the runtime script runs, exactly as in a real viewer */
+    beforeParse(window) { window.claude = { use }; }
+  });
+  return {
+    dom, w: dom.window, get d() { return dom.window.document; },
+    published, dbWrites, release
+  };
+}
+const settle = () => new Promise((r) => setTimeout(r, 30));
+const btn = (root, text) =>
+  [...root.querySelectorAll('button')].find((b) => b.textContent.trim() === text);
+const blockEl = (d, id) => d.querySelector(`[data-block-id="${id}"]`);
+
+console.log('\nvalidate()');
+{
+  const bad = fixture(); bad.docId = 'has spaces'; bad.blocks[1].id = 'b-one';
+  const errs = validate(bad);
+  ok('rejects an illegal docId', errs.some((e) => /legal db path segment/.test(e)));
+  ok('rejects duplicate block ids', errs.some((e) => /duplicate block id/.test(e)));
+  eq('accepts a good model', validate(fixture()).length, 0);
+}
+
+console.log('\nrender + capability gating');
+const body = buildBody(fixture());
+const env = boot(wrap(body, 'Smoke Doc'), { gated: true });
+const d = env.d;
+await settle();
+ok('renders before capabilities resolve', !!d.querySelector('.la-block'));
+eq('renders every block', d.querySelectorAll('.la-block').length, 5);
+ok('starts read-only', /read-only/i.test(d.getElementById('la-status').textContent));
+ok('inline markdown renders', !!blockEl(d, 'b-two').querySelector('strong') && !!blockEl(d, 'b-two').querySelector('code'));
+ok('table renders rows', blockEl(d, 'b-four').querySelectorAll('tbody tr').length === 1);
+env.release();
+await settle();
+ok('editing lights up once artifact resolves', !!d.querySelector('.la-handle'));
+ok('save button starts disabled', btn(d.body, 'Save ⌘S').disabled === true);
+
+console.log('\nediting');
+blockEl(d, 'b-two').querySelector('.la-handle').click();
+ok('handle selects the block', blockEl(d, 'b-two').classList.contains('sel'));
+btn(blockEl(d, 'b-two'), 'edit').click();
+const ta = blockEl(d, 'b-two').querySelector('textarea');
+ok('edit opens a textarea seeded with the source', ta && ta.value.includes('**bold**'));
+ta.value = 'Rewritten by the human.';
+btn(blockEl(d, 'b-two'), 'Apply').click();
+ok('applying updates the rendered body', blockEl(d, 'b-two').textContent.includes('Rewritten by the human'));
+ok('applying marks the block touched', blockEl(d, 'b-two').dataset.touched === '1');
+ok('save button enables once dirty', btn(d.body, 'Save ⌘S').disabled === false);
+
+console.log('\ntag / note / move / delete / style');
+{
+  const inp = blockEl(d, 'b-two').querySelector('.la-meta input');
+  inp.value = '#expand';
+  btn(blockEl(d, 'b-two'), '+ tag').click();
+}
+ok('tag chip appears, # stripped', [...blockEl(d, 'b-two').querySelectorAll('.la-tag')].some((c) => c.textContent === '#expand'));
+ok('intent tags are styled apart from audience tags', !!blockEl(d, 'b-two').querySelector('.la-tag.intent'));
+
+btn(blockEl(d, 'b-two'), 'note to claude').click();
+{
+  const inp = blockEl(d, 'b-two').querySelector('.la-noteform input');
+  inp.value = 'this contradicts the completeness artifact — recheck';
+  btn(blockEl(d, 'b-two'), 'Save note').click();
+}
+ok('note renders anchored to its block', /recheck/.test(blockEl(d, 'b-two').querySelector('.la-note').textContent));
+
+const orderBefore = [...d.querySelectorAll('.la-block')].map((b) => b.dataset.blockId);
+blockEl(d, 'b-three').querySelector('.la-handle').click();
+btn(blockEl(d, 'b-three'), '↑').click();
+const orderAfter = [...d.querySelectorAll('.la-block')].map((b) => b.dataset.blockId);
+ok('↑ reorders the block', orderBefore.indexOf('b-three') - orderAfter.indexOf('b-three') === 1);
+
+blockEl(d, 'b-five').querySelector('.la-handle').click();
+btn(blockEl(d, 'b-five'), 'delete').click();
+ok('delete removes the block', !blockEl(d, 'b-five'));
+
+{
+  const inp = d.querySelector('.la-contract input');
+  inp.value = 'lead with the number, not the caveat';
+  btn(d.querySelector('.la-contract'), 'Add').click();
+}
+ok('style directive is added', /lead with the number/.test(d.querySelector('.la-contract').textContent));
+
+console.log('\nsave -> journal + publish');
+btn(d.body, 'Save ⌘S').click();
+await settle();
+eq('published exactly once', env.published.length, 1);
+ok('published html is a full document', env.published[0].startsWith('<!doctype html>'));
+ok('journal written before publish', env.dbWrites.length === 2);
+const journalWrite = env.dbWrites.find((w) => /\/journal\/r4$/.test(w.path));
+ok('journal doc is one document per revision', !!journalWrite, env.dbWrites.map((w) => w.path).join(', '));
+const opKinds = journalWrite ? journalWrite.data.ops.map((o) => o.op) : [];
+ok('journal captured every op kind',
+  ['edit', 'tag', 'note', 'move', 'delete', 'style'].every((k) => opKinds.includes(k)),
+  opKinds.join(','));
+{
+  const del = journalWrite.data.ops.find((o) => o.op === 'delete');
+  ok('deleted text is preserved in the journal', /Doomed block/.test(del.text));
+  const ed = journalWrite.data.ops.find((o) => o.op === 'edit');
+  ok('edit op carries before and after', /\*\*bold\*\*/.test(ed.before) && /Rewritten/.test(ed.after));
+}
+{
+  const reg = env.dbWrites.find((w) => w.path === 'docs/smoke-doc');
+  ok('registry counts tags for the future index', reg.data.tagCounts['expand'] === 1);
+  eq('registry counts open notes', reg.data.openNotes, 1);
+  ok('registry carries active style directives', reg.data.styleDirectives.length === 2);
+}
+
+console.log('\nround-trip: the page republishes ITSELF');
+const out = env.published[0];
+const m2 = extractModel(out);
+eq('revision incremented', m2.rev, 4);
+eq('block removed from the model', m2.blocks.length, 4);
+eq('edited text landed in the model', m2.blocks.find((b) => b.id === 'b-two').text, 'Rewritten by the human.');
+ok('only this revision stays marked',
+  m2.blocks.filter((b) => b.touched).every((b) => b.touched.rev === 4));
+ok('journal embedded as a fallback to db', (m2.journal || []).some((e) => e.rev === 4));
+
+const env2 = boot(out);
+await settle();
+eq('self-published document boots again', env2.d.querySelectorAll('.la-block').length, 4);
+ok('runtime survived re-emission intact', !!env2.d.querySelector('.la-handle'));
+ok('no unsaved changes after reboot', /No unsaved changes · rev 4/.test(env2.d.getElementById('la-status').textContent));
+{
+  env2.d.querySelector('[data-block-id="b-one"] .la-handle').click();
+  btn(blockEl(env2.d, 'b-one'), 'edit').click();
+  const ta2 = blockEl(env2.d, 'b-one').querySelector('textarea');
+  ta2.value = 'Second generation edit';
+  btn(blockEl(env2.d, 'b-one'), 'Apply').click();
+  btn(env2.d.body, 'Save ⌘S').click();
+  await settle();
+  const m3 = extractModel(env2.published[0]);
+  eq('a second self-publish still round-trips', m3.rev, 5);
+  ok('generation-2 edit landed', m3.blocks.find((b) => b.id === 'b-one').text === 'Second generation edit');
+  ok('generation-1 marks were cleared', m3.blocks.filter((b) => b.touched).length === 1);
+}
+
+console.log('\nfailure paths');
+{
+  const e3 = boot(wrap(buildBody(fixture()), 'x'), { use: async () => null });
+  await settle();
+  ok('stays read-only when capabilities are absent',
+    /read-only/i.test(e3.d.getElementById('la-status').textContent));
+}
+{
+  const e4 = boot(wrap(buildBody(fixture()), 'x'), {
+    use: async (n) => n === 'artifact'
+      ? Object.freeze({ publish: async () => { const err = new Error('nope'); err.code = 'not_writer'; throw err; } })
+      : null
+  });
+  await settle();
+  e4.d.querySelector('[data-block-id="b-one"] .la-handle').click();
+  btn(blockEl(e4.d, 'b-one'), '↓').click();
+  btn(e4.d.body, 'Save ⌘S').click();
+  await settle();
+  ok('a not_writer rejection degrades to read-only, not an error dump',
+    /read-only/i.test(e4.d.getElementById('la-status').textContent));
+}
+{
+  const e5 = boot(wrap(buildBody(fixture()), 'x'), {
+    use: async (n) => n === 'artifact'
+      ? Object.freeze({ publish: async () => { const err = new Error('c'); err.code = 'conflict'; throw err; } })
+      : null
+  });
+  await settle();
+  e5.d.querySelector('[data-block-id="b-one"] .la-handle').click();
+  btn(blockEl(e5.d, 'b-one'), '↓').click();
+  btn(e5.d.body, 'Save ⌘S').click();
+  await settle();
+  ok('a conflict says the reload is coming, not that saving failed',
+    /published first/i.test(e5.d.getElementById('la-status').textContent));
+  ok('unsaved work is stashed before publish', !!e5.w.sessionStorage.getItem('la-stash:smoke-doc'));
+}
+
+console.log(failed ? `\n${failed} failing\n` : '\nall green\n');
+process.exit(failed ? 1 : 0);

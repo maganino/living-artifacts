@@ -1,0 +1,283 @@
+{
+  "v": 1,
+  "docId": "living-artifacts-direction",
+  "title": "Living Artifacts",
+  "thread": "living-artifacts",
+  "component": "Direction",
+  "url": "https://claude.ai/code/artifact/93af85d9-40a3-4fae-ac46-d94a3c4f3e7e",
+  "rev": 1,
+  "updated": "first build · 2026-09-09",
+  "style": {
+    "directives": [
+      {
+        "id": "s-1",
+        "text": "no hedging — say the thing, or say you don't know",
+        "rev": 1,
+        "active": true
+      },
+      {
+        "id": "s-2",
+        "text": "name what was rejected, not just what was chosen",
+        "rev": 1,
+        "active": true
+      }
+    ]
+  },
+  "blocks": [
+    {
+      "id": "b-intro",
+      "type": "para",
+      "author": "claude",
+      "tags": [],
+      "text": "This page is the tool explaining itself. Every block below can be edited, reordered, tagged or deleted by you, and each of those gestures is recorded as a typed operation that Claude reads back next round. If it works, you should be able to review this document without writing a single prose comment."
+    },
+    {
+      "id": "b-h-why",
+      "type": "heading",
+      "level": 2,
+      "author": "claude",
+      "tags": [],
+      "text": "Why this exists"
+    },
+    {
+      "id": "b-why-1",
+      "type": "para",
+      "author": "claude",
+      "tags": [],
+      "text": "A published artifact is read-only to its reader. Your only channel back is a comment pinned to a passage — the shortest thing anyone writes, and half its meaning lives in what it's attached to. `drop` on a table header and `drop` on a whole section are different edits. Claude then re-reads the entire document and guesses which part your comment governs."
+    },
+    {
+      "id": "b-why-2",
+      "type": "para",
+      "author": "claude",
+      "tags": [],
+      "text": "Both of your existing skills are disciplines built *around* that limit. The read-back gate in `decompose-problem-artifacts` exists because a comment is ambiguous. The \"assume you cannot close a thread\" section exists because threads accumulate unresolvable. Neither problem is inherent — both come from prose being the only way in."
+    },
+    {
+      "id": "b-why-cal",
+      "type": "callout",
+      "author": "claude",
+      "tags": [],
+      "title": "The shift",
+      "text": "Stop asking you to *describe* the change you want in prose. Let you *make* it, and carry the gesture back as intent."
+    },
+    {
+      "id": "b-h-how",
+      "type": "heading",
+      "level": 2,
+      "author": "claude",
+      "tags": [],
+      "text": "How it works"
+    },
+    {
+      "id": "b-how-1",
+      "type": "para",
+      "author": "claude",
+      "tags": [],
+      "text": "The document's truth is a JSON model embedded in this page — an ordered list of blocks, each with a stable id, a type, tags, and an author. What you see is a rendering of that model, and the rendering is never read back. So an edit is not a text diff; it's a typed operation against a known address."
+    },
+    {
+      "id": "b-how-2",
+      "type": "list",
+      "author": "claude",
+      "tags": [],
+      "ordered": true,
+      "items": [
+        "You edit. The model changes; nothing is published yet.",
+        "You hit Save. The page rebuilds a complete HTML file from the model and publishes it as a new version of itself, at this same URL.",
+        "The revision's operations are written to a journal Claude can read directly — no page parsing.",
+        "Claude's session is woken by the republish, reads the journal, and reports back what it thinks you asked for — before editing anything."
+      ]
+    },
+    {
+      "id": "b-how-3",
+      "type": "para",
+      "author": "claude",
+      "tags": [],
+      "text": "That last step is the same read-back gate `decompose-problem-artifacts` already mandates. What changes is that it now reads from structured operations instead of from prose, so it stops being guesswork."
+    },
+    {
+      "id": "b-h-asks",
+      "type": "heading",
+      "level": 2,
+      "author": "claude",
+      "tags": [],
+      "text": "Your three asks"
+    },
+    {
+      "id": "b-asks-t",
+      "type": "table",
+      "author": "claude",
+      "tags": [],
+      "head": [
+        "You asked for",
+        "Mechanism",
+        "Status"
+      ],
+      "rows": [
+        [
+          "Directly edit the artifact — text, rearrange sections",
+          "Block editor with stable ids; every edit is an `edit` or `move` op",
+          "v1 — working"
+        ],
+        [
+          "Add pictures, draw",
+          "Downscaled in-browser into `db`; sketches as typed shapes so Claude reads a graph, not a scribble",
+          "v2"
+        ],
+        [
+          "Highlight and tag sections to extract",
+          "Tags as typed intents — `expand`, `summarize`, `seed-next`, `for:sales`",
+          "v1 — working"
+        ],
+        [
+          "Extract tagged sections into the next document",
+          "Query the model by tag; `seed-next` blocks become the next doc's starting point",
+          "v1 — via Claude"
+        ],
+        [
+          "A view shared with a specific stakeholder",
+          "Static export without the editor — hands off to `audience-views`",
+          "v3"
+        ],
+        [
+          "Comment on tone and style, applied throughout",
+          "A persistent style contract at document level, applied on every regeneration",
+          "v1 — working"
+        ]
+      ]
+    },
+    {
+      "id": "b-h-try",
+      "type": "heading",
+      "level": 2,
+      "author": "claude",
+      "tags": [],
+      "text": "What you can do on this page"
+    },
+    {
+      "id": "b-try-1",
+      "type": "para",
+      "author": "claude",
+      "tags": [],
+      "text": "Click the handle in the left margin of any block to select it. That reveals the block's actions."
+    },
+    {
+      "id": "b-try-2",
+      "type": "list",
+      "author": "claude",
+      "tags": [],
+      "items": [
+        "**edit** — opens the block's plain-text source. `⌘↩` applies, `esc` cancels. Your rewrite becomes the target the rest of the document should match; Claude will not restyle it back toward its own voice.",
+        "**↑ / ↓** — reorder. Claude reads a move as an argument about what should come first, and will ask what the new order is meant to foreground before rewriting around it.",
+        "**note to claude** — a request pinned to that specific block. This is the structured replacement for a comment: it is not document content, so Claude acts on it and then clears it.",
+        "**+ tag** — an intent for that block. `expand`, `summarize`, `seed-next`, `rewrite`, `cut`, `verify`, or `for:sales` and friends. The list is open — a tag you invent just works.",
+        "**delete** — the deleted text is kept in the journal, so Claude reports what left rather than losing it silently.",
+        "**Style contract** at the top — standing instructions for the whole page. Applied on every regeneration, not just the round you added them. Mute one instead of deleting it if you might want it back."
+      ]
+    },
+    {
+      "id": "b-try-cal",
+      "type": "callout",
+      "author": "claude",
+      "tags": [],
+      "title": "Try it now",
+      "text": "Edit a block, tag another `expand`, pin a note somewhere, add a style directive, then hit Save. Tell me \"check my edits\" and I'll read the journal back to you before touching anything."
+    },
+    {
+      "id": "b-h-rejected",
+      "type": "heading",
+      "level": 2,
+      "author": "claude",
+      "tags": [],
+      "text": "What I rejected"
+    },
+    {
+      "id": "b-rej-1",
+      "type": "para",
+      "author": "claude",
+      "tags": [],
+      "text": "The platform already has a strictly better mechanism than this one, and it isn't available. Worth knowing, because if it opens up the right move is to migrate rather than to keep building here."
+    },
+    {
+      "id": "b-rej-t",
+      "type": "table",
+      "author": "claude",
+      "tags": [],
+      "head": [
+        "Alternative",
+        "Why not"
+      ],
+      "rows": [
+        [
+          "**Live docs** — markup *is* the document; every keystroke and drag journaled to a watching Claude session automatically, answered with an in-place edit seconds later. No Save button, no reload.",
+          "Live-doc mode is assigned by the platform at creation. Neither the page nor its declaration can choose it, and there's no way to create one from Claude Code. **Migrate if this changes** — the block model maps onto it almost directly."
+        ],
+        [
+          "**`publish(files)`** — page stays fixed, only the data file changes, and the saving view is not reloaded.",
+          "Better UX, but it's unverified whether a data file the page adds can be read back through the Artifact read path. Since read-back *is* v1, the model stays in the page where reading it is certain."
+        ],
+        [
+          "**Serializing the DOM on save**",
+          "Explicitly wrong — it carries viewer-session state and injected runtime scripts. Rendering from the model is also what makes edits legible as intent."
+        ],
+        [
+          "**One db document per operation**",
+          "An artifact's database caps at 5,000 documents and the store warns against one-doc-per-event streams. One document per revision instead."
+        ],
+        [
+          "**Comments as the channel**",
+          "Kept as a complement, not the mechanism. Still the right tool for a question that isn't an edit — just no longer the only way in."
+        ]
+      ]
+    },
+    {
+      "id": "b-h-cons",
+      "type": "heading",
+      "level": 2,
+      "author": "claude",
+      "tags": [],
+      "text": "Constraints"
+    },
+    {
+      "id": "b-cons-1",
+      "type": "list",
+      "author": "claude",
+      "tags": [],
+      "items": [
+        "**This page cannot be shared publicly.** Declaring `db` makes an artifact organization-internal — every reader must be signed in to Verbolia. Anything customer-facing has to be a separate static export without the editor, which `audience-views` already required.",
+        "**Saving reloads the page**, so it's an explicit button rather than autosave.",
+        "**Don't let Claude republish mid-round.** If it does while you have unsaved edits, your save is rejected and the view reloads to Claude's version. The runtime stashes your work and shows it back, but you have to re-apply it.",
+        "**No `assets` capability on your account** — so v2 images get downscaled in-browser into `db` rather than embedded, to stay under the 16 MB page limit."
+      ]
+    },
+    {
+      "id": "b-h-open",
+      "type": "heading",
+      "level": 2,
+      "author": "claude",
+      "tags": [],
+      "text": "Open for your call"
+    },
+    {
+      "id": "b-open-1",
+      "type": "para",
+      "author": "claude",
+      "tags": [],
+      "text": "Nothing here blocks v1 — these are the next forks. Tag any of them `seed-next` and it becomes the starting point of the next document, or pin a note with your answer."
+    },
+    {
+      "id": "b-open-2",
+      "type": "list",
+      "author": "claude",
+      "tags": [],
+      "ordered": true,
+      "items": [
+        "**Does the read-back gate still earn its keep?** It exists because comments are ambiguous. Typed ops are much less so — an `edit` op with before/after needs no interpretation. Maybe unambiguous ops apply directly and only notes and tags gate.",
+        "**Retrofit or start fresh?** `decompose-problem-artifacts` and `audience-views` were written around the read-only limit. Some of their rules are now obsolete rather than merely composable. Rewrite them, or leave them and let this skill supersede in practice?",
+        "**Where does the index live** — a workbench artifact, or a `tray/`-style file in the repo that Obsidian already queries?",
+        "**Should Claude's own edits be markable per-block too?** The runtime supports it; it would let you scan Claude's changes the same way it scans yours."
+      ]
+    }
+  ]
+}
