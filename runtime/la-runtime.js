@@ -26,6 +26,7 @@
   var undoStack = [], redoStack = [], baseline = null;
   var saveTimer = null, filesForm = null, SAVE_DEBOUNCE = 2500, UNDO_DEPTH = 60;
   var filter = [], inGroup = false, groupPushed = false, selAnchor = null;
+  var filterAnchor = null, FILTER_W = 268;
   var KNOWN = ['expand', 'summarize', 'seed-next', 'rewrite', 'cut', 'verify'];
 
   /* ------------------------------------------------------------------ util */
@@ -784,7 +785,19 @@
     var n = document.getElementById('la-filtermenu');
     if (n) n.remove();
   }
-  function toggleFilterMenu() {
+  /* The menu hangs off the Filter button rather than sitting at the screen
+     edge: right-aligned to it, directly above it, clamped into the viewport. */
+  function placeFilterMenu(menu) {
+    var r = filterAnchor && filterAnchor.getBoundingClientRect
+      ? filterAnchor.getBoundingClientRect() : null;
+    if (!r || !r.width) return;
+    var left = Math.max(12, Math.min(r.right - FILTER_W, window.innerWidth - FILTER_W - 12));
+    menu.style.left = left + 'px';
+    menu.style.right = 'auto';
+    menu.style.bottom = Math.max(12, window.innerHeight - r.top + 8) + 'px';
+  }
+  function toggleFilterMenu(anchor) {
+    if (anchor) filterAnchor = anchor;
     if (document.getElementById('la-filtermenu')) return closeFilterMenu();
     var counts = allTags(), names = Object.keys(counts).sort();
     var menu = el('div', 'la-filtermenu');
@@ -802,7 +815,7 @@
         filter = cb.checked ? filter.concat([t]) : filter.filter(function (x) { return x !== t; });
         render();
         var open = document.getElementById('la-filtermenu');
-        if (open) { closeFilterMenu(); toggleFilterMenu(); }
+        if (open) { closeFilterMenu(); toggleFilterMenu(); }  /* keeps the anchor */
       };
       row.appendChild(cb);
       row.appendChild(paint(el('span', 'la-tag', '#' + t), t));
@@ -824,6 +837,7 @@
     }
     menu.appendChild(foot);
     document.body.appendChild(menu);
+    placeFilterMenu(menu);
   }
 
   /* ---------------------------------------------------------------- export */
@@ -938,7 +952,7 @@
         filter.length ? 'Filter · ' + filter.length : 'Filter');
       f.title = 'Show only blocks with the labels you tick';
       f.disabled = !nTags;
-      f.onclick = function (e) { e.stopPropagation(); toggleFilterMenu(); };
+      f.onclick = function (e) { e.stopPropagation(); toggleFilterMenu(f); };
       bar.appendChild(u); bar.appendChild(r); bar.appendChild(f);
     }
   }

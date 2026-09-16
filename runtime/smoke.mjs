@@ -361,8 +361,15 @@ console.log('\nC-7 / C-8: tagging scopes, colours, filtering, export');
   ok('there is no filter row in the header', !eA.d.querySelector('.la-head .la-filter'));
   const fbtn = [...eA.d.querySelectorAll('.la-bar button')].find((b) => /^Filter/.test(b.textContent));
   ok('the bar carries a Filter button', !!fbtn);
+  /* jsdom has no layout, so give the button a rect to anchor against */
+  fbtn.getBoundingClientRect = () => ({ left: 700, right: 760, top: 900, bottom: 924, width: 60, height: 24 });
+  Object.defineProperty(eA.w, 'innerWidth', { value: 1200, configurable: true });
+  Object.defineProperty(eA.w, 'innerHeight', { value: 1000, configurable: true });
   fbtn.click();
   const menu = eA.d.querySelector('#la-filtermenu');
+  ok('the filter menu hangs off the Filter button, not the screen edge',
+    menu.style.left === '492px' && menu.style.bottom === '108px',
+    `left=${menu.style.left} bottom=${menu.style.bottom}`);
   ok('the filter menu lists every tag as a tickbox',
     menu.querySelectorAll('.la-filterrow input[type=checkbox]').length === Object.keys(eA.w.__la.tags()).length);
   const row = [...menu.querySelectorAll('.la-filterrow')].find((r) => /for:sales/.test(r.textContent));

@@ -309,7 +309,8 @@ body.la-dragging { cursor: grabbing; user-select: none; }
   box-shadow: 0 8px 28px rgba(0, 0, 0, .18); padding: 10px;
   display: flex; flex-direction: column; gap: 8px;
 }
-.la-filtermenu { position: fixed; bottom: 52px; left: clamp(16px, 4vw, 40px); max-height: 52vh; overflow-y: auto; }
+/* fallback position only — the runtime anchors it to the Filter button */
+.la-filtermenu { position: fixed; bottom: 52px; right: clamp(16px, 4vw, 40px); max-height: 52vh; overflow-y: auto; }
 .la-tagpop-head {
   font-family: var(--font-mono); font-size: 11px; color: var(--ink-muted);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
