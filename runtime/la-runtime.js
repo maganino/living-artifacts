@@ -17,12 +17,15 @@
 
   var MODEL_EL = 'la-model', STYLE_EL = 'la-style', RUNTIME_EL = 'la-runtime';
   var INTENTS = /^(expand|summarize|seed-next|rewrite|cut|verify)$/;
-  var SOT = String.fromCharCode(1), EOT = String.fromCharCode(2);
+  var SOT = String.fromCharCode(1), EOT = String.fromCharCode(2), SEP = String.fromCharCode(3);
+  /* distinguishable hues that survive both themes; assigned in creation order */
+  var HUES = [8, 28, 48, 96, 150, 188, 214, 260, 300, 334];
   var model, pending = [], caps = { artifact: null, db: null };
-  var readOnly = true, editing = null, tagging = null, tagQuote = null;
+  var readOnly = true, editing = null, tagging = null, tagQuote = null, tagTargets = null;
   var statusTimer = null, drag = null;
   var undoStack = [], redoStack = [], baseline = null;
   var saveTimer = null, filesForm = null, SAVE_DEBOUNCE = 2500, UNDO_DEPTH = 60;
+  var highlightMode = false, filter = [], inGroup = false, groupPushed = false;
 
   /* ------------------------------------------------------------------ util */
   function el(tag, cls, text) {
@@ -50,17 +53,54 @@
   function withMarks(text, marks) {
     if (!marks || !marks.length) return inline(text);
     var t = String(text == null ? '' : text), hit = false;
-    marks.forEach(function (m) {
+    marks.forEach(function (m, idx) {
       if (!m.quote) return;
       var i = t.indexOf(m.quote);
       if (i < 0) return;
       hit = true;
-      t = t.slice(0, i) + SOT + m.quote + EOT + t.slice(i + m.quote.length);
+      t = t.slice(0, i) + SOT + idx + SEP + m.quote + EOT + t.slice(i + m.quote.length);
     });
     if (!hit) return inline(text);
-    return inline(t).split(SOT).join('<mark class="la-mark">').split(EOT).join('</mark>');
+    var open = new RegExp(SOT + '(\\d+)' + SEP, 'g');
+    return inline(t)
+      .replace(open, function (_, n) {
+        var m = marks[Number(n)];
+        return m && m.tag
+          ? '<mark class="la-mark" style="--tag-h:' + tagHue(m.tag) + '">'
+          : '<mark class="la-mark untagged">';
+      })
+      .split(EOT).join('</mark>');
   }
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  /* A tag keeps its colour for the life of the document, so the reader learns
+     it. Stored in the model, so Claude sees the same mapping. */
+  function tagHue(tag) {
+    model.tagColors = model.tagColors || {};
+    if (model.tagColors[tag] == null) {
+      model.tagColors[tag] = HUES[Object.keys(model.tagColors).length % HUES.length];
+    }
+    return model.tagColors[tag];
+  }
+  function paint(node, tag) {
+    if (tag) node.style.setProperty('--tag-h', tagHue(tag));
+    else node.classList.add('untagged');
+    return node;
+  }
+  function allTags() {
+    var counts = {};
+    model.blocks.forEach(function (b) {
+      (b.tags || []).forEach(function (t) { counts[t] = (counts[t] || 0) + 1; });
+      (b.marks || []).forEach(function (m) { if (m.tag) counts[m.tag] = (counts[m.tag] || 0) + 1; });
+    });
+    return counts;
+  }
+  function matchesFilter(b) {
+    if (!filter.length) return true;
+    return filter.some(function (t) {
+      return (b.tags || []).indexOf(t) !== -1
+        || (b.marks || []).some(function (m) { return m.tag === t; });
+    });
+  }
   function uid(p) { return p + '-' + Math.random().toString(36).slice(2, 7); }
   function nowIso() { return new Date().toISOString(); }
   function clip(s, n) {
@@ -119,8 +159,9 @@
   /* `baseline` is the model as of the PREVIOUS recorded op, so at the moment
      record() runs it is exactly the pre-mutation state this op should undo to. */
   function record(op) {
-    if (baseline) {
+    if (baseline && !(inGroup && groupPushed)) {
       undoStack.push({ model: baseline, pendingLen: pending.length, label: op.op });
+      groupPushed = true;
       if (undoStack.length > UNDO_DEPTH) undoStack.shift();
       redoStack.length = 0;
     }
@@ -132,6 +173,12 @@
     baseline = clone(model);
     scheduleSave();
     renderBar();
+  }
+
+  /* Several ops from one gesture (tagging four blocks at once) undo together. */
+  function group(fn) {
+    inGroup = true; groupPushed = false;
+    try { fn(); } finally { inGroup = false; groupPushed = false; }
   }
 
   /* Undo restores the blocks, never the revision counter — rewinding rev
@@ -176,7 +223,12 @@
     root.textContent = '';
     root.appendChild(renderHead());
     var wrap = el('div', 'la-blocks');
-    model.blocks.forEach(function (b) { wrap.appendChild(renderBlock(b)); });
+    model.blocks.forEach(function (b) {
+      var node = renderBlock(b);
+      /* Filtering is a VIEW, never an edit — nothing here reaches the model. */
+      if (!matchesFilter(b)) node.hidden = true;
+      wrap.appendChild(node);
+    });
     root.appendChild(wrap);
     if (!readOnly) root.appendChild(renderAddRow());
     renderBar();
@@ -197,6 +249,8 @@
     h.appendChild(el('h1', 'la-title', model.title));
     if (model.updated) h.appendChild(el('p', 'la-updated', 'Updated: ' + model.updated));
     h.appendChild(renderContract());
+    var f = renderFilterRow();
+    if (f) h.appendChild(f);
     return h;
   }
 
@@ -323,7 +377,7 @@
       wrap.appendChild(renderEditor(b));
     } else {
       var body = renderBody(b);
-      if (!readOnly && b.type !== 'divider') {
+      if (!readOnly && b.type !== 'divider' && !highlightMode) {
         /* A click anywhere on the box edits it. A click that ended a text
            selection must NOT — that gesture belongs to tagging. */
         body.onclick = function (e) {
@@ -376,7 +430,7 @@
   function renderMeta(b) {
     var m = el('div', 'la-meta');
     (b.tags || []).forEach(function (tag) {
-      var chip = el('button', 'la-tag' + (INTENTS.test(tag) ? ' intent' : ''), '#' + tag);
+      var chip = paint(el('button', 'la-tag' + (INTENTS.test(tag) ? ' intent' : ''), '#' + tag), tag);
       chip.title = readOnly ? tag : 'Remove tag';
       if (!readOnly) chip.onclick = function () {
         b.tags = b.tags.filter(function (t) { return t !== tag; });
@@ -386,12 +440,13 @@
       m.appendChild(chip);
     });
     (b.marks || []).forEach(function (mk) {
-      var chip = el('button', 'la-tag ranged' + (INTENTS.test(mk.tag) ? ' intent' : ''),
-        '#' + mk.tag + ' “' + clip(mk.quote, 34) + '”');
-      chip.title = readOnly ? mk.tag : 'Remove this tagged passage';
+      var label = (mk.tag ? '#' + mk.tag + ' ' : '') + '\u201C' + clip(mk.quote, 30) + '\u201D';
+      var chip = paint(el('button', 'la-tag ranged'
+        + (mk.tag && INTENTS.test(mk.tag) ? ' intent' : ''), label), mk.tag);
+      chip.title = readOnly ? (mk.tag || 'highlighted') : 'Remove this highlight';
       if (!readOnly) chip.onclick = function () {
         b.marks = b.marks.filter(function (o) { return o !== mk; });
-        record({ op: 'untag', block: b.id, tag: mk.tag, quote: mk.quote });
+        record({ op: 'unhighlight', block: b.id, tag: mk.tag, quote: mk.quote });
         render();
       };
       m.appendChild(chip);
@@ -400,47 +455,64 @@
     return m;
   }
 
+  /* Three things can be tagged: this block, a highlighted passage inside it,
+     or every block a selection spanned. `tagTargets` says which. */
   function renderTagForm(b) {
     var box = el('span', 'la-inline');
     box.style.margin = '0';
-    var quote = tagQuote;
-    if (quote) box.appendChild(el('span', 'la-quote', '“' + clip(quote, 40) + '”'));
+    var quote = tagQuote, targets = tagTargets;
+    if (targets && targets.length > 1) {
+      box.appendChild(el('span', 'la-quote', targets.length + ' blocks'));
+    } else if (quote) {
+      box.appendChild(el('span', 'la-quote', '\u201C' + clip(quote, 36) + '\u201D'));
+    }
     var inp = el('input', 'la-taginput');
-    inp.placeholder = quote ? 'tag this passage…' : 'tag this block…';
+    inp.placeholder = targets && targets.length > 1 ? 'tag these blocks\u2026'
+      : quote ? 'tag this passage (optional)\u2026' : 'tag this block\u2026';
     inp.setAttribute('aria-label', 'Tag name');
     var add = el('button', 'la-btn primary', '+ tag');
+    var skip = el('button', 'la-btn', quote ? 'no tag' : 'cancel');
+    function close() { tagging = null; tagQuote = null; tagTargets = null; render(); }
     function commit() {
       var v = inp.value.trim().replace(/^#/, '');
-      if (!v) return;
-      if (quote) {
-        b.marks = (b.marks || []).concat([{ tag: v, quote: quote }]);
-        record({ op: 'tag', block: b.id, tag: v, quote: quote });
-      } else {
-        b.tags = (b.tags || []).concat([v]);
-        record({ op: 'tag', block: b.id, tag: v });
-      }
-      tagging = null; tagQuote = null;
-      render();
+      if (!v) return close();
+      group(function () {
+        if (targets && targets.length > 1) {
+          targets.forEach(function (id) {
+            var t = getBlock(id);
+            if (!t) return;
+            t.tags = (t.tags || []).concat([v]);
+            record({ op: 'tag', block: id, tag: v, withBlocks: targets.length });
+          });
+        } else if (quote) {
+          var mk = (b.marks || []).filter(function (o) { return o.quote === quote; })[0];
+          if (mk) { mk.tag = v; } else { b.marks = (b.marks || []).concat([{ tag: v, quote: quote }]); }
+          record({ op: 'tag', block: b.id, tag: v, quote: quote });
+        } else {
+          b.tags = (b.tags || []).concat([v]);
+          record({ op: 'tag', block: b.id, tag: v });
+        }
+      });
+      tagHue(v);
+      close();
     }
     add.onclick = commit;
+    skip.onclick = close;
     inp.onkeydown = function (e) {
       if (e.key === 'Enter') { e.preventDefault(); commit(); }
-      if (e.key === 'Escape') { tagging = null; tagQuote = null; render(); }
+      if (e.key === 'Escape') close();
     };
-    box.appendChild(inp); box.appendChild(add);
+    box.appendChild(inp); box.appendChild(add); box.appendChild(skip);
     return box;
   }
 
   function renderEditor(b) {
-    var wrap = el('div');
+    var wrap = el('div'), cancelled = false;
     var ta = el('textarea', 'la-edit');
     ta.value = blockSource(b);
     ta.setAttribute('aria-label', 'Edit block');
     var bar = el('div', 'la-editbar');
-    var save = el('button', 'la-btn primary', 'Apply');
-    var cancel = el('button', 'la-btn', 'Cancel');
-    bar.appendChild(save); bar.appendChild(cancel);
-    bar.appendChild(el('span', null, 'cmd+enter applies · esc cancels'));
+    bar.appendChild(el('span', null, 'click outside to keep · esc to discard'));
     function apply() {
       var before = blockSource(b), after = ta.value;
       editing = null;
@@ -451,11 +523,11 @@
       }
       render();
     }
-    save.onclick = apply;
-    cancel.onclick = function () { editing = null; render(); };
+    /* No Apply button: leaving the box keeps the edit, undo takes it back. */
+    ta.onblur = function () { if (!cancelled && editing === b.id) apply(); };
     ta.onkeydown = function (e) {
-      if (e.key === 'Escape') { editing = null; render(); }
-      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); apply(); }
+      if (e.key === 'Escape') { cancelled = true; editing = null; render(); }
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); ta.blur(); }
     };
     wrap.appendChild(ta); wrap.appendChild(bar);
     setTimeout(function () { ta.focus(); ta.style.height = ta.scrollHeight + 'px'; }, 0);
@@ -557,12 +629,12 @@
   }
 
   /* --------------------------------------------------- selection -> tagging */
-  /* Highlight a sentence (or a whole box) and a "+ tag" chip appears. */
-  function offerTag(blockId, quote) {
+  function offerTag(blockId, quote, targets) {
     var b = getBlock(blockId);
     if (!b) return false;
     tagging = blockId;
     tagQuote = (quote && quote !== blockText(b)) ? quote : null;
+    tagTargets = targets && targets.length > 1 ? targets : null;
     render();
     setTimeout(function () {
       var i = document.querySelector('[data-block-id="' + blockId + '"] .la-taginput');
@@ -570,28 +642,63 @@
     }, 0);
     return true;
   }
+
+  function blockOf(node) {
+    var n = node && (node.nodeType === 1 ? node : node.parentNode);
+    return n && n.closest ? n.closest('.la-block') : null;
+  }
+  /* Every block the selection touches, in document order. */
+  function spannedBlocks(sel) {
+    var a = blockOf(sel.anchorNode), f = blockOf(sel.focusNode);
+    if (!a || !f) return [];
+    var all = [].slice.call(document.querySelectorAll('.la-block'));
+    var i = all.indexOf(a), j = all.indexOf(f);
+    if (i < 0 || j < 0) return [];
+    return all.slice(Math.min(i, j), Math.max(i, j) + 1)
+      .map(function (n) { return n.dataset.blockId; });
+  }
+
+  /* Finishing a highlight creates the highlight straight away and THEN offers a
+     tag — the tag is optional, the highlight on its own is already signal. */
+  function finishHighlight() {
+    var sel = window.getSelection && window.getSelection();
+    if (!sel || sel.isCollapsed) return false;
+    var text = String(sel).trim();
+    if (text.length < 2) return false;
+    var ids = spannedBlocks(sel);
+    if (!ids.length) return false;
+    try { sel.removeAllRanges(); } catch (e) { /* ignore */ }
+    hideSelChip();
+    if (ids.length > 1) { offerTag(ids[0], null, ids); return true; }
+    var b = getBlock(ids[0]);
+    if (!b || blockText(b).indexOf(text) < 0) { offerTag(ids[0], null, null); return true; }
+    b.marks = (b.marks || []).concat([{ quote: text }]);
+    record({ op: 'highlight', block: b.id, quote: text });
+    offerTag(b.id, text, null);
+    return true;
+  }
+
   function onSelectionSettled() {
     if (readOnly || editing) return;
     var sel = window.getSelection && window.getSelection();
     if (!sel || sel.isCollapsed) return hideSelChip();
     var text = String(sel).trim();
     if (text.length < 2) return hideSelChip();
-    var node = sel.anchorNode;
-    var host = node && (node.nodeType === 1 ? node : node.parentNode);
-    host = host && host.closest && host.closest('.la-block');
-    if (!host) return hideSelChip();
-    showSelChip(host.dataset.blockId, text, sel);
+    var ids = spannedBlocks(sel);
+    if (!ids.length) return hideSelChip();
+    showSelChip(ids, text, sel);
   }
-  function showSelChip(blockId, text, sel) {
+  function showSelChip(ids, text, sel) {
     var c = document.getElementById('la-selchip');
     if (!c) {
       c = el('button', 'la-selchip', '+ tag');
       c.id = 'la-selchip';
-      c.title = 'Tag the highlighted passage';
       document.body.appendChild(c);
     }
+    c.textContent = ids.length > 1 ? '+ tag ' + ids.length + ' blocks' : '+ tag';
+    c.title = 'Tag the highlighted text';
     c.hidden = false;
-    c.onclick = function () { hideSelChip(); offerTag(blockId, text); };
+    c.onclick = function () { hideSelChip(); finishHighlight(); };
     try {
       var r = sel.getRangeAt(0).getBoundingClientRect();
       if (r && r.width) {
@@ -603,6 +710,43 @@
   function hideSelChip() {
     var c = document.getElementById('la-selchip');
     if (c) c.hidden = true;
+  }
+
+  function setHighlightMode(on) {
+    highlightMode = !!on;
+    document.body.classList.toggle('la-highlighting', highlightMode);
+    if (highlightMode) { editing = null; tagging = null; tagQuote = null; tagTargets = null; }
+    else hideSelChip();
+    /* the blocks' click handlers differ between modes, so re-render them all —
+       renderBar() alone leaves the old handlers bound */
+    render();
+  }
+
+  /* ---------------------------------------------------------------- filter */
+  function renderFilterRow() {
+    var counts = allTags(), names = Object.keys(counts).sort();
+    if (!names.length) return null;
+    var row = el('div', 'la-filter');
+    row.appendChild(el('span', 'la-filter-label', 'filter'));
+    names.forEach(function (t) {
+      var on = filter.indexOf(t) !== -1;
+      var chip = paint(el('button', 'la-tag filterchip' + (on ? ' on' : ''),
+        '#' + t + ' ' + counts[t]), t);
+      chip.onclick = function () {
+        filter = on ? filter.filter(function (x) { return x !== t; }) : filter.concat([t]);
+        render();
+      };
+      row.appendChild(chip);
+    });
+    if (filter.length) {
+      var clear = el('button', 'la-btn', 'show all');
+      clear.onclick = function () { filter = []; render(); };
+      row.appendChild(clear);
+      var shown = model.blocks.filter(matchesFilter).length;
+      row.appendChild(el('span', 'la-filter-count',
+        shown + ' of ' + model.blocks.length + ' blocks · filter is a view, not an edit'));
+    }
+    return row;
   }
 
   function renderAddRow() {
@@ -639,8 +783,10 @@
       ? 'Read-only view — editing is unavailable here.'
       : (pending.length
         ? pending.length + ' change' + (pending.length > 1 ? 's' : '') + ' — saving shortly…'
-        : 'Saved · rev ' + model.rev
-          + ' · click a block to edit, drag the handle to reorder, highlight text to tag');
+        : highlightMode
+          ? 'Highlighting — drag across any text to mark it, then tag it if you want'
+          : 'Saved · rev ' + model.rev
+            + ' · click a block to edit, drag the handle to reorder, highlight text to tag');
     bar.appendChild(st);
     if (!readOnly) {
       var u = el('button', 'la-btn', '↶ Undo');
@@ -651,7 +797,13 @@
       r.title = 'Redo (shift+cmd+z)';
       r.disabled = !redoStack.length;
       r.onclick = redo;
-      bar.appendChild(u); bar.appendChild(r);
+      var hl = el('button', 'la-btn' + (highlightMode ? ' on' : ''), '\u270E Highlight');
+      hl.title = highlightMode
+        ? 'Highlighting: drag across text to mark it. Click to go back to editing.'
+        : 'Highlight text instead of editing — drag across any passage to mark it';
+      hl.setAttribute('aria-pressed', highlightMode ? 'true' : 'false');
+      hl.onclick = function () { setHighlightMode(!highlightMode); };
+      bar.appendChild(u); bar.appendChild(r); bar.appendChild(hl);
       if (pending.length) {
         var save = el('button', 'la-btn primary', 'Save now');
         save.onclick = function () { doSave(); };
@@ -862,7 +1014,12 @@
       }
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
     });
-    document.addEventListener('mouseup', function () { setTimeout(onSelectionSettled, 0); });
+    document.addEventListener('mouseup', function () {
+      setTimeout(function () {
+        if (highlightMode) { if (!finishHighlight()) hideSelChip(); }
+        else onSelectionSettled();
+      }, 0);
+    });
     document.addEventListener('keyup', function (e) {
       if (e.shiftKey || /^Arrow/.test(e.key)) setTimeout(onSelectionSettled, 0);
     });
@@ -884,9 +1041,13 @@
      selection cannot be exercised in jsdom, so the same code paths are
      reachable directly. Not part of the document's own behaviour. */
   window.__la = {
-    offerTag: function (id, q) { return offerTag(id, q); },
+    offerTag: function (id, q, targets) { return offerTag(id, q, targets); },
     moveTo: function (id, to) { var r = moveTo(id, to); render(); return r; },
     undo: undo, redo: redo,
+    highlight: function (on) { setHighlightMode(on); },
+    finishHighlight: finishHighlight,
+    setFilter: function (t) { filter = t; render(); },
+    tags: allTags,
     flush: function () { return doSave(); },
     debounce: function (ms) { SAVE_DEBOUNCE = ms; }
   };

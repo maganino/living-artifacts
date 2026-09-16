@@ -35,7 +35,8 @@ later round. Never renumber, never reuse a dead id.
   "type": "para",          // heading | para | list | table | code | callout | divider
   "tags": ["expand", "for:sales"],
   "author": "claude",      // "viewer" once the human has edited it
-  "marks": [{ "tag": "verify", "quote": "94.2% of indexable URLs" }],
+  "marks": [{ "tag": "verify", "quote": "94.2% of indexable URLs" },
+             { "quote": "three bot-registry IDs" }],   // tag is OPTIONAL
   "note": "recheck this against the June cohort",  // pinned request, not content
   "touched": { "rev": 7, "by": "viewer" }          // only the latest revision
 }
@@ -77,6 +78,13 @@ regeneration, not just the round they were added.
 `active: false` is **muted, not deleted**: the reader kept it visible because
 they may want it back.
 
+Tag colours live at document level in `tagColors: {tag: hue}` — assigned on first
+use and then fixed, so a tag looks the same every time the reader sees it, and
+Claude reads the same mapping. An untagged highlight renders neutral.
+
+Filter state is deliberately **not** in the model. Filtering is a view: it hides
+blocks on one screen and must never reach the document or the journal.
+
 ## Journal
 
 One entry per revision, holding every op in it.
@@ -91,7 +99,8 @@ One entry per revision, holding every op in it.
 | `insert` | `block`, `type`, `at` | they added something you didn't write |
 | `delete` | `block`, `type`, `text` | text that left — report it, never lose it silently |
 | `move` | `block`, `from`, `to` | an argument about order |
-| `tag` / `untag` | `block`, `tag`, `quote?` | an intent — for the block, or with `quote`, for that passage |
+| `highlight` / `unhighlight` | `block`, `quote`, `tag?` | they singled out a passage — signal even with no tag on it |
+| `tag` / `untag` | `block`, `tag`, `quote?`, `withBlocks?` | an intent — for the block, for a passage (`quote`), or for each of several blocks at once (`withBlocks`) |
 | `note` | `block`, `text` | a request pinned to a block |
 | `style` | `action`, `text` | a standing instruction for the whole document |
 | `undo` / `redo` | `undid` | they reversed an op from an EARLIER revision — the original edit stays in its own revision, so the history stays true |

@@ -139,8 +139,13 @@ body.la-dragging { cursor: grabbing; user-select: none; }
 
 /* a passage tagged by highlighting it */
 .la-mark {
-  background: var(--teal-tint); color: inherit;
-  border-bottom: 1px solid var(--teal); border-radius: 2px; padding: 0 1px;
+  --tag-h: 188;
+  background: hsl(var(--tag-h) 78% 88%); color: inherit;
+  box-shadow: inset 0 -2px 0 hsl(var(--tag-h) 55% 62%);
+  border-radius: 2px; padding: 0 1px;
+}
+.la-mark.untagged {
+  background: var(--surface-2); box-shadow: inset 0 -2px 0 var(--line-strong);
 }
 .la-selchip {
   position: absolute; z-index: 60; top: 0; left: 0;
@@ -185,11 +190,17 @@ body.la-dragging { cursor: grabbing; user-select: none; }
 /* ---------- per-block metadata ---------- */
 .la-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 10px; }
 .la-tag {
+  --tag-h: 188;
   font-family: var(--font-mono); font-size: 11px; border-radius: 999px;
-  padding: 2px 9px; border: 1px solid var(--teal); color: var(--teal); background: transparent;
-  cursor: pointer;
+  padding: 2px 9px; cursor: pointer;
+  border: 1px solid hsl(var(--tag-h) 42% 70%);
+  color: hsl(var(--tag-h) 60% 26%);
+  background: hsl(var(--tag-h) 62% 93%);
 }
-.la-tag.intent { border-color: var(--rose); color: var(--rose); }
+.la-tag.untagged {
+  border-color: var(--line-strong); color: var(--ink-muted); background: var(--surface-2);
+}
+.la-tag.intent { font-weight: 650; }
 .la-note {
   font-family: var(--font-mono); font-size: 12.5px; color: var(--rose);
   border-left: 3px solid var(--rose); background: var(--rose-tint);
@@ -251,4 +262,62 @@ body.la-dragging { cursor: grabbing; user-select: none; }
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
+}
+
+/* ---------- tag colour, second theme ---------- */
+/* hue comes from the chip; only lightness/saturation change between themes */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .la-tag {
+    border-color: hsl(var(--tag-h) 32% 36%);
+    color: hsl(var(--tag-h) 70% 76%);
+    background: hsl(var(--tag-h) 38% 17%);
+  }
+  :root:not([data-theme="light"]) .la-tag.untagged {
+    border-color: var(--line-strong); color: var(--ink-muted); background: var(--surface-2);
+  }
+  :root:not([data-theme="light"]) .la-mark {
+    background: hsl(var(--tag-h) 44% 24%);
+    box-shadow: inset 0 -2px 0 hsl(var(--tag-h) 50% 46%);
+  }
+  :root:not([data-theme="light"]) .la-mark.untagged {
+    background: var(--surface-2); box-shadow: inset 0 -2px 0 var(--line-strong);
+  }
+}
+:root[data-theme="dark"] .la-tag {
+  border-color: hsl(var(--tag-h) 32% 36%);
+  color: hsl(var(--tag-h) 70% 76%);
+  background: hsl(var(--tag-h) 38% 17%);
+}
+:root[data-theme="dark"] .la-tag.untagged {
+  border-color: var(--line-strong); color: var(--ink-muted); background: var(--surface-2);
+}
+:root[data-theme="dark"] .la-mark {
+  background: hsl(var(--tag-h) 44% 24%);
+  box-shadow: inset 0 -2px 0 hsl(var(--tag-h) 50% 46%);
+}
+:root[data-theme="dark"] .la-mark.untagged {
+  background: var(--surface-2); box-shadow: inset 0 -2px 0 var(--line-strong);
+}
+
+/* ---------- filter row ---------- */
+.la-filter {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 7px;
+  margin: 16px 0 0; padding-top: 14px; border-top: 1px solid var(--line);
+}
+.la-filter-label, .la-filter-count {
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--ink-muted);
+}
+.la-filter-count { text-transform: none; letter-spacing: 0; flex-basis: 100%; }
+.la-tag.filterchip { opacity: .55; }
+.la-tag.filterchip.on, .la-filter:hover .la-tag.filterchip { opacity: 1; }
+.la-tag.filterchip.on { box-shadow: 0 0 0 2px hsl(var(--tag-h) 55% 62%); }
+
+/* ---------- highlighter mode ---------- */
+/* editing is suspended, so the whole page reads as a marking surface */
+body.la-highlighting .la-body { cursor: text; }
+body.la-highlighting .la-block:hover { background: none; box-shadow: 0 0 0 1px var(--line); }
+body.la-highlighting ::selection { background: hsl(48 90% 72%); color: #1C2220; }
+.la-btn.on {
+  background: var(--amber); border-color: var(--amber); color: #fff; font-weight: 600;
 }

@@ -71,6 +71,10 @@ On a republish notification, or on "check my edits" / "apply my feedback":
      for a comment. It is not document content; act on it, then clear it.
    - A `move` op is an argument about order. Ask what the new order is meant to
      foreground before rewriting around it.
+   - A `highlight` op with no tag is still signal: they singled that passage out
+     and chose not to name why. Ask what it is about rather than ignoring it.
+   - A `tag` op carrying `withBlocks` was applied to several blocks in one
+     gesture; read them as one instruction, not N.
    - A `tag` op carrying a `quote` scopes the intent to that passage, not the
      block. Act on the passage; quote it back in the read-back so they can see
      you attached it to the right sentence. If the quote no longer appears in
@@ -104,11 +108,16 @@ build the next one.
 
 ## The reader drives it directly
 
-Hovering a block reveals its affordances; clicking it edits it; dragging its
-handle reorders; highlighting text offers a tag. There is no select-then-act
-step — v1 had one, and the first reader never saved a single edit, filing five
-comments about the UI instead. If you extend the editor, keep that bar: an
-affordance that needs to be discovered before it can be used will not be used.
+Hovering a block reveals its affordances; clicking it edits it and clicking away
+keeps the edit; dragging its handle reorders. There is no select-then-act step
+and no Apply step — v1 had both, and the first reader never saved a single edit,
+filing five comments about the UI instead. If you extend the editor, keep that
+bar: an affordance that must be discovered before it can be used will not be used.
+
+Because a click means *edit*, text selection needs its own mode: the **✎ Highlight**
+toggle suspends editing so a drag marks text. Naming a highlight with a tag is
+optional by design. Tags carry per-document colours, and the tag row under the
+title filters the page — filtering is a view and never reaches the model.
 
 ## The style contract is standing instruction
 

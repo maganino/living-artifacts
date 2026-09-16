@@ -5,8 +5,8 @@
   "thread": "living-artifacts",
   "component": "Direction",
   "url": "https://claude.ai/code/artifact/93af85d9-40a3-4fae-ac46-d94a3c4f3e7e",
-  "rev": 3,
-  "updated": "round 3 — autosave and undo/redo · 2026-09-16",
+  "rev": 5,
+  "updated": "round 4 — highlighter, multi-block tags, tag colours, filtering · 2026-09-16",
   "style": {
     "directives": [
       {
@@ -36,10 +36,10 @@
       "type": "callout",
       "author": "claude",
       "tags": [],
-      "title": "Round 3 — not part of the document",
-      "text": "**Round 2** replaced the interaction model: all five of your comments were about the editor, none about the content, and the journal was empty — you had never saved an edit. **Round 3** is your autosave and undo/redo comment. Autosave needed a mechanism I had rejected too early: publishing through the *files* form, which does not reload the view. The amber gutters mark what changed.",
+      "title": "Round 4 — not part of the document",
+      "text": "**Round 2** replaced the interaction model — your five comments were all about the editor and the journal was empty. **Round 3** added autosave and undo/redo. **Round 4** is your tagging comment: highlighting is now its own mode, because dropping the Apply step made a click mean *edit*, which left no way to drag across text. Tags carry colours and filter the page. Your `eng` tag on the block below survived this rebuild — it was saved from the page while I was working, and merged in rather than overwritten.",
       "touched": {
-        "rev": 3,
+        "rev": 4,
         "by": "claude"
       }
     },
@@ -85,7 +85,9 @@
       "id": "b-how-1",
       "type": "para",
       "author": "claude",
-      "tags": [],
+      "tags": [
+        "eng"
+      ],
       "text": "The document's truth is a JSON model embedded in this page — an ordered list of blocks, each with a stable id, a type, tags, and an author. What you see is a rendering of that model, and the rendering is never read back. So an edit is not a text diff; it's a typed operation against a known address."
     },
     {
@@ -139,7 +141,7 @@
         ],
         [
           "Highlight and tag sections to extract",
-          "Tags as typed intents — `expand`, `summarize`, `seed-next`, `for:sales`. Highlight a passage to tag it below block level; anchored by quote, not offset",
+          "Whole block, a highlighted passage, or every block a selection spans. Passages anchor by quote, not offset. Each tag gets a colour, and the tag row filters the page",
           "v1 — working"
         ],
         [
@@ -150,14 +152,18 @@
         [
           "A view shared with a specific stakeholder",
           "Static export without the editor — hands off to `audience-views`",
-          "v3"
+          "v3 — filtering works now, static export still to come"
         ],
         [
           "Comment on tone and style, applied throughout",
           "A persistent style contract at document level, applied on every regeneration",
           "v1 — working"
         ]
-      ]
+      ],
+      "touched": {
+        "rev": 4,
+        "by": "claude"
+      }
     },
     {
       "id": "b-h-try",
@@ -172,7 +178,11 @@
       "type": "para",
       "author": "claude",
       "tags": [],
-      "text": "Hover any block and it lifts, with its controls on it: a drag handle at the left, and **tag** / **note** / **✕** at the top right. There is no select-it-first step."
+      "text": "Hover any block and it lifts, with its controls on it: a drag handle at the left, and **tag** / **note** / **✕** at the top right. There is no select-it-first step, and no Apply step.",
+      "touched": {
+        "rev": 4,
+        "by": "claude"
+      }
     },
     {
       "id": "b-try-2",
@@ -180,17 +190,18 @@
       "author": "claude",
       "tags": [],
       "items": [
-        "**Click anywhere on a block** to edit it. `⌘↩` applies, `esc` cancels. Your rewrite becomes the target the rest of the document should match; Claude will not restyle it back toward its own voice.",
-        "**Drag the ⠿ handle** up or down to reorder. Claude reads a move as an argument about what should come first, and will ask what the new order is meant to foreground. (Focus the handle and press ↑ / ↓ if you'd rather not drag.)",
-        "**Highlight a sentence** and a `+ tag` chip appears — tag that passage, not the whole block. The passage stays highlighted on the page, and Claude receives it as an anchored quote, so it survives later edits to the text around it.",
-        "**tag** on a block tags the whole box instead. `expand`, `summarize`, `seed-next`, `rewrite`, `cut`, `verify`, or `for:sales` and friends. The list is open — a tag you invent just works.",
-        "**note** pins a request to that specific block. This is the structured replacement for a comment: it is not document content, so Claude acts on it and then clears it.",
-        "**✕** deletes the block. The deleted text is kept in the journal, so Claude reports what left rather than losing it silently.",
-        "**How this document should be written**, at the top — standing instructions for the whole page, applied every time Claude rewrites anything. Mute a rule instead of removing it if you might want it back.",
-        "**It saves itself.** A couple of seconds after you stop, the page publishes a new version of itself — no button. `↶ Undo` / `↷ Redo` in the bar, or `⌘Z` / `⇧⌘Z`, and `⌘S` forces a save immediately. Undoing something already saved is recorded honestly as a reversal rather than erased, so the history stays true."
+        "**Click anywhere on a block** to edit it. Click away and the edit is kept — there is no Apply step. `esc` discards it, and undo takes back anything.",
+        "**Drag the ⠿ handle** to reorder. Claude reads a move as an argument about what should come first. (Focus the handle and press ↑ / ↓ if you'd rather not drag.)",
+        "**✎ Highlight** in the bottom bar switches editing off so a drag marks text instead. Finish a highlight and it stays on the page immediately; naming it with a tag is *optional* — an untagged highlight still reaches Claude as \"they marked this passage\".",
+        "**Highlight across several blocks** and the tag applies to all of them at once. One undo takes the whole thing back.",
+        "**tag** on a block tags the whole box. `expand`, `summarize`, `seed-next`, `rewrite`, `cut`, `verify`, `for:sales` — the list is open, a tag you invent just works, and each new tag keeps its own colour for the life of the document.",
+        "**filter** by tag from the row under the title. Filtering is a *view*: it hides blocks on your screen and never touches the document or the journal.",
+        "**note** pins a request to a block — the structured replacement for a comment, so Claude acts on it and clears it.",
+        "**✕** deletes a block; the deleted text is kept in the journal so Claude reports what left.",
+        "**It saves itself** a couple of seconds after you stop. `↶` / `↷` in the bar, or `⌘Z` / `⇧⌘Z`; `⌘S` forces a save."
       ],
       "touched": {
-        "rev": 3,
+        "rev": 4,
         "by": "claude"
       }
     },
@@ -200,11 +211,7 @@
       "author": "claude",
       "tags": [],
       "title": "Try it now",
-      "text": "Click a block and rewrite it. Highlight a sentence and tag it `expand`. Drag something above something else. Pin a note. It saves on its own — then tell me \"check my edits\" and I'll read the journal back to you before touching anything.",
-      "touched": {
-        "rev": 3,
-        "by": "claude"
-      }
+      "text": "Click a block and rewrite it. Highlight a sentence and tag it `expand`. Drag something above something else. Pin a note. It saves on its own — then tell me \"check my edits\" and I'll read the journal back to you before touching anything."
     },
     {
       "id": "b-h-rejected",
@@ -251,11 +258,7 @@
           "**Comments as the channel**",
           "Kept as a complement, not the mechanism. Still the right tool for a question that isn't an edit — just no longer the only way in."
         ]
-      ],
-      "touched": {
-        "rev": 3,
-        "by": "claude"
-      }
+      ]
     },
     {
       "id": "b-h-cons",
@@ -275,11 +278,7 @@
         "**Every save mints a version.** Autosave is debounced by a couple of seconds and backs off on its own if the platform rate-limits it, so a long editing session produces revisions, not one per keystroke.",
         "**Don't let Claude republish mid-round.** If it does while you have unsaved edits, your save is rejected and the view reloads to Claude's version. The runtime stashes your work and shows it back, but you have to re-apply it.",
         "**No `assets` capability on your account** — so v2 images get downscaled in-browser into `db` rather than embedded, to stay under the 16 MB page limit."
-      ],
-      "touched": {
-        "rev": 3,
-        "by": "claude"
-      }
+      ]
     },
     {
       "id": "b-h-open",
@@ -305,9 +304,30 @@
       "items": [
         "**Does the read-back gate still earn its keep?** It exists because comments are ambiguous. Typed ops are much less so — an `edit` op with before/after needs no interpretation. Maybe unambiguous ops apply directly and only notes and tags gate.",
         "**Retrofit or start fresh?** `decompose-problem-artifacts` and `audience-views` were written around the read-only limit. Some of their rules are now obsolete rather than merely composable. Rewrite them, or leave them and let this skill supersede in practice?",
-        "**Where does the index live** — a workbench artifact, or a `tray/`-style file in the repo that Obsidian already queries?",
+        "**Where does the index live** — a workbench artifact, or a `tray/`-style file in the repo that Obsidian already queries? Filtering within a document works now; across documents is the open part.",
         "**Should Claude's own edits be markable per-block too?** The runtime supports it; it would let you scan Claude's changes the same way it scans yours."
+      ],
+      "touched": {
+        "rev": 4,
+        "by": "claude"
+      }
+    }
+  ],
+  "journal": [
+    {
+      "rev": 4,
+      "at": "2026-09-16T07:05:42.027Z",
+      "by": "viewer",
+      "ops": [
+        {
+          "op": "tag",
+          "block": "b-how-1",
+          "tag": "eng"
+        }
       ]
     }
-  ]
+  ],
+  "tagColors": {
+    "eng": 8
+  }
 }

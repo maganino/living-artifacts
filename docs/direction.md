@@ -73,6 +73,39 @@ its own revision: the history stays true rather than being rewritten. Undo never
 rewinds the revision counter, which would make the next save overwrite a version
 that already exists.
 
+## Round 4 — tagging, and what dropping "Apply" cost (2026-09-16)
+
+Six requests in one comment: tag a block / a passage / several blocks at once;
+drop the Apply step so clicking away keeps an edit; a highlighter tool in the
+bottom bar; an optional tag at the end of a highlight; a colour per tag; and
+filtering by tag.
+
+The dependency is the interesting part. **Dropping Apply is what forces the
+highlighter to exist.** Once a click on a block means "edit", dragging across its
+text to select it is no longer reachable — the click opens the editor first. So
+the highlighter is not a convenience; it is the mode that gives text selection
+somewhere to live. Built in that order.
+
+- **An untagged highlight is kept.** "Suggest a tag but optional" means the
+  highlight itself is the artifact: it is created on mouse-up and the tag form
+  opens after, with a way out. A bare `highlight` op still tells Claude the
+  reader singled that passage out.
+- **Tag colours are persisted** in `model.tagColors` rather than hashed from the
+  name, so a tag looks identical every session and Claude reads the same map.
+  Hue only — lightness and saturation differ per theme, so one stored number
+  works in both.
+- **Filtering never touches the model.** It is a view, like the toggle in
+  `audience-views`, and the row says so on screen.
+- **Multi-block tagging undoes as one gesture**, via a grouped undo entry, not
+  four.
+
+**A collision happened during this round**, and it is worth recording: the reader
+saved a tag from inside the page while this rework was being built. The publish
+was refused rather than allowed to overwrite it; the live version was read in
+full and the tag merged in. The guard works, but it only works at publish
+granularity — two people editing the same document at once is still not
+something this design supports.
+
 ## Alternatives evaluated and rejected
 
 **Live docs (`artifact.sync`).** The platform has exactly this feature: on a

@@ -64,6 +64,12 @@ const btn = (root, text) =>
   [...root.querySelectorAll('button')].find((b) => b.textContent.trim() === text);
 const blockEl = (d, id) => d.querySelector(`[data-block-id="${id}"]`);
 const order = (d) => [...d.querySelectorAll('.la-block')].map((b) => b.dataset.blockId);
+/* no Apply button any more: leaving the box is what keeps the edit */
+const commitEdit = (env, id, text) => {
+  const ta = blockEl(env.d, id).querySelector('textarea');
+  ta.value = text;
+  ta.dispatchEvent(new env.w.FocusEvent('blur'));
+};
 
 console.log('\nvalidate()');
 {
@@ -97,10 +103,11 @@ console.log('\nC-3: click the box to edit, no selection step');
 blockEl(d, 'b-two').querySelector('.la-body').click();
 const ta = blockEl(d, 'b-two').querySelector('textarea');
 ok('a click on the body opens the editor', !!ta && ta.value.includes('**bold**'));
-ta.value = 'Rewritten by the human.';
-btn(blockEl(d, 'b-two'), 'Apply').click();
-ok('applying updates the rendered body', blockEl(d, 'b-two').textContent.includes('Rewritten by the human'));
-ok('applying marks the block touched', blockEl(d, 'b-two').dataset.touched === '1');
+commitEdit(env, 'b-two', 'Rewritten by the human.');
+ok('clicking away keeps the edit — no Apply button', blockEl(d, 'b-two').textContent.includes('Rewritten by the human'));
+ok('the committed block is marked touched', blockEl(d, 'b-two').dataset.touched === '1');
+ok('the Apply / Cancel buttons are gone',
+  !btn(blockEl(d, 'b-two'), 'Apply') && !btn(blockEl(d, 'b-two'), 'Cancel'));
 ok('undo enables once there is an edit', btn(d.body, '↶ Undo').disabled === false);
 ok('a "Save now" flush appears while unsaved', !!btn(d.body, 'Save now'));
 
@@ -213,9 +220,7 @@ ok('runtime survived re-emission intact', !!env2.d.querySelector('.la-handle'));
 ok('the highlight survives re-emission', !!env2.d.querySelector('mark.la-mark'));
 {
   blockEl(env2.d, 'b-one').querySelector('.la-body').click();
-  const ta2 = blockEl(env2.d, 'b-one').querySelector('textarea');
-  ta2.value = 'Second generation edit';
-  btn(blockEl(env2.d, 'b-one'), 'Apply').click();
+  commitEdit(env2, 'b-one', 'Second generation edit');
   await env2.w.__la.flush();
   await settle();
   const m3 = extractModel(env2.published[0]);
@@ -230,8 +235,7 @@ console.log('\nC-6: autosave + undo / redo');
   await settle();
   e6.w.__la.debounce(20);
   blockEl(e6.d, 'b-one').querySelector('.la-body').click();
-  blockEl(e6.d, 'b-one').querySelector('textarea').value = 'Autosaved heading';
-  btn(blockEl(e6.d, 'b-one'), 'Apply').click();
+  commitEdit(e6, 'b-one', 'Autosaved heading');
   eq('nothing published on the edit itself', e6.published.length, 0);
   await new Promise((r) => setTimeout(r, 120));
   eq('autosave fires after the debounce with no button press', e6.published.length, 1);
@@ -272,6 +276,81 @@ console.log('\nC-6: autosave + undo / redo');
   eq('falls back to the html form when files publish is unavailable', e8.forms[0], 'html');
   eq('and still publishes exactly once', e8.published.length, 1);
   ok('the fallback publishes a full document', e8.published[0].startsWith('<!doctype html>'));
+}
+
+console.log('\nC-7: highlighter, multi-block tags, colours, filter');
+{
+  const e9 = boot(wrap(buildBody(fixture()), 'x'));
+  await settle();
+
+  /* highlighter mode suspends editing so a drag selects text instead */
+  e9.w.__la.highlight(true);
+  ok('the highlighter sits next to undo/redo', !!btn(e9.d.body, '✎ Highlight'));
+  ok('the highlighter reads as pressed', btn(e9.d.body, '✎ Highlight').getAttribute('aria-pressed') === 'true');
+  ok('the page says it is in highlighting mode', /highlighting/i.test(e9.d.getElementById('la-status').textContent));
+  blockEl(e9.d, 'b-two').querySelector('.la-body').click();
+  ok('a click does NOT open the editor while highlighting', !blockEl(e9.d, 'b-two').querySelector('textarea'));
+  e9.w.__la.highlight(false);
+  blockEl(e9.d, 'b-two').querySelector('.la-body').click();
+  ok('and editing comes back when it is switched off', !!blockEl(e9.d, 'b-two').querySelector('textarea'));
+  blockEl(e9.d, 'b-two').querySelector('textarea').dispatchEvent(new e9.w.FocusEvent('blur'));
+
+  /* a highlight exists before any tag is chosen — the tag is optional */
+  e9.w.__la.offerTag('b-three', 'beta');
+  ok('the optional-tag form offers a way out', !!btn(blockEl(e9.d, 'b-three'), 'no tag'));
+  btn(blockEl(e9.d, 'b-three'), 'no tag').click();
+  ok('declining a tag closes the form', !blockEl(e9.d, 'b-three').querySelector('.la-taginput'));
+}
+{
+  const eA = boot(wrap(buildBody(fixture()), 'x'));
+  await settle();
+  /* tag several blocks from one selection */
+  eA.w.__la.offerTag('b-one', null, ['b-one', 'b-two', 'b-three']);
+  ok('the form says how many blocks it will tag',
+    /3 blocks/.test(blockEl(eA.d, 'b-one').querySelector('.la-quote').textContent));
+  blockEl(eA.d, 'b-one').querySelector('.la-taginput').value = 'seed-next';
+  btn(blockEl(eA.d, 'b-one'), '+ tag').click();
+  ok('every selected block got the tag',
+    ['b-one', 'b-two', 'b-three'].every((id) =>
+      [...blockEl(eA.d, id).querySelectorAll('.la-tag')].some((c) => c.textContent === '#seed-next')));
+  eA.w.__la.undo();
+  ok('one undo reverses the whole multi-block tag',
+    ['b-one', 'b-two', 'b-three'].every((id) =>
+      ![...blockEl(eA.d, id).querySelectorAll('.la-tag')].some((c) => c.textContent === '#seed-next')));
+  eA.w.__la.redo();
+
+  /* colours */
+  const chip = [...eA.d.querySelectorAll('.la-tag')].find((c) => c.textContent === '#seed-next');
+  ok('a tag chip carries its own hue', /--tag-h:\s*\d+/.test(chip.getAttribute('style') || ''));
+  eA.w.__la.offerTag('b-four', null, null);
+  blockEl(eA.d, 'b-four').querySelector('.la-taginput').value = 'for:sales';
+  btn(blockEl(eA.d, 'b-four'), '+ tag').click();
+  const hues = [...eA.d.querySelectorAll('.la-tag:not(.filterchip)')]
+    .map((c) => (c.getAttribute('style') || '').match(/--tag-h:\s*(\d+)/)?.[1])
+    .filter(Boolean);
+  ok('different tags get different hues', new Set(hues).size > 1, hues.join(','));
+
+  /* filter */
+  ok('a filter row appears once tags exist', !!eA.d.querySelector('.la-filter'));
+  eA.w.__la.setFilter(['for:sales']);
+  const visible = [...eA.d.querySelectorAll('.la-block')].filter((b) => !b.hidden)
+    .map((b) => b.dataset.blockId).sort();
+  /* b-two carries for:sales in the fixture, b-four was just tagged with it */
+  ok('exactly the blocks carrying the tag stay visible',
+    visible.join(',') === 'b-four,b-two', visible.join(','));
+  ok('filtering says it is a view, not an edit',
+    /not an edit/i.test(eA.d.querySelector('.la-filter').textContent));
+  eA.w.__la.setFilter([]);
+  ok('clearing the filter brings everything back',
+    [...eA.d.querySelectorAll('.la-block')].every((b) => !b.hidden));
+
+  /* the filter must never reach the model */
+  eA.w.__la.setFilter(['for:sales']);
+  await eA.w.__la.flush();
+  await settle();
+  const mm = extractModel(eA.published[eA.published.length - 1]);
+  ok('the published model carries no filter state', mm.filter === undefined);
+  ok('tag colours ARE persisted, so they are stable', !!mm.tagColors && Object.keys(mm.tagColors).length >= 2);
 }
 
 console.log('\nfailure paths');
