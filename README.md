@@ -15,9 +15,9 @@ set a standing instruction for the whole page's tone. Each one is recorded as a
 typed operation in a journal. Claude reads the journal, not a diff — so a round
 starts from *what you meant*.
 
-**Status:** v1 — the model and the read-back loop. Editing, reordering,
-tagging, notes and the style contract work end to end. Images and typed
-sketches are v2; the cross-document index is v3.
+**Status:** v1.2. Editing, drag-reordering, block and passage tagging, pinned
+notes, writing rules, autosave and undo/redo work end to end. Images and typed
+sketches are next; the cross-document index after that.
 
 ## How it works
 
@@ -66,7 +66,8 @@ the URL in the doc JSON. Every later round republishes to that same URL.
 - **A `db` artifact cannot be shared publicly** — it is organization-internal,
   every reader a signed-in member of the org. Anything for a customer is a
   separate static export, published without `db` and without the editor.
-- **Saving reloads the page**, so it is an explicit button, never autosave.
+- **Saving is automatic**, published through the files form so the view is not
+  reloaded; it falls back to the reloading form where that is unavailable.
 - **The 16 MB rendered limit** is why images are v2 and will be downscaled
   in-browser into `db` rather than embedded as data URIs.
 

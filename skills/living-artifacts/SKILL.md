@@ -64,6 +64,9 @@ On a republish notification, or on "check my edits" / "apply my feedback":
    - A `delete` op carries the text that left. Say what was deleted; if it was
      a load-bearing caveat, say so and ask where it should go instead of
      letting it vanish.
+   - An `undo` / `redo` op means they reversed an edit from an earlier
+     revision. The original op stays in its own revision — read the pair, and
+     do not act on the edit that was undone.
    - A `note` op is a request pinned to a block — the structured replacement
      for a comment. It is not document content; act on it, then clear it.
    - A `move` op is an argument about order. Ask what the new order is meant to
@@ -134,11 +137,15 @@ question is always "what changed since I last looked."
   the org. Anything going to a customer must be a **separate static export**
   published without `db` and without the editor, which is what `audience-views`
   already requires for a different reason.
-- **Publish reloads the page.** `publish(html)` replaces the whole document and
-  every open view reloads. That is why saving is an explicit button, never a
-  keystroke autosave.
-- **A conflict is routine.** If you republish while the reader has unsaved
-  edits, their save rejects with `conflict` and their view reloads to yours.
+- **Saving is automatic, through the files form.** The page publishes the whole
+  `index.html` via `publish({'index.html': …})`, which does NOT reload the
+  publishing view — that is what makes a debounced autosave usable. The model
+  stays embedded in the page, so reading the document back is unaffected. Where
+  the files form is not served the page falls back to `publish(html)`, which
+  does reload every view.
+- **A conflict is routine, and autosave makes it likelier.** If you republish
+  while the reader has unsaved edits, their save rejects with `conflict` and
+  their view reloads to yours.
   The runtime stashes their work in `sessionStorage` and shows it back to them,
   but the work is theirs to re-apply — so don't republish mid-review round
   without saying so.

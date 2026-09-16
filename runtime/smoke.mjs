@@ -29,13 +29,21 @@ const wrap = (body, title) =>
   `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${title}</title></head><body>${body}</body></html>`;
 
 function boot(html, opts = {}) {
-  const published = [], dbWrites = [];
+  const published = [], forms = [], dbWrites = [];
   let release = () => {};
   const gate = opts.gated ? new Promise((r) => { release = r; }) : Promise.resolve();
   const fakeDoc = (path) => ({ set: async (data) => { dbWrites.push({ path, data }); } });
   const defaultUse = async (name) => {
     if (name === 'artifact') return Object.freeze({
-      publish: async (h) => { published.push(h); return { version: 'v' + published.length }; }
+      publish: async (arg) => {
+        if (typeof arg !== 'string') {
+          if (opts.noFilesForm) {
+            const err = new Error('nope'); err.code = 'capability_disabled'; throw err;
+          }
+          forms.push('files'); published.push(arg['index.html']);
+        } else { forms.push('html'); published.push(arg); }
+        return { version: 'v' + published.length };
+      }
     });
     if (name === 'db') return Object.freeze({ doc: fakeDoc, collection: () => ({ doc: fakeDoc }) });
     return null;
@@ -48,7 +56,7 @@ function boot(html, opts = {}) {
   });
   return {
     dom, w: dom.window, get d() { return dom.window.document; },
-    published, dbWrites, release
+    published, forms, dbWrites, release
   };
 }
 const settle = () => new Promise((r) => setTimeout(r, 30));
@@ -81,7 +89,8 @@ env.release();
 await settle();
 ok('editing lights up once artifact resolves', !!d.querySelector('.la-handle'));
 ok('every block gets its own chrome', d.querySelectorAll('.la-acts').length === 5);
-ok('save button starts disabled', btn(d.body, 'Save').disabled === true);
+ok('undo starts disabled', btn(d.body, '↶ Undo').disabled === true);
+ok('no Save button until there is something to save', !btn(d.body, 'Save now'));
 ok('the status line says how to drive it', /click a block to edit/i.test(d.getElementById('la-status').textContent));
 
 console.log('\nC-3: click the box to edit, no selection step');
@@ -92,7 +101,8 @@ ta.value = 'Rewritten by the human.';
 btn(blockEl(d, 'b-two'), 'Apply').click();
 ok('applying updates the rendered body', blockEl(d, 'b-two').textContent.includes('Rewritten by the human'));
 ok('applying marks the block touched', blockEl(d, 'b-two').dataset.touched === '1');
-ok('save button enables once dirty', btn(d.body, 'Save').disabled === false);
+ok('undo enables once there is an edit', btn(d.body, '↶ Undo').disabled === false);
+ok('a "Save now" flush appears while unsaved', !!btn(d.body, 'Save now'));
 
 console.log('\nC-1: tag a whole block, and tag a highlighted passage');
 btn(blockEl(d, 'b-one'), 'tag').click();
@@ -157,9 +167,12 @@ ok('note renders anchored to its block', /contradicts/.test(blockEl(d, 'b-two').
 ok('a writing rule is added', /lead with the number/.test(d.querySelector('.la-contract').textContent));
 
 console.log('\nsave -> journal + publish');
-btn(d.body, 'Save').click();
+await env.w.__la.flush();
 await settle();
 eq('published exactly once', env.published.length, 1);
+eq('saved through the files form, so the view is not reloaded', env.forms[0], 'files');
+eq('the round is cleared after a files-form save', d.querySelectorAll('.la-block').length, 4);
+ok('status reports the saved revision', /saved · rev 4/i.test(d.getElementById('la-status').textContent));
 ok('published html is a full document', env.published[0].startsWith('<!doctype html>'));
 const journalWrite = env.dbWrites.find((w) => /\/journal\/r4$/.test(w.path));
 ok('journal is one document per revision', !!journalWrite, env.dbWrites.map((w) => w.path).join(', '));
@@ -203,12 +216,62 @@ ok('the highlight survives re-emission', !!env2.d.querySelector('mark.la-mark'))
   const ta2 = blockEl(env2.d, 'b-one').querySelector('textarea');
   ta2.value = 'Second generation edit';
   btn(blockEl(env2.d, 'b-one'), 'Apply').click();
-  btn(env2.d.body, 'Save').click();
+  await env2.w.__la.flush();
   await settle();
   const m3 = extractModel(env2.published[0]);
   eq('a second self-publish still round-trips', m3.rev, 5);
   ok('generation-2 edit landed', m3.blocks.find((b) => b.id === 'b-one').text === 'Second generation edit');
   ok('generation-1 marks were cleared', m3.blocks.filter((b) => b.touched).length === 1);
+}
+
+console.log('\nC-6: autosave + undo / redo');
+{
+  const e6 = boot(wrap(buildBody(fixture()), 'x'));
+  await settle();
+  e6.w.__la.debounce(20);
+  blockEl(e6.d, 'b-one').querySelector('.la-body').click();
+  blockEl(e6.d, 'b-one').querySelector('textarea').value = 'Autosaved heading';
+  btn(blockEl(e6.d, 'b-one'), 'Apply').click();
+  eq('nothing published on the edit itself', e6.published.length, 0);
+  await new Promise((r) => setTimeout(r, 120));
+  eq('autosave fires after the debounce with no button press', e6.published.length, 1);
+  ok('and it used the non-reloading form', e6.forms[0] === 'files');
+  ok('pending is cleared after autosave', /saved · rev 4/i.test(e6.d.getElementById('la-status').textContent));
+
+  /* undo AFTER a save cannot just drop the op — it records a reversal */
+  e6.w.__la.undo();
+  eq('undo restores the previous text',
+    blockEl(e6.d, 'b-one').textContent.includes('Autosaved heading'), false);
+  await new Promise((r) => setTimeout(r, 120));
+  const m = extractModel(e6.published[e6.published.length - 1]);
+  eq('undo did not rewind the revision counter', m.rev, 5);
+  ok('a post-save undo is journaled as a reversal',
+    (m.journal[m.journal.length - 1].ops || []).some((o) => o.op === 'undo'));
+
+  e6.w.__la.redo();
+  ok('redo puts it back', blockEl(e6.d, 'b-one').textContent.includes('Autosaved heading'));
+}
+{
+  /* an undo BEFORE the round is saved should leave no trace in the journal */
+  const e7 = boot(wrap(buildBody(fixture()), 'x'));
+  await settle();
+  e7.w.__la.moveTo('b-one', 2);
+  ok('the move applied', order(e7.d).indexOf('b-one') === 2);
+  e7.w.__la.undo();
+  ok('undo reverses it', order(e7.d).indexOf('b-one') === 0);
+  ok('nothing is left to save', !btn(e7.d.body, 'Save now'));
+  eq('an unsaved op that was undone never publishes', e7.published.length, 0);
+}
+{
+  /* where the files form is not served, fall back to the reloading form */
+  const e8 = boot(wrap(buildBody(fixture()), 'x'), { noFilesForm: true });
+  await settle();
+  e8.w.__la.moveTo('b-one', 1);
+  await e8.w.__la.flush();
+  await settle();
+  eq('falls back to the html form when files publish is unavailable', e8.forms[0], 'html');
+  eq('and still publishes exactly once', e8.published.length, 1);
+  ok('the fallback publishes a full document', e8.published[0].startsWith('<!doctype html>'));
 }
 
 console.log('\nfailure paths');
@@ -226,7 +289,7 @@ console.log('\nfailure paths');
   });
   await settle();
   e4.w.__la.moveTo('b-one', 1);
-  btn(e4.d.body, 'Save').click();
+  await e4.w.__la.flush();
   await settle();
   ok('a not_writer rejection degrades to read-only, not an error dump',
     /read-only/i.test(e4.d.getElementById('la-status').textContent));
@@ -240,7 +303,7 @@ console.log('\nfailure paths');
   });
   await settle();
   e5.w.__la.moveTo('b-one', 1);
-  btn(e5.d.body, 'Save').click();
+  await e5.w.__la.flush();
   await settle();
   ok('a conflict says the reload is coming, not that saving failed',
     /published first/i.test(e5.d.getElementById('la-status').textContent));

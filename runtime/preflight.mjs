@@ -9,7 +9,7 @@ const file = process.argv[2];
 if (!file) { console.error('usage: preflight.mjs <built.html>'); process.exit(1); }
 
 const body = readFileSync(file, 'utf8');
-const published = [], jsErrors = [];
+const published = [], forms = [], jsErrors = [];
 const dom = new JSDOM(
   `<!doctype html><html><head><meta charset="utf-8"></head><body>${body}</body></html>`,
   {
@@ -19,7 +19,13 @@ const dom = new JSDOM(
     beforeParse(w) {
       w.claude = {
         use: async (n) =>
-          n === 'artifact' ? Object.freeze({ publish: async (h) => { published.push(h); return { version: 'v2' }; } })
+          n === 'artifact' ? Object.freeze({
+            publish: async (a) => {
+              if (typeof a === 'string') { forms.push('html'); published.push(a); }
+              else { forms.push('files'); published.push(a['index.html']); }
+              return { version: 'v2' };
+            }
+          })
             : n === 'db' ? Object.freeze({ doc: () => ({ set: async () => {} }) })
               : null
       };
@@ -51,10 +57,11 @@ const host = () => d.querySelector(`[data-block-id="${first.id}"]`);
 [...host().querySelectorAll('button')].find((b) => b.textContent.trim() === 'tag').click();
 host().querySelector('.la-taginput').value = 'preflight';
 [...host().querySelectorAll('button')].find((b) => b.textContent.trim() === '+ tag').click();
-[...d.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Save').click();
+await dom.window.__la.flush();
 await settle();
 
-line('save published once', String(published.length), published.length === 1);
+line('autosave published once', String(published.length), published.length === 1);
+line('used the non-reloading form', forms[0] ?? 'none', forms[0] === 'files');
 const out = published[0] ?? '';
 line('publishable full document', out.slice(0, 15), out.startsWith('<!doctype html>'));
 const m2 = published.length ? extractModel(out) : { blocks: [], rev: -1 };

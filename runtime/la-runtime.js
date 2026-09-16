@@ -21,6 +21,8 @@
   var model, pending = [], caps = { artifact: null, db: null };
   var readOnly = true, editing = null, tagging = null, tagQuote = null;
   var statusTimer = null, drag = null;
+  var undoStack = [], redoStack = [], baseline = null;
+  var saveTimer = null, filesForm = null, SAVE_DEBOUNCE = 2500, UNDO_DEPTH = 60;
 
   /* ------------------------------------------------------------------ util */
   function el(tag, cls, text) {
@@ -58,6 +60,7 @@
     if (!hit) return inline(text);
     return inline(t).split(SOT).join('<mark class="la-mark">').split(EOT).join('</mark>');
   }
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
   function uid(p) { return p + '-' + Math.random().toString(36).slice(2, 7); }
   function nowIso() { return new Date().toISOString(); }
   function clip(s, n) {
@@ -113,13 +116,57 @@
   }
 
   /* ------------------------------------------------------------------- ops */
+  /* `baseline` is the model as of the PREVIOUS recorded op, so at the moment
+     record() runs it is exactly the pre-mutation state this op should undo to. */
   function record(op) {
+    if (baseline) {
+      undoStack.push({ model: baseline, pendingLen: pending.length, label: op.op });
+      if (undoStack.length > UNDO_DEPTH) undoStack.shift();
+      redoStack.length = 0;
+    }
     pending.push(op);
     if (op.block) {
       var b = getBlock(op.block);
       if (b) b.touched = { rev: model.rev + 1, by: 'viewer' };
     }
+    baseline = clone(model);
+    scheduleSave();
     renderBar();
+  }
+
+  /* Undo restores the blocks, never the revision counter — rewinding rev
+     would make the next save overwrite a version that already exists. */
+  function restore(entry, undoneLabel, fromStack, toStack) {
+    var keep = {
+      rev: model.rev, updated: model.updated,
+      journal: model.journal, url: model.url, docId: model.docId
+    };
+    toStack.push({ model: clone(model), pendingLen: pending.length, label: undoneLabel });
+    model = entry.model;
+    model.rev = keep.rev; model.updated = keep.updated;
+    model.journal = keep.journal; model.url = keep.url; model.docId = keep.docId;
+    baseline = clone(model);
+    /* If the op being reversed has not been saved yet, drop it rather than
+       recording a reversal — the journal should not carry both. */
+    if (pending.length > entry.pendingLen) pending.length = entry.pendingLen;
+    else pending.push({ op: fromStack === undoStack ? 'undo' : 'redo', undid: undoneLabel });
+    editing = null; tagging = null; tagQuote = null;
+    render();
+    scheduleSave();
+  }
+  function undo() {
+    if (!undoStack.length || readOnly) return false;
+    var e = undoStack.pop();
+    restore(e, e.label, undoStack, redoStack);
+    status('Undid ' + e.label);
+    return true;
+  }
+  function redo() {
+    if (!redoStack.length || readOnly) return false;
+    var e = redoStack.pop();
+    restore(e, e.label, redoStack, undoStack);
+    status('Redid ' + e.label);
+    return true;
   }
 
   /* ---------------------------------------------------------------- render */
@@ -590,14 +637,26 @@
     st.id = 'la-status';
     st.textContent = readOnly
       ? 'Read-only view — editing is unavailable here.'
-      : (pending.length ? pending.length + ' unsaved change' + (pending.length > 1 ? 's' : '')
-        : 'Click a block to edit · drag the handle to reorder · highlight text to tag it');
+      : (pending.length
+        ? pending.length + ' change' + (pending.length > 1 ? 's' : '') + ' — saving shortly…'
+        : 'Saved · rev ' + model.rev
+          + ' · click a block to edit, drag the handle to reorder, highlight text to tag');
     bar.appendChild(st);
     if (!readOnly) {
-      var save = el('button', 'la-btn primary', 'Save');
-      save.disabled = !pending.length;
-      save.onclick = doSave;
-      bar.appendChild(save);
+      var u = el('button', 'la-btn', '↶ Undo');
+      u.title = 'Undo (cmd+z)';
+      u.disabled = !undoStack.length;
+      u.onclick = undo;
+      var r = el('button', 'la-btn', '↷ Redo');
+      r.title = 'Redo (shift+cmd+z)';
+      r.disabled = !redoStack.length;
+      r.onclick = redo;
+      bar.appendChild(u); bar.appendChild(r);
+      if (pending.length) {
+        var save = el('button', 'la-btn primary', 'Save now');
+        save.onclick = function () { doSave(); };
+        bar.appendChild(save);
+      }
     }
   }
   function status(msg, isErr) {
@@ -663,9 +722,42 @@
   }
 
   /* ----------------------------------------------------------------- save */
+  function scheduleSave() {
+    if (readOnly || !pending.length) return;
+    clearTimeout(saveTimer);
+    /* One version per call, so never per keystroke — settle first. */
+    saveTimer = setTimeout(function () { doSave(); }, SAVE_DEBOUNCE);
+  }
+
+  /* The FILES form publishes index.html without reloading this view, which is
+     what makes autosave usable at all; the html form reloads every view and is
+     the fallback where the files form is not served. The model stays embedded
+     in the page either way, so reading the document back is unaffected. */
+  async function publishDoc(html) {
+    if (filesForm !== false) {
+      try {
+        await caps.artifact.publish({ 'index.html': html });
+        filesForm = true;
+        return { reloaded: false };
+      } catch (e) {
+        var code = e && e.code;
+        if (code === 'capability_disabled' || code === 'capability_removed'
+          || code === 'read_only_path') {
+          filesForm = false;
+        } else {
+          throw e;
+        }
+      }
+    }
+    await caps.artifact.publish(html);
+    return { reloaded: true };
+  }
+
   var saving = false;
   async function doSave() {
-    if (saving || !pending.length || readOnly) return;
+    clearTimeout(saveTimer);
+    if (!pending.length || readOnly) return;
+    if (saving) { saveTimer = setTimeout(function () { doSave(); }, 400); return; }
     saving = true;
     status('Saving…');
 
@@ -694,8 +786,17 @@
     catch (e) { saving = false; return status('Could not build the document: ' + e.message, true); }
 
     try {
-      await caps.artifact.publish(html);
-      /* This view reloads to the new version; nothing after this runs. */
+      var res = await publishDoc(html);
+      saving = false;
+      if (!res.reloaded) {
+        /* The files form leaves this view running: clear the round by hand. */
+        pending = [];
+        try { sessionStorage.removeItem('la-stash:' + model.docId); } catch (e2) {}
+        render();
+        status('Saved · rev ' + model.rev);
+        return;
+      }
+      /* The html form reloads to the new version; nothing after this runs. */
     } catch (e) {
       saving = false;
       model.rev = target - 1;
@@ -706,7 +807,11 @@
         return status('This view is read-only — your edits were not saved.', true);
       }
       if (code === 'too_large') return status('Document is over the size limit — split it.', true);
-      if (code === 'rate_limited') return status('Saving too often — wait a moment and try again.', true);
+      if (code === 'rate_limited') {
+        SAVE_DEBOUNCE = Math.min(SAVE_DEBOUNCE * 2, 20000);
+        saveTimer = setTimeout(function () { doSave(); }, SAVE_DEBOUNCE);
+        return status('Saving too often — slowing down, your changes are still here.', true);
+      }
       return status('Save failed (' + (code || 'unknown') + ')'
         + (dbWarn ? ' · ' + dbWarn : '') + '. Your edits are still on the page.', true);
     }
@@ -741,12 +846,21 @@
       return;
     }
     model.rev = model.rev || 0;
+    baseline = clone(model);
     render();
     checkStash();
 
     document.addEventListener('keydown', function (e) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') { e.preventDefault(); doSave(); }
       if (e.key === 'Escape') hideSelChip();
+      /* inside a textarea or input, cmd+z is the browser's, not ours */
+      var t = e.target && e.target.tagName;
+      if (t === 'TEXTAREA' || t === 'INPUT') return;
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) redo(); else undo();
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
     });
     document.addEventListener('mouseup', function () { setTimeout(onSelectionSettled, 0); });
     document.addEventListener('keyup', function (e) {
@@ -771,7 +885,10 @@
      reachable directly. Not part of the document's own behaviour. */
   window.__la = {
     offerTag: function (id, q) { return offerTag(id, q); },
-    moveTo: function (id, to) { var r = moveTo(id, to); render(); return r; }
+    moveTo: function (id, to) { var r = moveTo(id, to); render(); return r; },
+    undo: undo, redo: redo,
+    flush: function () { return doSave(); },
+    debounce: function (ms) { SAVE_DEBOUNCE = ms; }
   };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

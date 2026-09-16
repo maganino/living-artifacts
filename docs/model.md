@@ -94,6 +94,7 @@ One entry per revision, holding every op in it.
 | `tag` / `untag` | `block`, `tag`, `quote?` | an intent — for the block, or with `quote`, for that passage |
 | `note` | `block`, `text` | a request pinned to a block |
 | `style` | `action`, `text` | a standing instruction for the whole document |
+| `undo` / `redo` | `undid` | they reversed an op from an EARLIER revision — the original edit stays in its own revision, so the history stays true |
 
 ## Storage layout
 
@@ -103,6 +104,10 @@ One entry per revision, holding every op in it.
 | `docs/<docId>` | page | registry: rev, tag counts, open notes, active directives |
 | `docs/<docId>/journal/r<n>` | page | one document per revision, not per op |
 | `docs/<docId>/claude/state` | **Claude only** | `lastReadRev` — the page never touches it |
+
+Undo only reaches the journal when it reverses something already saved. An op
+undone inside the same unsaved round is simply dropped, so a round of trial and
+error does not arrive as noise.
 
 One journal document per *revision* is deliberate: an artifact's database holds
 at most 5,000 documents and the store warns against one-document-per-event

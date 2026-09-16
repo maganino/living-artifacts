@@ -50,6 +50,29 @@ Reorder uses pointer events, not HTML5 drag-and-drop: HTML5 DnD never fires on
 touch, and these documents get read on an iPad. Keyboard reorder (focus the
 handle, ↑/↓) stays as the accessible path.
 
+## Round 3 — autosave, and a rejection that was wrong (2026-09-16)
+
+"Save by default, and add an undo redo mechanism."
+
+Autosave was blocked by the thing that made saving a button: `publish(html)`
+reloads every open view, so a debounced autosave would blink the page every few
+seconds. The way out was the `publish(files)` form I had rejected in v1 — and
+the rejection was wrong. The stated reason was that a data file the page adds
+might not be readable back through the Artifact read path. That risk only exists
+if the model moves *into* a data file. Publishing the whole `index.html` through
+the files form keeps the model embedded exactly where it was, so reading back is
+unchanged — and the publishing view is not reloaded, which is the whole point.
+
+Falls back to `publish(html)` on `capability_disabled` / `read_only_path`.
+Debounce is 2.5 s and doubles on `rate_limited`, capped at 20 s.
+
+**Undo semantics.** An op undone before the round is saved is simply dropped —
+no journal entry, so trial and error does not reach Claude as noise. An op undone
+*after* it was saved records an `undo` op instead, leaving the original edit in
+its own revision: the history stays true rather than being rewritten. Undo never
+rewinds the revision counter, which would make the next save overwrite a version
+that already exists.
+
 ## Alternatives evaluated and rejected
 
 **Live docs (`artifact.sync`).** The platform has exactly this feature: on a
@@ -93,7 +116,8 @@ thread you did not activate" tax no longer applies to ordinary review.
 - Declaring `db` makes an artifact **organization-internal** — it cannot be
   shared publicly. Stakeholder-facing output must be a separate static export
   without `db`, which `audience-views` already requires.
-- `publish(html)` reloads every open view, so saving is an explicit button.
+- Every save mints a version, so autosave is debounced and backs off on
+  `rate_limited` rather than retrying.
 - A Claude republish during a review round rejects the reader's save with
   `conflict`. The runtime stashes their unsaved ops in `sessionStorage` and
   shows them back, but they must re-apply them — so don't republish mid-round.
