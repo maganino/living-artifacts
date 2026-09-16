@@ -1,6 +1,10 @@
 ---
-status: open
-repo: living-artifacts
+type: thread
+status: todo
+area: living-artifacts
+topic: roadmap
+created: 2026-09-16
+title: v2 — images and typed sketches
 ---
 
 # v2 — images and typed sketches

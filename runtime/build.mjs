@@ -7,6 +7,12 @@
  *   extract <page.html> [out.json]  pull the model back out of a published
  *                                   page — the read-back mirror after the
  *                                   human has edited and self-published.
+ *   export  <doc.json> [--tags a,b] [out.html]
+ *                                   the FINAL shareable copy: only the blocks
+ *                                   carrying those labels (all of them if none
+ *                                   given), with no editor, no model and no db.
+ *                                   Stripping db is what makes it shareable at
+ *                                   all — a db artifact is org-internal.
  *
  * The page itself emits the FULL-form document at self-publish time
  * (buildDocument in la-runtime.js). Both forms render identically because the
@@ -74,6 +80,31 @@ export function validate(model) {
   return errs;
 }
 
+/* --- export --------------------------------------------------------------
+ * Rendered by booting the real runtime in jsdom and calling the same
+ * buildStatic() the page's own "Build this version" button uses. Reusing the
+ * page's renderer rather than reimplementing it here is the point: a second
+ * renderer would drift from the first within two changes. */
+export async function exportStatic(model, tags) {
+  const { JSDOM } = await import('jsdom');
+  const body = buildBody(model);
+  const dom = new JSDOM(
+    `<!doctype html><html><head><meta charset="utf-8"></head><body>${body}</body></html>`,
+    {
+      runScripts: 'dangerously', url: 'https://export.local/',
+      beforeParse(w) { w.claude = { use: async () => null }; }
+    }
+  );
+  await new Promise((r) => setTimeout(r, 60));
+  const la = dom.window.__la;
+  if (!la) throw new Error('the runtime did not boot — cannot render the export');
+  if (tags && tags.length) la.setFilter(tags);
+  const html = la.buildStatic();
+  const kept = dom.window.document.querySelectorAll('.la-block:not([hidden])').length;
+  dom.window.close();
+  return { html, kept };
+}
+
 /* --- cli ----------------------------------------------------------------- */
 const [cmd, input, output] = process.argv.slice(2);
 if (import.meta.url === `file://${process.argv[1]}`) {
@@ -89,6 +120,23 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     const body = buildBody(model);
     writeFileSync(out, body);
     console.log(`${out}  (${(body.length / 1024).toFixed(1)} KB, ${model.blocks.length} blocks, rev ${model.rev ?? 0})`);
+  } else if (cmd === 'export') {
+    const args = process.argv.slice(3);
+    const file = args.find((a) => !a.startsWith('--') && /\.json$/.test(a));
+    const outArg = args.find((a) => !a.startsWith('--') && /\.html$/.test(a));
+    const tagArg = args.find((a) => a.startsWith('--tags'));
+    const tags = tagArg
+      ? (tagArg.includes('=') ? tagArg.split('=')[1] : args[args.indexOf(tagArg) + 1] || '')
+        .split(',').map((t) => t.trim().replace(/^#/, '')).filter(Boolean)
+      : [];
+    const model = JSON.parse(readFileSync(file, 'utf8'));
+    const { html, kept } = await exportStatic(model, tags);
+    const suffix = tags.length ? '-' + tags.join('-').replace(/[^A-Za-z0-9-]/g, '') : '-full';
+    const out = outArg ?? join(REPO, 'dist', basename(file).replace(/\.(doc\.)?json$/, '') + suffix + '.html');
+    mkdirSync(dirname(out), { recursive: true });
+    writeFileSync(out, html);
+    console.log(`${out}  (${(html.length / 1024).toFixed(1)} KB, ${kept} of ${model.blocks.length} blocks`
+      + `${tags.length ? ', labels ' + tags.map((t) => '#' + t).join(' ') : ', unfiltered'}, no editor)`);
   } else if (cmd === 'extract') {
     const model = extractModel(readFileSync(input, 'utf8'));
     const out = output ?? join(REPO, 'examples', model.docId + '.doc.json');
@@ -96,7 +144,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     writeFileSync(out, JSON.stringify(model, null, 2) + '\n');
     console.log(`${out}  (rev ${model.rev}, ${model.blocks.length} blocks, ${(model.journal ?? []).length} journal entries)`);
   } else {
-    console.error('usage: build.mjs build <doc.json> [out.html] | extract <page.html> [out.json]');
+    console.error('usage: build.mjs build <doc.json> [out.html]'
+      + ' | export <doc.json> [--tags a,b] [out.html]'
+      + ' | extract <page.html> [out.json]');
     process.exit(1);
   }
 }

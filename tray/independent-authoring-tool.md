@@ -1,6 +1,10 @@
 ---
-status: open
-repo: living-artifacts
+type: thread
+status: todo
+area: living-artifacts
+topic: tooling
+created: 2026-09-16
+title: Independent authoring tool
 ---
 
 # Create new documents without a Claude session

@@ -1,6 +1,10 @@
 ---
-status: open
-repo: living-artifacts
+type: thread
+status: todo
+area: living-artifacts
+topic: lifecycle
+created: 2026-09-16
+title: Document lifecycle and repo sync
 ---
 
 # Document lifecycle: what lives where, and when it syncs

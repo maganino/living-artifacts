@@ -38,11 +38,51 @@ the organization — see the sharing constraint below.
    ```
    Publish the built file with `capabilities: {artifact: {}, db: {}}`.
    `artifact` lets the page save the reader's edits; `db` carries the journal.
-4. **Record the URL** in the doc JSON's `url` field and commit it. Every later
-   round republishes to that same URL — a bare publish forks a second link.
+4. **Record the URL** in the doc JSON's `url` field, and open an artefact record
+   in the project's `tray/` from `tray/artefact-record-template.md`
+   (`type: artefact`, with `url`, `doc_id`, `source`, `status`). That record is
+   what the cross-repo Obsidian dashboard reads — it is how the reader finds
+   this document again from another repo next week. Every later round
+   republishes to the recorded URL; a bare publish forks a second link.
 5. **Watch it.** Publishing subscribes this session to the artifact. When the
    reader saves, the republish notification arrives here — that is the signal
    to read back, not a reason to act unasked.
+
+## Where the document lives, and when
+
+- **While it is being worked on, the published artifact is the only truth.**
+  Every save mints an immutable version with a version picker, so an uncommitted
+  document is not an unbacked one. Do not try to keep the repo in step round by
+  round; it will drift and the drift is invisible.
+- **The repo holds the `.doc.json` as the seed, and nothing built.** `dist/` is
+  gitignored: it is the model plus inlined CSS and JS, fully derivable.
+- **When the reader says the document is done**: read the live artifact, pull
+  its model down over the `.doc.json`
+  (`node runtime/build.mjs extract <saved.html> <doc>.json`), export the final
+  static copy, commit that, and set the artefact record to `done`.
+- **The reader can always take a full copy themselves** — the `⤓` button saves
+  the whole living document, editor and model included, to their disk. Say so
+  if they ask about lock-in; it is the honest answer.
+
+## Finishing: the shareable copy
+
+A living document cannot be shared outside the organization, because declaring
+`db` makes the artifact org-internal. The final hand-off is therefore always a
+separate, plain copy:
+
+```
+node runtime/build.mjs export <doc>.json --tags dev,eng   # only those labels
+node runtime/build.mjs export <doc>.json                  # everything
+```
+
+It renders through the page's own renderer (booted headlessly), so the export
+can never drift from what the reader saw. No editor, no model, no `db`.
+
+Then **publish each shared version as its own artifact** — a new URL, not a
+republish of the living one and not an overwrite of a previous share — declaring
+no capabilities at all (`capabilities: {}`). Add a row to the artefact record's
+*Shared versions* table: date, labels, URL, who it went to. The history of what
+was shared with whom is worth more than a tidy URL list.
 
 ## Reading back — the whole point
 
@@ -165,9 +205,18 @@ question is always "what changed since I last looked."
 - **Modal dialogs are dead** in a sandboxed artifact frame — `prompt()`,
   `alert()` and `confirm()` silently do nothing. Every input in the runtime is
   inline for this reason; keep it that way.
-- **Drive it headlessly before publishing.** `node runtime/smoke.mjs` exercises
-  every handler and both generations of self-republish. Run it after any
-  runtime change — a published page cannot be debugged after the fact.
+- **Drive it headlessly before publishing.** `node runtime/preflight.mjs
+  dist/<name>.html` drives the document you are about to publish;
+  `node runtime/smoke.mjs` runs the full suite after any runtime change. A
+  published page cannot be debugged after the fact.
+- **Do not build a round while the reader is in the document.** Their save is
+  refused rather than clobbered, which is the guard working — but then the
+  live version has to be read in full and merged by hand. It has happened
+  twice. Ask before starting a rework if they may be reading.
+- **One store per artifact.** `db` is scoped to a single artifact and erased
+  when it is deleted; no page can read another artifact's store. A view across
+  documents therefore cannot be a page that queries them — it is the `tray/`
+  records, or something Claude assembles.
 
 ## Composing with other skills
 

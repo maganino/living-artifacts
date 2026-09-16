@@ -120,8 +120,8 @@ ok('a "Save now" flush appears while unsaved', !!btn(d.body, 'Save now'));
   const kids = [...d.getElementById('la-bar').children];
   eq('Save now sits at the left end of the bar', kids[0].textContent, 'Save now');
   ok('the status line follows it', kids[1].id === 'la-status');
-  ok('undo/redo/filter stay to its right',
-    kids.slice(2).map((n) => n.textContent.trim().split(' ').pop()).join(',') === 'Undo,Redo,Filter',
+  ok('the rest of the controls stay to its right',
+    kids.slice(2).map((n) => n.textContent.trim().split(' ').pop()).join(',') === 'Undo,Redo,Filter,⤓',
     kids.slice(2).map((n) => n.textContent).join('|'));
 }
 
@@ -404,6 +404,34 @@ console.log('\nC-7 / C-8: tagging scopes, colours, filtering, export');
   ok('the bar says the filter is a view and the document is unchanged',
     /view, the document is unchanged/.test(eA.d.getElementById('la-status').textContent),
     eA.d.getElementById('la-status').textContent);
+}
+
+console.log('\nD-4: download a full copy, no platform in the path');
+{
+  const saved = [];
+  const eB = boot(wrap(buildBody(fixture()), 'x'), {
+    use: async (n) => n === 'artifact' ? Object.freeze({ publish: async () => ({ version: 'v' }) })
+      : n === 'downloads' ? Object.freeze({ save: async (f) => { saved.push(f); } })
+        : null
+  });
+  await settle();
+  const dlb = [...eB.d.querySelectorAll('.la-bar button')].find((b) => b.textContent === '⤓');
+  ok('the bar offers a download', !!dlb);
+  await eB.w.__la.download();
+  eq('one file offered', saved.length, 1);
+  ok('named by document and revision', /^smoke-doc-rev3\.html$/.test(saved[0].filename), saved[0].filename);
+  ok('it is the FULL living document, editor included',
+    saved[0].data.startsWith('<!doctype html>')
+    && /id="la-runtime"/.test(saved[0].data) && /id="la-model"/.test(saved[0].data));
+}
+{
+  /* where downloads are not granted, say so rather than failing silently */
+  const eC = boot(wrap(buildBody(fixture()), 'x'), {
+    use: async (n) => n === 'artifact' ? Object.freeze({ publish: async () => ({ version: 'v' }) }) : null
+  });
+  await settle();
+  await eC.w.__la.download();
+  ok('an ungranted download says so', /not available/i.test(eC.d.getElementById('la-status').textContent));
 }
 
 console.log('\nfailure paths');

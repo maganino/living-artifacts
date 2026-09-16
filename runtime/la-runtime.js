@@ -860,6 +860,26 @@
       + host.innerHTML + '</div></div>\n</body>\n</html>\n';
   }
 
+  /* The whole living document, editor and all, straight to disk. Distinct from
+     buildFilteredVersion(), which strips the editor for sharing. This one is
+     the no-lock-in escape hatch: a complete self-contained copy, any time, with
+     no session and no platform in the path. */
+  async function downloadDocument() {
+    var html;
+    try { html = buildDocument(); }
+    catch (e) { return status('Could not build the document: ' + e.message, true); }
+    var dl = null;
+    try { dl = await claude.use('downloads'); } catch (e) { /* not granted */ }
+    if (!dl) return status('Downloading is not available in this view.', true);
+    try {
+      await dl.save({ filename: model.docId + '-rev' + model.rev + '.html', data: html });
+      status('Saved a full copy of rev ' + model.rev + ' to your disk.');
+    } catch (e) {
+      if (e && e.code === 'cancelled') return status('Download cancelled.');
+      status('Download failed (' + ((e && e.code) || 'unknown') + ').', true);
+    }
+  }
+
   async function buildFilteredVersion() {
     var blocks = model.blocks.filter(matchesFilter);
     var labels = filter.slice();
@@ -953,7 +973,11 @@
       f.title = 'Show only blocks with the labels you tick';
       f.disabled = !nTags;
       f.onclick = function (e) { e.stopPropagation(); toggleFilterMenu(f); };
-      bar.appendChild(u); bar.appendChild(r); bar.appendChild(f);
+      var dlb = el('button', 'la-btn', '⤓');
+      dlb.title = 'Download the full editable document to your disk';
+      dlb.setAttribute('aria-label', 'Download this document');
+      dlb.onclick = function () { downloadDocument(); };
+      bar.appendChild(u); bar.appendChild(r); bar.appendChild(f); bar.appendChild(dlb);
     }
   }
 
@@ -1200,6 +1224,7 @@
     filterMenu: toggleFilterMenu,
     buildStatic: function () { return buildStatic(model.blocks.filter(matchesFilter), filter.slice()); },
     exportNow: buildFilteredVersion,
+    download: downloadDocument,
     tags: allTags,
     flush: function () { return doSave(); },
     debounce: function (ms) { SAVE_DEBOUNCE = ms; }
