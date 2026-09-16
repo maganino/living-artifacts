@@ -13,9 +13,25 @@ noise, tag what should become the next thing, and say once how the whole page
 should sound. Every one of those gestures is recorded as a typed operation, so
 the next round starts from *what they meant*, not from a diff of the prose.
 
-Tooling lives in the repo this skill ships from (`runtime/`, `docs/model.md`).
-The rules below are self-contained; don't go looking for those files if they
-aren't there — fall back to a plain artifact and say so.
+## Finding the tooling from any repo
+
+This skill is normally used from *another* project, so its commands are never
+relative. Resolve the tool repo once, from the skill's own symlink:
+
+```sh
+LA="$(dirname "$(dirname "$(readlink ~/.claude/skills/living-artifacts)")")"
+node "$LA/runtime/build.mjs" build <doc>.json <out>.html
+```
+
+Every `runtime/...` path below means `$LA/runtime/...`. If `readlink` returns
+nothing the skill was copied rather than symlinked — ask for the repo path
+rather than guessing. If the tooling is genuinely absent, fall back to a plain
+artifact and say so; the rules here are otherwise self-contained.
+
+**The document's own files stay in the project you are working in**, not in the
+tool repo: `<project>/docs/<name>.doc.json` for the seed, the artefact record in
+`<project>/tray/`, the final static copy wherever that project keeps documents.
+Only the runtime and the skill live in `$LA`.
 
 ## When to use
 
@@ -33,8 +49,8 @@ the organization — see the sharing constraint below.
    is the schema. Block ids are the addressing scheme for every later round —
    never renumber them, never reuse a dead one.
 3. **Build and publish.**
-   ```
-   node runtime/build.mjs build examples/<name>.doc.json
+   ```sh
+   node "$LA/runtime/build.mjs" build docs/<name>.doc.json /tmp/<name>.html
    ```
    Publish the built file with `capabilities: {artifact: {}, db: {}}`.
    `artifact` lets the page save the reader's edits; `db` carries the journal.
@@ -58,7 +74,7 @@ the organization — see the sharing constraint below.
   gitignored: it is the model plus inlined CSS and JS, fully derivable.
 - **When the reader says the document is done**: read the live artifact, pull
   its model down over the `.doc.json`
-  (`node runtime/build.mjs extract <saved.html> <doc>.json`), export the final
+  (`node "$LA/runtime/build.mjs" extract <saved.html> <doc>.json`), export the final
   static copy, commit that, and set the artefact record to `done`.
 - **The reader can always take a full copy themselves** — the `⤓` button saves
   the whole living document, editor and model included, to their disk. Say so
@@ -70,9 +86,9 @@ A living document cannot be shared outside the organization, because declaring
 `db` makes the artifact org-internal. The final hand-off is therefore always a
 separate, plain copy:
 
-```
-node runtime/build.mjs export <doc>.json --tags dev,eng   # only those labels
-node runtime/build.mjs export <doc>.json                  # everything
+```sh
+node "$LA/runtime/build.mjs" export <doc>.json --tags dev,eng out.html  # those labels
+node "$LA/runtime/build.mjs" export <doc>.json out.html                 # everything
 ```
 
 It renders through the page's own renderer (booted headlessly), so the export
@@ -205,9 +221,9 @@ question is always "what changed since I last looked."
 - **Modal dialogs are dead** in a sandboxed artifact frame — `prompt()`,
   `alert()` and `confirm()` silently do nothing. Every input in the runtime is
   inline for this reason; keep it that way.
-- **Drive it headlessly before publishing.** `node runtime/preflight.mjs
-  dist/<name>.html` drives the document you are about to publish;
-  `node runtime/smoke.mjs` runs the full suite after any runtime change. A
+- **Drive it headlessly before publishing.** `node "$LA/runtime/preflight.mjs"
+  <built>.html` drives the document you are about to publish;
+  `node "$LA/runtime/smoke.mjs"` runs the full suite after any runtime change. A
   published page cannot be debugged after the fact.
 - **Do not build a round while the reader is in the document.** Their save is
   refused rather than clobbered, which is the guard working — but then the
