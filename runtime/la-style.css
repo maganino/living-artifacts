@@ -71,6 +71,9 @@ a { color: var(--teal); text-underline-offset: 2px; }
   margin: 22px 0 0; border: 1px solid var(--teal); border-radius: 6px;
   background: var(--teal-tint); padding: 12px 15px;
 }
+.la-contract-help {
+  font-size: 13px; color: var(--ink-muted); margin: 9px 0 0; max-width: 62ch;
+}
 .la-contract > summary {
   cursor: pointer; font-family: var(--font-mono); font-size: 11px;
   letter-spacing: .08em; text-transform: uppercase; font-weight: 700; color: var(--teal);
@@ -84,17 +87,67 @@ a { color: var(--teal); text-underline-offset: 2px; }
 .la-contract li span { flex: 1; }
 
 /* ---------- blocks ---------- */
+/* Direct manipulation: the block itself is the target. Hovering lifts it,
+   clicking it edits it, and its affordances appear on the block rather than
+   in a bar that only exists after a selection step. */
 .la-blocks { padding-top: 8px; }
-.la-block { position: relative; padding: 4px 0 4px 34px; margin: 2px 0; border-radius: 5px; }
-.la-block.sel { background: var(--surface); box-shadow: inset 2px 0 0 var(--teal); }
-.la-block .la-handle {
-  position: absolute; left: 4px; top: 10px; width: 20px; height: 20px;
-  border: 0; background: none; cursor: pointer;
-  color: color-mix(in srgb, var(--ink-muted) 50%, transparent);
-  font-size: 13px; line-height: 1; padding: 0; border-radius: 4px;
+.la-block {
+  position: relative; margin: 2px 0; border-radius: 8px;
+  padding: 6px 46px 6px 34px;
+  transition: background-color .12s ease, box-shadow .12s ease;
 }
-.la-block:hover .la-handle, .la-block.sel .la-handle { color: var(--ink-muted); }
-.la-block[data-touched="1"] { border-left: 3px solid var(--amber); margin-left: -3px; padding-left: 34px; }
+.la-block:hover, .la-block:focus-within {
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--line), 0 1px 3px rgba(0, 0, 0, .05);
+}
+.la-block[data-type="divider"]:hover { background: none; box-shadow: 0 0 0 1px var(--line); }
+
+/* the changed-since-last-round gutter, as an inset so nothing shifts */
+.la-block[data-touched="1"] { box-shadow: inset 3px 0 0 var(--amber); }
+.la-block[data-touched="1"]:hover, .la-block[data-touched="1"]:focus-within {
+  box-shadow: inset 3px 0 0 var(--amber), 0 0 0 1px var(--line), 0 1px 3px rgba(0, 0, 0, .05);
+}
+
+.la-block .la-handle {
+  position: absolute; left: 4px; top: 8px; width: 22px; height: 24px;
+  border: 0; background: none; cursor: grab; padding: 0; border-radius: 5px;
+  color: var(--ink-muted); font-size: 14px; line-height: 24px;
+  opacity: 0; transition: opacity .12s ease;
+  touch-action: none; /* pointer drag must not be stolen by scrolling */
+}
+.la-block:hover .la-handle, .la-block:focus-within .la-handle { opacity: 1; }
+.la-handle:active { cursor: grabbing; }
+
+.la-acts {
+  position: absolute; right: 4px; top: 4px; display: flex; gap: 3px;
+  opacity: 0; transition: opacity .12s ease;
+}
+.la-block:hover .la-acts, .la-block:focus-within .la-acts { opacity: 1; }
+.la-act {
+  font-family: var(--font-mono); font-size: 10.5px; line-height: 1; cursor: pointer;
+  border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--ink-muted);
+  border-radius: 5px; padding: 4px 7px;
+}
+.la-act:hover { color: var(--ink); border-color: var(--ink-muted); }
+.la-act.danger { font-size: 12px; padding: 3px 7px; }
+.la-act.danger:hover { color: var(--rose); border-color: var(--rose); background: var(--rose-tint); }
+
+/* drag to reorder */
+body.la-dragging { cursor: grabbing; user-select: none; }
+.la-block.la-drag-src { opacity: .4; }
+.la-block.la-drop-into { box-shadow: inset 0 2px 0 var(--teal), 0 0 0 1px var(--teal); }
+
+/* a passage tagged by highlighting it */
+.la-mark {
+  background: var(--teal-tint); color: inherit;
+  border-bottom: 1px solid var(--teal); border-radius: 2px; padding: 0 1px;
+}
+.la-selchip {
+  position: absolute; z-index: 60; top: 0; left: 0;
+  font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; cursor: pointer;
+  background: var(--teal); color: #fff; border: 0; border-radius: 5px; padding: 5px 11px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .18);
+}
 
 .la-body > :first-child { margin-top: 0; }
 .la-body > :last-child { margin-bottom: 0; }
@@ -184,3 +237,18 @@ a { color: var(--teal); text-underline-offset: 2px; }
   border-radius: 6px; padding: 12px 15px; margin: 18px 0; font-size: 14px;
 }
 .la-recovered pre { font-size: 12px; white-space: pre-wrap; margin: 8px 0 0; }
+
+/* ---------- additions for selection-scoped tagging ---------- */
+.la-tag.ranged { border-style: dashed; }
+.la-quote {
+  font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-muted);
+  background: var(--teal-tint); border-radius: 4px; padding: 3px 8px;
+  max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.la-taginput { max-width: 200px; }
+.la-addrow { padding-left: 34px; opacity: .55; transition: opacity .12s ease; }
+.la-addrow:hover, .la-addrow:focus-within { opacity: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}

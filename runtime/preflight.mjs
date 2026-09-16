@@ -40,16 +40,18 @@ const model = extractModel(body);
 line('blocks rendered', `${d.querySelectorAll('.la-block').length} / ${model.blocks.length}`,
   d.querySelectorAll('.la-block').length === model.blocks.length);
 line('editor lit up', String(!!d.querySelector('.la-handle')), !!d.querySelector('.la-handle'));
+line('hover chrome on every block', `${d.querySelectorAll('.la-acts').length}`,
+  d.querySelectorAll('.la-acts').length === model.blocks.length);
 line('no js errors', jsErrors.length ? jsErrors.join('; ') : 'none', jsErrors.length === 0);
 line('every block has an id', String(model.blocks.every((b) => b.id)), model.blocks.every((b) => b.id));
 
 /* exercise a real round: tag, edit, save, and read the model back out */
 const first = model.blocks.find((b) => b.type === 'para');
 const host = () => d.querySelector(`[data-block-id="${first.id}"]`);
-host().querySelector('.la-handle').click();
-host().querySelector('.la-meta input').value = 'preflight';
+[...host().querySelectorAll('button')].find((b) => b.textContent.trim() === 'tag').click();
+host().querySelector('.la-taginput').value = 'preflight';
 [...host().querySelectorAll('button')].find((b) => b.textContent.trim() === '+ tag').click();
-[...d.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Save ⌘S').click();
+[...d.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Save').click();
 await settle();
 
 line('save published once', String(published.length), published.length === 1);

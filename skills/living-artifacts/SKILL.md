@@ -68,6 +68,10 @@ On a republish notification, or on "check my edits" / "apply my feedback":
      for a comment. It is not document content; act on it, then clear it.
    - A `move` op is an argument about order. Ask what the new order is meant to
      foreground before rewriting around it.
+   - A `tag` op carrying a `quote` scopes the intent to that passage, not the
+     block. Act on the passage; quote it back in the read-back so they can see
+     you attached it to the right sentence. If the quote no longer appears in
+     the block, say so rather than guessing at what replaced it.
 3. **Then edit the model** — the `*.doc.json`, never the built HTML — rebuild,
    and republish to the recorded URL.
 
@@ -89,13 +93,25 @@ A tag says what to *do* with a block, or who it is *for*:
 | `verify` | re-derive this against the source; it looks wrong |
 | `for:<audience>` | audience scoping — hand off to `audience-views` |
 
-The list is open: a tag the reader invents just works. Read tag counts from the
-registry document to find what has accumulated across a document, and
-`seed-next` blocks to build the next one.
+The list is open: a tag the reader invents just works. A tag applies to a whole
+block, or — when the reader highlighted text first — to that passage alone,
+carried as an anchored quote. Read tag counts from the registry document to find
+what has accumulated across a document, and `seed-next` blocks and passages to
+build the next one.
+
+## The reader drives it directly
+
+Hovering a block reveals its affordances; clicking it edits it; dragging its
+handle reorders; highlighting text offers a tag. There is no select-then-act
+step — v1 had one, and the first reader never saved a single edit, filing five
+comments about the UI instead. If you extend the editor, keep that bar: an
+affordance that needs to be discovered before it can be used will not be used.
 
 ## The style contract is standing instruction
 
-`style.directives` is document-level and *persistent*: "less hedging", "lead
+`style.directives` — shown to the reader as **"How this document should be
+written"**, because "style contract" meant nothing to the first one — is
+document-level and *persistent*: "less hedging", "lead
 with the number", "no summary paragraph at the end". Apply every active
 directive on every regeneration, not just the round it was added. A muted
 directive stays visible but stops applying — the reader muted it rather than

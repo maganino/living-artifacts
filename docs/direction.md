@@ -25,6 +25,31 @@ Settled with Mina at the start:
 | Editing model | Structured blocks with stable ids, plus a freehand overlay in v2. Every edit stays machine-legible. |
 | v1 scope | The model and the read-back loop first. Prove the channel closes before investing in editor surface. |
 
+## Round 2 — the interaction model was wrong (2026-09-16)
+
+First contact with a reader: five comments, all about the editor, none about the
+content, and an **empty journal** — not one edit was ever saved. The structured
+channel that was supposed to replace comments lost to comments, because using it
+required discovering a select-then-act step first.
+
+Replaced rather than patched. Hover a block and it lifts, with its controls on
+it; click it to edit; drag its handle to reorder; highlight text and a `+ tag`
+chip appears. The ↑/↓ buttons, the action bar and the selection step are gone.
+
+Two things came out of it beyond the UI:
+
+- **Passage-level tags.** Tagging a highlighted sentence means tags below block
+  level, anchored by **quote** rather than character offset — an offset breaks
+  as soon as anything above it is edited, a quote either still matches or is
+  reportably gone.
+- **"Style contract" was renamed** to "How this document should be written",
+  with a line saying what it does. The reader's comment was "not sure what is
+  this", which is a naming failure, not a discoverability one.
+
+Reorder uses pointer events, not HTML5 drag-and-drop: HTML5 DnD never fires on
+touch, and these documents get read on an iPad. Keyboard reorder (focus the
+handle, ↑/↓) stays as the accessible path.
+
 ## Alternatives evaluated and rejected
 
 **Live docs (`artifact.sync`).** The platform has exactly this feature: on a

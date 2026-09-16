@@ -1,9 +1,13 @@
-/* living-artifacts runtime — v1 (model + read-back loop).
+/* living-artifacts runtime — v1.1 (direct manipulation).
  *
  * The document's truth is the JSON in <script id="la-model">. The DOM is a
  * rendering of it and is never read back. Saving re-emits a COMPLETE html
  * file from the model and hands it to artifact.publish(), and appends the
  * revision's ops to db so Claude can read intent without parsing the page.
+ *
+ * Interaction model: hover a block to reveal its affordances, click it to
+ * edit, drag its handle to reorder, select text to tag it. There is no
+ * select-then-act step — v1 had one and it went unused.
  *
  * Never write a literal closing script tag in this file — it is re-emitted
  * inside a script element by buildDocument().
@@ -12,11 +16,13 @@
   'use strict';
 
   var MODEL_EL = 'la-model', STYLE_EL = 'la-style', RUNTIME_EL = 'la-runtime';
+  var INTENTS = /^(expand|summarize|seed-next|rewrite|cut|verify)$/;
+  var SOT = String.fromCharCode(1), EOT = String.fromCharCode(2);
   var model, pending = [], caps = { artifact: null, db: null };
-  var readOnly = true, selected = null, editing = null, statusTimer = null;
+  var readOnly = true, editing = null, tagging = null, tagQuote = null;
+  var statusTimer = null, drag = null;
 
   /* ------------------------------------------------------------------ util */
-  function $(sel, root) { return (root || document).querySelector(sel); }
   function el(tag, cls, text) {
     var n = document.createElement(tag);
     if (cls) n.className = cls;
@@ -25,8 +31,7 @@
   }
   function esc(s) {
     return String(s == null ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
   /* Deliberately tiny inline subset. The model stores plain text with these
      markers, so an edit never yields contenteditable HTML soup. */
@@ -37,13 +42,27 @@
       .replace(/(^|[^*])\*([^*]+)\*/g, '$1<em>$2</em>')
       .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2" rel="noopener">$1</a>');
   }
-  function uid(p) {
-    return p + '-' + Math.random().toString(36).slice(2, 7);
+  /* Range tags are anchored by QUOTE, not by character offset — an offset
+     breaks the moment anything above it is edited. Sentinels go in before
+     escaping so they survive it, then become real elements after. */
+  function withMarks(text, marks) {
+    if (!marks || !marks.length) return inline(text);
+    var t = String(text == null ? '' : text), hit = false;
+    marks.forEach(function (m) {
+      if (!m.quote) return;
+      var i = t.indexOf(m.quote);
+      if (i < 0) return;
+      hit = true;
+      t = t.slice(0, i) + SOT + m.quote + EOT + t.slice(i + m.quote.length);
+    });
+    if (!hit) return inline(text);
+    return inline(t).split(SOT).join('<mark class="la-mark">').split(EOT).join('</mark>');
   }
+  function uid(p) { return p + '-' + Math.random().toString(36).slice(2, 7); }
   function nowIso() { return new Date().toISOString(); }
   function clip(s, n) {
     s = String(s == null ? '' : s);
-    return s.length > n ? s.slice(0, n) + '…[truncated]' : s;
+    return s.length > n ? s.slice(0, n) + '…' : s;
   }
 
   /* ----------------------------------------------------------- model access */
@@ -56,9 +75,12 @@
     return -1;
   }
   function getBlock(id) { var i = blockIndex(id); return i < 0 ? null : model.blocks[i]; }
+  function blockText(b) {
+    return b.type === 'list' ? (b.items || []).join('\n') : (b.text || '');
+  }
 
-  /* The textarea representation of a block. One reversible function pair per
-     type keeps editing plain-text and the model structured. */
+  /* One reversible pair per type keeps editing plain-text and the model
+     structured — the textarea shows exactly what the model holds. */
   function blockSource(b) {
     switch (b.type) {
       case 'list': return (b.items || []).join('\n');
@@ -103,6 +125,7 @@
   /* ---------------------------------------------------------------- render */
   function render() {
     var root = document.getElementById('la-root');
+    var scroll = window.scrollY;
     root.textContent = '';
     root.appendChild(renderHead());
     var wrap = el('div', 'la-blocks');
@@ -110,6 +133,11 @@
     root.appendChild(wrap);
     if (!readOnly) root.appendChild(renderAddRow());
     renderBar();
+    /* a full re-render resets scroll; restore it so an edit deep in a long
+       document does not throw the reader back to the top */
+    if (typeof window.scrollTo === 'function' && window.scrollY !== scroll) {
+      try { window.scrollTo(0, scroll); } catch (e) { /* unsupported */ }
+    }
   }
 
   function renderHead() {
@@ -126,12 +154,18 @@
   }
 
   function renderContract() {
-    var d = el('details', 'la-contract');
-    d.open = !!(model.style && model.style.directives || []).length;
     var directives = (model.style && model.style.directives) || [];
-    var sum = el('summary', null,
-      'Style contract — ' + directives.filter(function (x) { return x.active; }).length + ' active');
-    d.appendChild(sum);
+    var active = directives.filter(function (x) { return x.active; }).length;
+    var d = el('details', 'la-contract');
+    d.open = true;
+    /* v1 called this "Style contract" and the first reader's comment was
+       "not sure what is this". Say what it does, in the reader's words. */
+    d.appendChild(el('summary', null,
+      'How this document should be written — ' + active + ' rule' + (active === 1 ? '' : 's')));
+    d.appendChild(el('p', 'la-contract-help',
+      'Standing instructions for the whole page. Claude applies every rule here each time it '
+      + 'rewrites anything, not only the round you added it. Mute a rule instead of removing it '
+      + 'if you might want it back.'));
     var ul = el('ul');
     directives.forEach(function (dir) {
       var li = el('li', dir.active ? '' : 'off');
@@ -157,9 +191,9 @@
     if (!readOnly) {
       var row = el('div', 'la-inline');
       var inp = el('input');
-      inp.placeholder = 'e.g. no hedging — drop "it seems", "arguably"';
-      inp.setAttribute('aria-label', 'New style directive');
-      var add = el('button', 'la-btn primary', 'Add');
+      inp.placeholder = 'e.g. lead with the number, not the caveat';
+      inp.setAttribute('aria-label', 'New writing rule');
+      var add = el('button', 'la-btn primary', 'Add rule');
       function commit() {
         var v = inp.value.trim();
         if (!v) return;
@@ -178,16 +212,16 @@
   }
 
   function renderBody(b) {
-    var body = el('div', 'la-body');
+    var body = el('div', 'la-body'), marks = b.marks || [];
     switch (b.type) {
       case 'heading':
         var h = el(b.level === 3 ? 'h3' : 'h2');
-        h.id = b.id; h.innerHTML = inline(b.text || '');
+        h.id = b.id; h.innerHTML = withMarks(b.text || '', marks);
         body.appendChild(h); break;
       case 'list':
         var list = el(b.ordered ? 'ol' : 'ul');
         (b.items || []).forEach(function (it) {
-          var li = el('li'); li.innerHTML = inline(it); list.appendChild(li);
+          var li = el('li'); li.innerHTML = withMarks(it, marks); list.appendChild(li);
         });
         body.appendChild(list); break;
       case 'table':
@@ -200,7 +234,9 @@
         var tb = el('tbody');
         (b.rows || []).forEach(function (r) {
           var row = el('tr');
-          r.forEach(function (c) { var td = el('td'); td.innerHTML = inline(c); row.appendChild(td); });
+          r.forEach(function (c) {
+            var td = el('td'); td.innerHTML = withMarks(c, marks); row.appendChild(td);
+          });
           tb.appendChild(row);
         });
         t.appendChild(tb); w.appendChild(t); body.appendChild(w); break;
@@ -210,12 +246,12 @@
       case 'callout':
         var c = el('div', 'la-callout');
         if (b.title) c.appendChild(el('span', 'la-callout-t', b.title));
-        var cp = el('p'); cp.innerHTML = inline(b.text || ''); cp.style.margin = '0';
+        var cp = el('p'); cp.innerHTML = withMarks(b.text || '', marks); cp.style.margin = '0';
         c.appendChild(cp); body.appendChild(c); break;
       case 'divider':
         body.appendChild(el('hr', 'la-divider')); break;
       default:
-        var p = el('p'); p.innerHTML = inline(b.text || ''); body.appendChild(p);
+        var p = el('p'); p.innerHTML = withMarks(b.text || '', marks); body.appendChild(p);
     }
     return body;
   }
@@ -225,19 +261,9 @@
     wrap.dataset.blockId = b.id;
     wrap.dataset.type = b.type;
     if (b.touched) wrap.dataset.touched = '1';
-    if (selected === b.id) wrap.classList.add('sel');
+    if (drag && drag.id === b.id) wrap.classList.add('la-drag-src');
 
-    if (!readOnly) {
-      var handle = el('button', 'la-handle', '⠿');
-      handle.title = 'Select block';
-      handle.setAttribute('aria-label', 'Select block ' + b.id);
-      handle.onclick = function (e) {
-        e.stopPropagation();
-        selected = (selected === b.id) ? null : b.id;
-        render();
-      };
-      wrap.appendChild(handle);
-    }
+    if (!readOnly) wrap.appendChild(renderChrome(b));
 
     if (b.note) {
       var n = el('div', 'la-note');
@@ -246,23 +272,64 @@
       wrap.appendChild(n);
     }
 
-    if (editing === b.id) wrap.appendChild(renderEditor(b));
-    else wrap.appendChild(renderBody(b));
+    if (editing === b.id) {
+      wrap.appendChild(renderEditor(b));
+    } else {
+      var body = renderBody(b);
+      if (!readOnly && b.type !== 'divider') {
+        /* A click anywhere on the box edits it. A click that ended a text
+           selection must NOT — that gesture belongs to tagging. */
+        body.onclick = function (e) {
+          if (e.target.closest && e.target.closest('a')) return;
+          var sel = window.getSelection && window.getSelection();
+          if (sel && String(sel).trim().length) return;
+          editing = b.id; tagging = null; tagQuote = null; render();
+        };
+        body.title = 'Click to edit';
+      }
+      wrap.appendChild(body);
+    }
 
-    if ((b.tags && b.tags.length) || (!readOnly && selected === b.id)) {
+    if ((b.tags && b.tags.length) || (b.marks && b.marks.length) || tagging === b.id) {
       wrap.appendChild(renderMeta(b));
     }
-    if (!readOnly && selected === b.id && editing !== b.id) {
-      wrap.appendChild(renderBlockActions(b));
-    }
     return wrap;
+  }
+
+  /* Hover chrome: drag handle on the left, actions at the top right. */
+  function renderChrome(b) {
+    var frag = document.createDocumentFragment();
+
+    var handle = el('button', 'la-handle', '⠿');
+    handle.title = 'Drag to reorder (or focus and press up / down)';
+    handle.setAttribute('aria-label', 'Reorder block: ' + clip(blockText(b) || b.type, 40));
+    handle.addEventListener('pointerdown', function (e) { startDrag(e, b.id); });
+    handle.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowUp') { e.preventDefault(); move(b.id, -1); }
+      if (e.key === 'ArrowDown') { e.preventDefault(); move(b.id, 1); }
+    });
+    frag.appendChild(handle);
+
+    var acts = el('div', 'la-acts');
+    function act(label, title, fn, cls) {
+      var x = el('button', 'la-act' + (cls ? ' ' + cls : ''), label);
+      x.title = title;
+      x.setAttribute('aria-label', title);
+      x.onclick = function (e) { e.stopPropagation(); fn(); };
+      acts.appendChild(x);
+    }
+    act('tag', 'Tag this whole block', function () { offerTag(b.id, null); });
+    act('note', b.note ? 'Edit the note to Claude' : 'Pin a note to Claude on this block',
+      function () { promptNote(b); });
+    act('✕', 'Delete this block', function () { removeBlock(b); }, 'danger');
+    frag.appendChild(acts);
+    return frag;
   }
 
   function renderMeta(b) {
     var m = el('div', 'la-meta');
     (b.tags || []).forEach(function (tag) {
-      var isIntent = /^(expand|summarize|seed-next|rewrite|cut|verify)$/.test(tag);
-      var chip = el('button', 'la-tag' + (isIntent ? ' intent' : ''), '#' + tag);
+      var chip = el('button', 'la-tag' + (INTENTS.test(tag) ? ' intent' : ''), '#' + tag);
       chip.title = readOnly ? tag : 'Remove tag';
       if (!readOnly) chip.onclick = function () {
         b.tags = b.tags.filter(function (t) { return t !== tag; });
@@ -271,42 +338,50 @@
       };
       m.appendChild(chip);
     });
-    if (!readOnly && selected === b.id) {
-      var inp = el('input');
-      inp.placeholder = 'tag… (expand, for:sales)';
-      inp.setAttribute('aria-label', 'Add tag');
-      inp.style.maxWidth = '190px';
-      inp.className = '';
-      var box = el('span', 'la-inline');
-      box.style.margin = '0';
-      var add = el('button', 'la-btn', '+ tag');
-      function commit() {
-        var v = inp.value.trim().replace(/^#/, '');
-        if (!v) return;
-        b.tags = (b.tags || []).concat([v]);
-        record({ op: 'tag', block: b.id, tag: v });
+    (b.marks || []).forEach(function (mk) {
+      var chip = el('button', 'la-tag ranged' + (INTENTS.test(mk.tag) ? ' intent' : ''),
+        '#' + mk.tag + ' “' + clip(mk.quote, 34) + '”');
+      chip.title = readOnly ? mk.tag : 'Remove this tagged passage';
+      if (!readOnly) chip.onclick = function () {
+        b.marks = b.marks.filter(function (o) { return o !== mk; });
+        record({ op: 'untag', block: b.id, tag: mk.tag, quote: mk.quote });
         render();
-      }
-      add.onclick = commit;
-      inp.onkeydown = function (e) { if (e.key === 'Enter') { e.preventDefault(); commit(); } };
-      box.appendChild(inp); box.appendChild(add);
-      m.appendChild(box);
-    }
+      };
+      m.appendChild(chip);
+    });
+    if (!readOnly && tagging === b.id) m.appendChild(renderTagForm(b));
     return m;
   }
 
-  function renderBlockActions(b) {
-    var bar = el('div', 'la-editbar'), i = blockIndex(b.id);
-    function btn(label, cls, fn) {
-      var x = el('button', 'la-btn' + (cls ? ' ' + cls : ''), label);
-      x.onclick = fn; bar.appendChild(x); return x;
+  function renderTagForm(b) {
+    var box = el('span', 'la-inline');
+    box.style.margin = '0';
+    var quote = tagQuote;
+    if (quote) box.appendChild(el('span', 'la-quote', '“' + clip(quote, 40) + '”'));
+    var inp = el('input', 'la-taginput');
+    inp.placeholder = quote ? 'tag this passage…' : 'tag this block…';
+    inp.setAttribute('aria-label', 'Tag name');
+    var add = el('button', 'la-btn primary', '+ tag');
+    function commit() {
+      var v = inp.value.trim().replace(/^#/, '');
+      if (!v) return;
+      if (quote) {
+        b.marks = (b.marks || []).concat([{ tag: v, quote: quote }]);
+        record({ op: 'tag', block: b.id, tag: v, quote: quote });
+      } else {
+        b.tags = (b.tags || []).concat([v]);
+        record({ op: 'tag', block: b.id, tag: v });
+      }
+      tagging = null; tagQuote = null;
+      render();
     }
-    if (b.type !== 'divider') btn('edit', '', function () { editing = b.id; render(); });
-    btn('↑', '', function () { move(b.id, -1); }).disabled = i === 0;
-    btn('↓', '', function () { move(b.id, 1); }).disabled = i === model.blocks.length - 1;
-    btn(b.note ? 'edit note' : 'note to claude', '', function () { promptNote(b); });
-    btn('delete', 'danger', function () { removeBlock(b); });
-    return bar;
+    add.onclick = commit;
+    inp.onkeydown = function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); commit(); }
+      if (e.key === 'Escape') { tagging = null; tagQuote = null; render(); }
+    };
+    box.appendChild(inp); box.appendChild(add);
+    return box;
   }
 
   function renderEditor(b) {
@@ -318,7 +393,7 @@
     var save = el('button', 'la-btn primary', 'Apply');
     var cancel = el('button', 'la-btn', 'Cancel');
     bar.appendChild(save); bar.appendChild(cancel);
-    bar.appendChild(el('span', null, '⌘↩ apply · esc cancel'));
+    bar.appendChild(el('span', null, 'cmd+enter applies · esc cancels'));
     function apply() {
       var before = blockSource(b), after = ta.value;
       editing = null;
@@ -343,8 +418,8 @@
   /* Modal dialogs do nothing in a sandboxed artifact frame — always inline. */
   function promptNote(b) {
     var host = document.querySelector('[data-block-id="' + b.id + '"]');
-    if (!host || $('.la-noteform', host)) return;
-    var form = el('div', 'la-inline'); form.className = 'la-inline la-noteform';
+    if (!host || host.querySelector('.la-noteform')) return;
+    var form = el('div', 'la-inline la-noteform');
     var inp = el('input');
     inp.value = b.note || '';
     inp.placeholder = 'what should Claude do here?';
@@ -366,12 +441,59 @@
     inp.focus();
   }
 
+  /* -------------------------------------------------------------- reorder */
+  function moveTo(id, to) {
+    var from = blockIndex(id);
+    if (from < 0 || to < 0 || to >= model.blocks.length || to === from) return false;
+    model.blocks.splice(to, 0, model.blocks.splice(from, 1)[0]);
+    record({ op: 'move', block: id, from: from, to: to });
+    return true;
+  }
   function move(id, dir) {
-    var i = blockIndex(id), j = i + dir;
-    if (i < 0 || j < 0 || j >= model.blocks.length) return;
-    var b = model.blocks.splice(i, 1)[0];
-    model.blocks.splice(j, 0, b);
-    record({ op: 'move', block: id, from: i, to: j });
+    if (moveTo(id, blockIndex(id) + dir)) {
+      render();
+      var h = document.querySelector('[data-block-id="' + id + '"] .la-handle');
+      if (h) h.focus();
+    }
+  }
+
+  /* Drag the handle. Pointer events rather than HTML5 drag-and-drop — HTML5
+     DnD never fires on touch, and this document gets read on an iPad. */
+  function startDrag(e, id) {
+    if (readOnly || e.button > 0) return;
+    e.preventDefault();
+    drag = { id: id, to: blockIndex(id) };
+    document.body.classList.add('la-dragging');
+    var wrap = document.querySelector('[data-block-id="' + id + '"]');
+    if (wrap) wrap.classList.add('la-drag-src');
+    if (e.target.setPointerCapture && e.pointerId != null) {
+      try { e.target.setPointerCapture(e.pointerId); } catch (err) { /* unsupported */ }
+    }
+    document.addEventListener('pointermove', onDragMove);
+    document.addEventListener('pointerup', endDrag);
+    document.addEventListener('pointercancel', endDrag);
+  }
+  function onDragMove(e) {
+    if (!drag) return;
+    var blocks = [].slice.call(document.querySelectorAll('.la-block')), to = drag.to;
+    for (var i = 0; i < blocks.length; i++) {
+      var r = blocks[i].getBoundingClientRect();
+      if (!r.height) continue;
+      if (e.clientY >= r.top && e.clientY <= r.bottom) { to = i; break; }
+    }
+    if (to !== drag.to) {
+      drag.to = to;
+      blocks.forEach(function (bl, i) { bl.classList.toggle('la-drop-into', i === to); });
+    }
+  }
+  function endDrag() {
+    document.removeEventListener('pointermove', onDragMove);
+    document.removeEventListener('pointerup', endDrag);
+    document.removeEventListener('pointercancel', endDrag);
+    document.body.classList.remove('la-dragging');
+    if (!drag) return;
+    var d = drag; drag = null;
+    if (d.to !== blockIndex(d.id)) moveTo(d.id, d.to);
     render();
   }
 
@@ -379,18 +501,68 @@
     var i = blockIndex(b.id);
     if (i < 0) return;
     model.blocks.splice(i, 1);
-    if (selected === b.id) selected = null;
+    if (editing === b.id) editing = null;
+    if (tagging === b.id) { tagging = null; tagQuote = null; }
     /* Deletions are the highest-regret edit: keep the text in the journal so
        Claude reports what left rather than silently losing it. */
     record({ op: 'delete', block: b.id, type: b.type, text: clip(blockSource(b), 1500) });
     render();
   }
 
+  /* --------------------------------------------------- selection -> tagging */
+  /* Highlight a sentence (or a whole box) and a "+ tag" chip appears. */
+  function offerTag(blockId, quote) {
+    var b = getBlock(blockId);
+    if (!b) return false;
+    tagging = blockId;
+    tagQuote = (quote && quote !== blockText(b)) ? quote : null;
+    render();
+    setTimeout(function () {
+      var i = document.querySelector('[data-block-id="' + blockId + '"] .la-taginput');
+      if (i) i.focus();
+    }, 0);
+    return true;
+  }
+  function onSelectionSettled() {
+    if (readOnly || editing) return;
+    var sel = window.getSelection && window.getSelection();
+    if (!sel || sel.isCollapsed) return hideSelChip();
+    var text = String(sel).trim();
+    if (text.length < 2) return hideSelChip();
+    var node = sel.anchorNode;
+    var host = node && (node.nodeType === 1 ? node : node.parentNode);
+    host = host && host.closest && host.closest('.la-block');
+    if (!host) return hideSelChip();
+    showSelChip(host.dataset.blockId, text, sel);
+  }
+  function showSelChip(blockId, text, sel) {
+    var c = document.getElementById('la-selchip');
+    if (!c) {
+      c = el('button', 'la-selchip', '+ tag');
+      c.id = 'la-selchip';
+      c.title = 'Tag the highlighted passage';
+      document.body.appendChild(c);
+    }
+    c.hidden = false;
+    c.onclick = function () { hideSelChip(); offerTag(blockId, text); };
+    try {
+      var r = sel.getRangeAt(0).getBoundingClientRect();
+      if (r && r.width) {
+        c.style.top = (r.top + window.scrollY - 36) + 'px';
+        c.style.left = (r.left + window.scrollX) + 'px';
+      }
+    } catch (e) { /* no geometry — the chip still works, just parked */ }
+  }
+  function hideSelChip() {
+    var c = document.getElementById('la-selchip');
+    if (c) c.hidden = true;
+  }
+
   function renderAddRow() {
-    var bar = el('div', 'la-editbar');
-    bar.style.paddingLeft = '34px';
+    var bar = el('div', 'la-editbar la-addrow');
+    bar.appendChild(el('span', null, 'add:'));
     ['para', 'heading', 'list', 'callout', 'code', 'table', 'divider'].forEach(function (t) {
-      var x = el('button', 'la-btn', '+ ' + t);
+      var x = el('button', 'la-btn', t);
       x.onclick = function () {
         var b = { id: uid('b'), type: t, author: 'viewer', tags: [] };
         if (t === 'heading') { b.text = 'New heading'; b.level = 2; }
@@ -398,9 +570,8 @@
         else if (t === 'table') { b.head = ['Column']; b.rows = [['value']]; }
         else if (t === 'callout') { b.title = 'Note'; b.text = 'New callout'; }
         else if (t !== 'divider') b.text = 'New ' + t;
-        var at = selected ? blockIndex(selected) + 1 : model.blocks.length;
-        model.blocks.splice(at, 0, b);
-        selected = b.id;
+        var at = model.blocks.length;
+        model.blocks.push(b);
         record({ op: 'insert', block: b.id, type: t, at: at });
         editing = t === 'divider' ? null : b.id;
         render();
@@ -420,10 +591,10 @@
     st.textContent = readOnly
       ? 'Read-only view — editing is unavailable here.'
       : (pending.length ? pending.length + ' unsaved change' + (pending.length > 1 ? 's' : '')
-        : 'No unsaved changes · rev ' + model.rev);
+        : 'Click a block to edit · drag the handle to reorder · highlight text to tag it');
     bar.appendChild(st);
     if (!readOnly) {
-      var save = el('button', 'la-btn primary', 'Save ⌘S');
+      var save = el('button', 'la-btn primary', 'Save');
       save.disabled = !pending.length;
       save.onclick = doSave;
       bar.appendChild(save);
@@ -463,6 +634,7 @@
     var out = {};
     model.blocks.forEach(function (b) {
       (b.tags || []).forEach(function (t) { out[t] = (out[t] || 0) + 1; });
+      (b.marks || []).forEach(function (m) { out[m.tag] = (out[m.tag] || 0) + 1; });
     });
     return out;
   }
@@ -574,6 +746,11 @@
 
     document.addEventListener('keydown', function (e) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') { e.preventDefault(); doSave(); }
+      if (e.key === 'Escape') hideSelChip();
+    });
+    document.addEventListener('mouseup', function () { setTimeout(onSelectionSettled, 0); });
+    document.addEventListener('keyup', function (e) {
+      if (e.shiftKey || /^Arrow/.test(e.key)) setTimeout(onSelectionSettled, 0);
     });
 
     /* Capabilities never resolve during this first synchronous run, and are
@@ -588,6 +765,14 @@
       else renderBar();
     });
   }
+
+  /* Exposed for the headless preflight: geometry-driven drag and native text
+     selection cannot be exercised in jsdom, so the same code paths are
+     reachable directly. Not part of the document's own behaviour. */
+  window.__la = {
+    offerTag: function (id, q) { return offerTag(id, q); },
+    moveTo: function (id, to) { var r = moveTo(id, to); render(); return r; }
+  };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();

@@ -35,6 +35,7 @@ later round. Never renumber, never reuse a dead id.
   "type": "para",          // heading | para | list | table | code | callout | divider
   "tags": ["expand", "for:sales"],
   "author": "claude",      // "viewer" once the human has edited it
+  "marks": [{ "tag": "verify", "quote": "94.2% of indexable URLs" }],
   "note": "recheck this against the June cohort",  // pinned request, not content
   "touched": { "rev": 7, "by": "viewer" }          // only the latest revision
 }
@@ -55,6 +56,14 @@ Per-type content fields:
 `text` and `items` hold **plain text** with a deliberately tiny inline subset —
 `**bold**`, `*italic*`, `` `code` ``, `[label](url)`. Nothing else. Keeping the
 model plain-text is what lets a textarea be the editor and a diff be readable.
+
+`tags` scope the whole block. `marks` scope a **passage inside** it — added by
+highlighting text on the page. A mark is anchored by its `quote`, never by a
+character offset: an offset breaks the moment anything above it is edited,
+whereas a quote either still matches or is reported as no longer present.
+Rendering wraps the first match in `<mark>`; a mark whose quote no longer
+appears is kept in the model and simply stops highlighting, so Claude can see
+that the passage it referred to has been rewritten.
 
 ## Style directives
 
@@ -82,7 +91,7 @@ One entry per revision, holding every op in it.
 | `insert` | `block`, `type`, `at` | they added something you didn't write |
 | `delete` | `block`, `type`, `text` | text that left — report it, never lose it silently |
 | `move` | `block`, `from`, `to` | an argument about order |
-| `tag` / `untag` | `block`, `tag` | an intent for that block |
+| `tag` / `untag` | `block`, `tag`, `quote?` | an intent — for the block, or with `quote`, for that passage |
 | `note` | `block`, `text` | a request pinned to a block |
 | `style` | `action`, `text` | a standing instruction for the whole document |
 

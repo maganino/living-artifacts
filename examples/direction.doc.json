@@ -5,8 +5,8 @@
   "thread": "living-artifacts",
   "component": "Direction",
   "url": "https://claude.ai/code/artifact/93af85d9-40a3-4fae-ac46-d94a3c4f3e7e",
-  "rev": 1,
-  "updated": "first build · 2026-09-09",
+  "rev": 2,
+  "updated": "round 2 — interaction reworked from your 5 comments · 2026-09-16",
   "style": {
     "directives": [
       {
@@ -30,6 +30,18 @@
       "author": "claude",
       "tags": [],
       "text": "This page is the tool explaining itself. Every block below can be edited, reordered, tagged or deleted by you, and each of those gestures is recorded as a typed operation that Claude reads back next round. If it works, you should be able to review this document without writing a single prose comment."
+    },
+    {
+      "id": "b-round2",
+      "type": "callout",
+      "author": "claude",
+      "tags": [],
+      "touched": {
+        "rev": 2,
+        "by": "claude"
+      },
+      "title": "Round 2 — not part of the document",
+      "text": "All five of your comments were about the editor, none about the content, and the journal was empty — you never saved an edit. So the interaction model was the problem, and it has been replaced rather than patched: hover reveals, click edits, drag reorders, highlight tags. The amber gutters below mark what changed. Your five threads are still open on the page — they weren't sent to Claude, so only you can clear them."
     },
     {
       "id": "b-h-why",
@@ -127,7 +139,7 @@
         ],
         [
           "Highlight and tag sections to extract",
-          "Tags as typed intents — `expand`, `summarize`, `seed-next`, `for:sales`",
+          "Tags as typed intents — `expand`, `summarize`, `seed-next`, `for:sales`. Highlight a passage to tag it below block level; anchored by quote, not offset",
           "v1 — working"
         ],
         [
@@ -145,7 +157,11 @@
           "A persistent style contract at document level, applied on every regeneration",
           "v1 — working"
         ]
-      ]
+      ],
+      "touched": {
+        "rev": 2,
+        "by": "claude"
+      }
     },
     {
       "id": "b-h-try",
@@ -160,7 +176,11 @@
       "type": "para",
       "author": "claude",
       "tags": [],
-      "text": "Click the handle in the left margin of any block to select it. That reveals the block's actions."
+      "text": "Hover any block and it lifts, with its controls on it: a drag handle at the left, and **tag** / **note** / **✕** at the top right. There is no select-it-first step.",
+      "touched": {
+        "rev": 2,
+        "by": "claude"
+      }
     },
     {
       "id": "b-try-2",
@@ -168,13 +188,18 @@
       "author": "claude",
       "tags": [],
       "items": [
-        "**edit** — opens the block's plain-text source. `⌘↩` applies, `esc` cancels. Your rewrite becomes the target the rest of the document should match; Claude will not restyle it back toward its own voice.",
-        "**↑ / ↓** — reorder. Claude reads a move as an argument about what should come first, and will ask what the new order is meant to foreground before rewriting around it.",
-        "**note to claude** — a request pinned to that specific block. This is the structured replacement for a comment: it is not document content, so Claude acts on it and then clears it.",
-        "**+ tag** — an intent for that block. `expand`, `summarize`, `seed-next`, `rewrite`, `cut`, `verify`, or `for:sales` and friends. The list is open — a tag you invent just works.",
-        "**delete** — the deleted text is kept in the journal, so Claude reports what left rather than losing it silently.",
-        "**Style contract** at the top — standing instructions for the whole page. Applied on every regeneration, not just the round you added them. Mute one instead of deleting it if you might want it back."
-      ]
+        "**Click anywhere on a block** to edit it. `⌘↩` applies, `esc` cancels. Your rewrite becomes the target the rest of the document should match; Claude will not restyle it back toward its own voice.",
+        "**Drag the ⠿ handle** up or down to reorder. Claude reads a move as an argument about what should come first, and will ask what the new order is meant to foreground. (Focus the handle and press ↑ / ↓ if you'd rather not drag.)",
+        "**Highlight a sentence** and a `+ tag` chip appears — tag that passage, not the whole block. The passage stays highlighted on the page, and Claude receives it as an anchored quote, so it survives later edits to the text around it.",
+        "**tag** on a block tags the whole box instead. `expand`, `summarize`, `seed-next`, `rewrite`, `cut`, `verify`, or `for:sales` and friends. The list is open — a tag you invent just works.",
+        "**note** pins a request to that specific block. This is the structured replacement for a comment: it is not document content, so Claude acts on it and then clears it.",
+        "**✕** deletes the block. The deleted text is kept in the journal, so Claude reports what left rather than losing it silently.",
+        "**How this document should be written**, at the top — standing instructions for the whole page, applied every time Claude rewrites anything. Mute a rule instead of removing it if you might want it back."
+      ],
+      "touched": {
+        "rev": 2,
+        "by": "claude"
+      }
     },
     {
       "id": "b-try-cal",
@@ -182,7 +207,11 @@
       "author": "claude",
       "tags": [],
       "title": "Try it now",
-      "text": "Edit a block, tag another `expand`, pin a note somewhere, add a style directive, then hit Save. Tell me \"check my edits\" and I'll read the journal back to you before touching anything."
+      "text": "Click a block and rewrite it. Highlight a sentence and tag it `expand`. Drag something above something else. Pin a note. Then hit Save, and tell me \"check my edits\" — I'll read the journal back to you before touching anything.",
+      "touched": {
+        "rev": 2,
+        "by": "claude"
+      }
     },
     {
       "id": "b-h-rejected",
