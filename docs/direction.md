@@ -106,6 +106,42 @@ full and the tag merged in. The guard works, but it only works at publish
 granularity — two people editing the same document at once is still not
 something this design supports.
 
+## Round 5 — a mode that should never have existed (2026-09-16)
+
+Five more, and the important one is a correction. Round 4 claimed the highlighter
+toggle was load-bearing: "once a click means edit, there is no way left to drag
+across text." **That was wrong.** The block click handler has bailed on a click
+that ended a selection since round 2, so dragging to select always worked. The
+mode was redundant from the moment it shipped, and the reader spotted it by
+using the thing. Removed.
+
+The lesson is narrower than "test more": the claim was made about code that was
+already written and already handled the case. Read the guard before asserting
+what a change forces.
+
+Also this round:
+
+- **The `+ tag` chip moved to the end of the selection** rather than above the
+  block, and clicking it opens a picker listing every tag the document already
+  uses plus the standard intents, filtered as you type.
+- **Filtering moved into the bottom bar** as tickboxes over the whole page.
+- **"Build this version"** rebuilds the filtered document as a plain copy — no
+  editor, no model, no `db`. Stripping `db` is not tidiness: a `db` artifact is
+  organization-internal, so that is what makes the copy shareable at all. It
+  downloads via the `downloads` capability and records a spec in `db` so Claude
+  can publish it as its own artifact.
+- **Highlights snap to word boundaries.** Not asked for — found in the reader's
+  journal, where every single highlight had arrived mid-word (`"ng itself…"`,
+  `"t witho"`). A dragged selection lands where the pointer did; storing that
+  verbatim renders a broken mark and anchors on a fragment.
+
+**Second collision in two rounds.** The reader saved fourteen revisions while
+this round was being built; the publish was refused, their version read in full,
+and their four tags and one highlight merged forward. The guard holds, but the
+pattern is now clear enough to state as a rule: **do not build a round while the
+reader is in the document.** The merge is only cheap because the model is
+structured; it is not free.
+
 ## Alternatives evaluated and rejected
 
 **Live docs (`artifact.sync`).** The platform has exactly this feature: on a
@@ -146,6 +182,8 @@ thread you did not activate" tax no longer applies to ordinary review.
 
 ## Known constraints
 
+- The reader's own journal is the best bug report available — round 5's
+  word-snapping came from reading it, not from a comment.
 - Declaring `db` makes an artifact **organization-internal** — it cannot be
   shared publicly. Stakeholder-facing output must be a separate static export
   without `db`, which `audience-views` already requires.

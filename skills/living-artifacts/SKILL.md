@@ -114,10 +114,14 @@ and no Apply step — v1 had both, and the first reader never saved a single edi
 filing five comments about the UI instead. If you extend the editor, keep that
 bar: an affordance that must be discovered before it can be used will not be used.
 
-Because a click means *edit*, text selection needs its own mode: the **✎ Highlight**
-toggle suspends editing so a drag marks text. Naming a highlight with a tag is
-optional by design. Tags carry per-document colours, and the tag row under the
-title filters the page — filtering is a view and never reaches the model.
+Selecting text needs no mode: a click that ended a selection never opens the
+editor, so a drag marks text and a `+ tag` chip appears at the end of it. (v1.3
+shipped a highlighter toggle for this and it was redundant — the guard already
+existed. Removed.) Naming a highlight is optional by design. Tags carry
+per-document colours; the tag picker offers what the document already uses; the
+bottom-bar filter is a view and never reaches the model; and **Build this
+version** turns a filtered view into a plain shareable copy with no editor and
+no `db` — which is the only form that can leave the organization.
 
 ## The style contract is standing instruction
 

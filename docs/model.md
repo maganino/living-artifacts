@@ -66,6 +66,12 @@ Rendering wraps the first match in `<mark>`; a mark whose quote no longer
 appears is kept in the model and simply stops highlighting, so Claude can see
 that the passage it referred to has been rewritten.
 
+**Quotes snap to word boundaries before they are stored.** A dragged selection
+lands wherever the pointer did, so real highlights arrive mid-word — the first
+reader's were `"ng itself…"` and `"t witho"`. Nobody means that, it renders as a
+broken mark, and it anchors on a fragment. The quote grows outward to whole
+words first.
+
 ## Style directives
 
 Document-level and persistent — standing instructions, applied on every

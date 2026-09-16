@@ -55,8 +55,13 @@ line('every block has an id', String(model.blocks.every((b) => b.id)), model.blo
 const first = model.blocks.find((b) => b.type === 'para');
 const host = () => d.querySelector(`[data-block-id="${first.id}"]`);
 [...host().querySelectorAll('button')].find((b) => b.textContent.trim() === 'tag').click();
-host().querySelector('.la-taginput').value = 'preflight';
-[...host().querySelectorAll('button')].find((b) => b.textContent.trim() === '+ tag').click();
+const tp = d.querySelector('#la-tagpop');
+line('tag picker opens as a popover', String(!!tp), !!tp);
+line('picker offers known tags', `${tp.querySelectorAll('.la-tagmenu-item').length}`,
+  tp.querySelectorAll('.la-tagmenu-item').length > 0);
+tp.querySelector('.la-taginput').value = 'preflight';
+tp.querySelector('.la-taginput')
+  .dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
 await dom.window.__la.flush();
 await settle();
 

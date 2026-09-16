@@ -5,8 +5,8 @@
   "thread": "living-artifacts",
   "component": "Direction",
   "url": "https://claude.ai/code/artifact/93af85d9-40a3-4fae-ac46-d94a3c4f3e7e",
-  "rev": 5,
-  "updated": "round 4 — highlighter, multi-block tags, tag colours, filtering · 2026-09-16",
+  "rev": 21,
+  "updated": "round 5 — tag picker, bottom-bar filter, filtered export · 2026-09-16",
   "style": {
     "directives": [
       {
@@ -29,17 +29,25 @@
       "type": "para",
       "author": "claude",
       "tags": [],
-      "text": "This page is the tool explaining itself. Every block below can be edited, reordered, tagged or deleted by you, and each of those gestures is recorded as a typed operation that Claude reads back next round. If it works, you should be able to review this document without writing a single prose comment."
+      "text": "This page is the tool explaining itself. Every block below can be edited, reordered, tagged or deleted by you, and each of those gestures is recorded as a typed operation that Claude reads back next round. If it works, you should be able to review this document without writing a single prose comment.",
+      "marks": [
+        {
+          "quote": "explaining itself. Every block below can be edited, reordered, tagged or deleted by you, and each of those gestures is",
+          "tag": "eng"
+        }
+      ]
     },
     {
       "id": "b-round2",
       "type": "callout",
       "author": "claude",
-      "tags": [],
-      "title": "Round 4 — not part of the document",
-      "text": "**Round 2** replaced the interaction model — your five comments were all about the editor and the journal was empty. **Round 3** added autosave and undo/redo. **Round 4** is your tagging comment: highlighting is now its own mode, because dropping the Apply step made a click mean *edit*, which left no way to drag across text. Tags carry colours and filter the page. Your `eng` tag on the block below survived this rebuild — it was saved from the page while I was working, and merged in rather than overwritten.",
+      "tags": [
+        "dev"
+      ],
+      "title": "Round 5 — not part of the document",
+      "text": "**Round 5** removes the highlighter button — you were right, selecting text already worked without it, because a click that ends a selection has been ignored since round 2. I claimed last round it was load-bearing; it wasn't. The `+ tag` chip now sits at the end of what you highlighted, tagging opens a picker of tags you've already used, filtering moved to the bottom bar as tickboxes, and a filtered view can be rebuilt as a plain shareable copy. Your `dev` and `eng` tags are all still here — and your highlights now snap to whole words, because every one you made started mid-word (`\"ng itself…\"`, `\"t witho\"`).",
       "touched": {
-        "rev": 4,
+        "rev": 6,
         "by": "claude"
       }
     },
@@ -48,14 +56,18 @@
       "type": "heading",
       "level": 2,
       "author": "claude",
-      "tags": [],
+      "tags": [
+        "dev"
+      ],
       "text": "Why this exists"
     },
     {
       "id": "b-why-1",
       "type": "para",
       "author": "claude",
-      "tags": [],
+      "tags": [
+        "dev"
+      ],
       "text": "A published artifact is read-only to its reader. Your only channel back is a comment pinned to a passage — the shortest thing anyone writes, and half its meaning lives in what it's attached to. `drop` on a table header and `drop` on a whole section are different edits. Claude then re-reads the entire document and guesses which part your comment governs."
     },
     {
@@ -151,8 +163,8 @@
         ],
         [
           "A view shared with a specific stakeholder",
-          "Static export without the editor — hands off to `audience-views`",
-          "v3 — filtering works now, static export still to come"
+          "Tick labels in the filter, then **Build this version** — a plain copy with no editor and no `db`, which is what makes it shareable at all",
+          "working — Claude still publishes the copy as its own link"
         ],
         [
           "Comment on tone and style, applied throughout",
@@ -161,7 +173,7 @@
         ]
       ],
       "touched": {
-        "rev": 4,
+        "rev": 6,
         "by": "claude"
       }
     },
@@ -178,9 +190,9 @@
       "type": "para",
       "author": "claude",
       "tags": [],
-      "text": "Hover any block and it lifts, with its controls on it: a drag handle at the left, and **tag** / **note** / **✕** at the top right. There is no select-it-first step, and no Apply step.",
+      "text": "Hover any block and it lifts, with its controls on it: a drag handle at the left, and **tag** / **note** / **✕** at the top right. No select-first step, no Apply step, and no mode to switch into.",
       "touched": {
-        "rev": 4,
+        "rev": 6,
         "by": "claude"
       }
     },
@@ -190,18 +202,20 @@
       "author": "claude",
       "tags": [],
       "items": [
-        "**Click anywhere on a block** to edit it. Click away and the edit is kept — there is no Apply step. `esc` discards it, and undo takes back anything.",
+        "**Click anywhere on a block** to edit it. Click away and the edit is kept; `esc` discards it; undo takes back anything.",
         "**Drag the ⠿ handle** to reorder. Claude reads a move as an argument about what should come first. (Focus the handle and press ↑ / ↓ if you'd rather not drag.)",
-        "**✎ Highlight** in the bottom bar switches editing off so a drag marks text instead. Finish a highlight and it stays on the page immediately; naming it with a tag is *optional* — an untagged highlight still reaches Claude as \"they marked this passage\".",
-        "**Highlight across several blocks** and the tag applies to all of them at once. One undo takes the whole thing back.",
-        "**tag** on a block tags the whole box. `expand`, `summarize`, `seed-next`, `rewrite`, `cut`, `verify`, `for:sales` — the list is open, a tag you invent just works, and each new tag keeps its own colour for the life of the document.",
-        "**filter** by tag from the row under the title. Filtering is a *view*: it hides blocks on your screen and never touches the document or the journal.",
-        "**note** pins a request to a block — the structured replacement for a comment, so Claude acts on it and clears it.",
-        "**✕** deletes a block; the deleted text is kept in the journal so Claude reports what left.",
-        "**It saves itself** a couple of seconds after you stop. `↶` / `↷` in the bar, or `⌘Z` / `⇧⌘Z`; `⌘S` forces a save."
+        "**Select any text** and a `+ tag` chip appears at the end of what you highlighted. No mode to enter — a click that ends a selection never opens the editor.",
+        "**Select across several blocks** and one tag applies to all of them. A single undo takes the whole thing back.",
+        "**The tag picker** lists every tag already used in this document, plus the standard intents — `expand`, `summarize`, `seed-next`, `rewrite`, `cut`, `verify`. Type to narrow it, or type something new and press enter. Naming a highlight is optional: an untagged highlight still tells Claude you singled that passage out.",
+        "**Each tag keeps its own colour** for the life of the document, and a highlight takes the colour of its tag.",
+        "**The chips under a block are its tags** — click one to remove it.",
+        "**Filter** in the bottom bar: tick labels to show only the blocks carrying them. It is a *view* — nothing about the document or the journal changes.",
+        "**Build this version**, in the filter menu, rebuilds the filtered document as a plain copy — no editor, no model — which is the only form that can be shared outside the org. Ask Claude to publish it as its own link.",
+        "**note** pins a request to a block; **✕** deletes one, keeping the deleted text in the journal.",
+        "**It saves itself** a couple of seconds after you stop. `↶` / `↷`, or `⌘Z` / `⇧⌘Z`; `⌘S` forces a save."
       ],
       "touched": {
-        "rev": 4,
+        "rev": 6,
         "by": "claude"
       }
     },
@@ -211,7 +225,11 @@
       "author": "claude",
       "tags": [],
       "title": "Try it now",
-      "text": "Click a block and rewrite it. Highlight a sentence and tag it `expand`. Drag something above something else. Pin a note. It saves on its own — then tell me \"check my edits\" and I'll read the journal back to you before touching anything."
+      "text": "Select a sentence and tag it. Tick that label in the filter and watch the page reduce to it. Then hit **Build this version** — that is the stakeholder-view question answered, minus the publishing step. It saves on its own; tell me \"check my edits\" whenever.",
+      "touched": {
+        "rev": 6,
+        "by": "claude"
+      }
     },
     {
       "id": "b-h-rejected",
@@ -306,11 +324,7 @@
         "**Retrofit or start fresh?** `decompose-problem-artifacts` and `audience-views` were written around the read-only limit. Some of their rules are now obsolete rather than merely composable. Rewrite them, or leave them and let this skill supersede in practice?",
         "**Where does the index live** — a workbench artifact, or a `tray/`-style file in the repo that Obsidian already queries? Filtering within a document works now; across documents is the open part.",
         "**Should Claude's own edits be markable per-block too?** The runtime supports it; it would let you scan Claude's changes the same way it scans yours."
-      ],
-      "touched": {
-        "rev": 4,
-        "by": "claude"
-      }
+      ]
     }
   ],
   "journal": [
@@ -325,9 +339,219 @@
           "tag": "eng"
         }
       ]
+    },
+    {
+      "rev": 6,
+      "at": "2026-09-16T07:31:05.623Z",
+      "by": "viewer",
+      "ops": [
+        {
+          "op": "edit",
+          "block": "b-round2",
+          "before": "Round 4 — not part of the document\n\n**Round 2** replaced the interaction model — your five comments were all about the editor and the journal was empty. **Round 3** added autosave and undo/redo. **Round 4** is your tagging comment: highlighting is now its own mode, because dropping the Apply step made a click mean *edit*, which left no way to drag across text. Tags carry colours and filter the page. Your `eng` tag on the block below survived this rebuild — it was saved from the page while I was working, and merged in rather than overwritten.",
+          "after": "Round 4 — not part of the document\n\n**Round 2** replaced the interaction model — your five comments were all about the editor and the journal was empty. **Round 3** added autosave and undo/redo. **Round 4** is your tagging comment: highlighting is now its own mode, because dropping the Apply step made a click mean *edit*, which left no way to drag across text. Tags carry colours and filter the page. Your `eng` tag on the block below survived this rebuild — it was saved from the page while I was working, and merged in rather than overwritten.lk;"
+        }
+      ]
+    },
+    {
+      "rev": 7,
+      "at": "2026-09-16T07:31:23.754Z",
+      "by": "viewer",
+      "ops": [
+        {
+          "op": "edit",
+          "block": "b-round2",
+          "before": "Round 4 — not part of the document\n\n**Round 2** replaced the interaction model — your five comments were all about the editor and the journal was empty. **Round 3** added autosave and undo/redo. **Round 4** is your tagging comment: highlighting is now its own mode, because dropping the Apply step made a click mean *edit*, which left no way to drag across text. Tags carry colours and filter the page. Your `eng` tag on the block below survived this rebuild — it was saved from the page while I was working, and merged in rather than overwritten.lk;",
+          "after": "Round 4 — not part of the document\n\n**Round 2** replaced the interaction model — your five comments were all about the editor and the journal was empty. **Round 3** added autosave and undo/redo. **Round 4** is your tagging comment: highlighting is now its own mode, because dropping the Apply step made a click mean *edit*, which left no way to drag across text. Tags carry colours and filter the page. Your `eng` tag on the block below survived this rebuild — it was saved from the page while I was working, and merged in rather than overwritten.\n"
+        }
+      ]
+    },
+    {
+      "rev": 8,
+      "at": "2026-09-16T07:31:36.223Z",
+      "by": "viewer",
+      "ops": [
+        {
+          "op": "highlight",
+          "block": "b-intro",
+          "quote": "ng itself. Every block below can be edited, reordered, tagged or deleted by you, and each of those gestures is"
+        }
+      ]
+    },
+    {
+      "rev": 9,
+      "at": "2026-09-16T07:31:52.143Z",
+      "by": "viewer",
+      "ops": [
+        {
+          "op": "tag",
+          "block": "b-intro",
+          "tag": "eng",
+          "quote": "ng itself. Every block below can be edited, reordered, tagged or deleted by you, and each of those gestures is"
+        }
+      ]
+    },
+    {
+      "rev": 10,
+      "at": "2026-09-16T07:32:04.404Z",
+      "by": "viewer",
+      "ops": [
+        {
+          "op": "highlight",
+          "block": "b-intro",
+          "quote": "d as a typed operation that Claude reads back next round. If it works, you should be able to rev"
+        }
+      ]
+    },
+    {
+      "rev": 11,
+      "at": "2026-09-16T07:32:09.870Z",
+      "by": "viewer",
+      "ops": [
+        {
+          "op": "unhighlight",
+          "block": "b-intro",
+          "quote": "d as a typed operation that Claude reads back next round. If it works, you should be able to rev"
+        }
+      ]
+    },
+    {
+      "rev": 12,
+      "at": "2026-09-16T07:32:20.566Z",
+      "by": "viewer",
+      "ops": [
+        {
+          "op": "tag",
+          "block": "b-intro",
+          "tag": "eng",
+          "quote": "d as a typed operation that Claude reads back next round. If it works, you should be able to rev"
+        }
+      ]
+    },
+    {
+      "rev": 13,
+      "at": "2026-09-16T07:32:30.521Z",
+      "by": "viewer",
+      "ops": [
+        {
+          "op": "highlight",
+          "block": "b-intro",
+          "quote": "t witho"
+        }
+      ]
+    },
+    {
+      "rev": 14,
+      "at": "2026-09-16T07:32:39.504Z",
+      "by": "viewer",
+      "ops": [
+        {
+          "op": "tag",
+          "block": "b-intro",
+          "tag": "dev",
+          "quote": "t witho"
+        }
+      ]
+    },
+    {
+      "rev": 15,
+      "at": "2026-09-16T07:32:59.096Z",
+      "by": "viewer",
+      "ops": [
+        {
+          "op": "tag",
+          "block": "b-round2",
+          "tag": "dev",
+          "withBlocks": 3
+        },
+        {
+          "op": "tag",
+          "block": "b-h-why",
+          "tag": "dev",
+          "withBlocks": 3
+        },
+        {
+          "op": "tag",
+          "block": "b-why-1",
+          "tag": "dev",
+          "withBlocks": 3
+        }
+      ]
+    },
+    {
+      "rev": 16,
+      "at": "2026-09-16T07:33:36.202Z",
+      "by": "viewer",
+      "ops": [
+        {
+          "op": "unhighlight",
+          "block": "b-intro",
+          "tag": "eng",
+          "quote": "d as a typed operation that Claude reads back next round. If it works, you should be able to rev"
+        },
+        {
+          "op": "unhighlight",
+          "block": "b-intro",
+          "tag": "dev",
+          "quote": "t witho"
+        },
+        {
+          "op": "unhighlight",
+          "block": "b-intro",
+          "tag": "eng",
+          "quote": "ng itself. Every block below can be edited, reordered, tagged or deleted by you, and each of those gestures is"
+        }
+      ]
+    },
+    {
+      "rev": 17,
+      "at": "2026-09-16T07:34:00.738Z",
+      "by": "viewer",
+      "ops": [
+        {
+          "op": "highlight",
+          "block": "b-intro",
+          "quote": "page is the tool explaining itself. Every block below can be edited, reordered, tagged or deleted by you, and"
+        }
+      ]
+    },
+    {
+      "rev": 18,
+      "at": "2026-09-16T07:42:01.983Z",
+      "by": "viewer",
+      "ops": [
+        {
+          "op": "unhighlight",
+          "block": "b-intro",
+          "quote": "page is the tool explaining itself. Every block below can be edited, reordered, tagged or deleted by you, and"
+        }
+      ]
+    },
+    {
+      "rev": 19,
+      "at": "2026-09-16T07:42:13.076Z",
+      "by": "viewer",
+      "ops": [
+        {
+          "op": "undo",
+          "undid": "highlight"
+        }
+      ]
+    },
+    {
+      "rev": 20,
+      "at": "2026-09-16T07:42:21.542Z",
+      "by": "viewer",
+      "ops": [
+        {
+          "op": "undo",
+          "undid": "unhighlight"
+        }
+      ]
     }
   ],
   "tagColors": {
-    "eng": 8
+    "eng": 8,
+    "dev": 28
   }
 }

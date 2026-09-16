@@ -63,6 +63,12 @@ const settle = () => new Promise((r) => setTimeout(r, 30));
 const btn = (root, text) =>
   [...root.querySelectorAll('button')].find((b) => b.textContent.trim() === text);
 const blockEl = (d, id) => d.querySelector(`[data-block-id="${id}"]`);
+const pop = (d) => d.querySelector('#la-tagpop');
+const pickTag = (env, name) => {
+  pop(env.d).querySelector('.la-taginput').value = name;
+  pop(env.d).querySelector('.la-taginput')
+    .dispatchEvent(new env.w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+};
 const order = (d) => [...d.querySelectorAll('.la-block')].map((b) => b.dataset.blockId);
 /* no Apply button any more: leaving the box is what keeps the edit */
 const commitEdit = (env, id, text) => {
@@ -113,24 +119,20 @@ ok('a "Save now" flush appears while unsaved', !!btn(d.body, 'Save now'));
 
 console.log('\nC-1: tag a whole block, and tag a highlighted passage');
 btn(blockEl(d, 'b-one'), 'tag').click();
-{
-  const inp = blockEl(d, 'b-one').querySelector('.la-taginput');
-  ok('the block tag form has no quote chip', !blockEl(d, 'b-one').querySelector('.la-quote'));
-  inp.value = '#expand';
-  btn(blockEl(d, 'b-one'), '+ tag').click();
-}
+ok('the tag picker opens as a popover, not inside the block', !!pop(d) && !blockEl(d, 'b-one').querySelector('.la-taginput'));
+ok('a whole-block picker shows no quote', !/\u201C/.test(pop(d).querySelector('.la-tagpop-head').textContent));
+pickTag(env, '#expand');
 ok('whole-block tag lands, # stripped',
   [...blockEl(d, 'b-one').querySelectorAll('.la-tag')].some((c) => c.textContent === '#expand'));
+ok('the popover closes after choosing', !pop(d));
 ok('intent tags are styled apart from audience tags', !!blockEl(d, 'b-one').querySelector('.la-tag.intent'));
 
 /* native text selection has no geometry in jsdom; the same path the selection
    chip calls is reachable directly */
 env.w.__la.offerTag('b-three', 'beta');
-ok('a highlighted passage shows its quote in the form', !!blockEl(d, 'b-three').querySelector('.la-quote'));
-{
-  blockEl(d, 'b-three').querySelector('.la-taginput').value = 'verify';
-  btn(blockEl(d, 'b-three'), '+ tag').click();
-}
+ok('a highlighted passage shows its quote in the picker',
+  /beta/.test(pop(d).querySelector('.la-tagpop-head').textContent));
+pickTag(env, 'verify');
 ok('the tagged passage is highlighted in place', !!blockEl(d, 'b-three').querySelector('mark.la-mark'));
 eq('only the highlighted passage is marked',
   blockEl(d, 'b-three').querySelector('mark.la-mark').textContent, 'beta');
@@ -278,38 +280,57 @@ console.log('\nC-6: autosave + undo / redo');
   ok('the fallback publishes a full document', e8.published[0].startsWith('<!doctype html>'));
 }
 
-console.log('\nC-7: highlighter, multi-block tags, colours, filter');
+console.log('\nC-7 / C-8: tagging scopes, colours, filtering, export');
 {
   const e9 = boot(wrap(buildBody(fixture()), 'x'));
   await settle();
 
-  /* highlighter mode suspends editing so a drag selects text instead */
-  e9.w.__la.highlight(true);
-  ok('the highlighter sits next to undo/redo', !!btn(e9.d.body, '✎ Highlight'));
-  ok('the highlighter reads as pressed', btn(e9.d.body, '✎ Highlight').getAttribute('aria-pressed') === 'true');
-  ok('the page says it is in highlighting mode', /highlighting/i.test(e9.d.getElementById('la-status').textContent));
+  /* C-8e: selecting text must not open the editor — this is what made the
+     highlighter button redundant, so it has to keep working */
+  const realSel = e9.w.getSelection.bind(e9.w);
+  e9.w.getSelection = () => ({ toString: () => 'some selected words', isCollapsed: false });
   blockEl(e9.d, 'b-two').querySelector('.la-body').click();
-  ok('a click does NOT open the editor while highlighting', !blockEl(e9.d, 'b-two').querySelector('textarea'));
-  e9.w.__la.highlight(false);
+  ok('a click that ended a selection does NOT open the editor',
+    !blockEl(e9.d, 'b-two').querySelector('textarea'));
+  e9.w.getSelection = realSel;
   blockEl(e9.d, 'b-two').querySelector('.la-body').click();
-  ok('and editing comes back when it is switched off', !!blockEl(e9.d, 'b-two').querySelector('textarea'));
+  ok('a plain click still opens the editor', !!blockEl(e9.d, 'b-two').querySelector('textarea'));
   blockEl(e9.d, 'b-two').querySelector('textarea').dispatchEvent(new e9.w.FocusEvent('blur'));
+  ok('the highlighter button is gone', !btn(e9.d.body, '✎ Highlight'));
 
-  /* a highlight exists before any tag is chosen — the tag is optional */
-  e9.w.__la.offerTag('b-three', 'beta');
-  ok('the optional-tag form offers a way out', !!btn(blockEl(e9.d, 'b-three'), 'no tag'));
-  btn(blockEl(e9.d, 'b-three'), 'no tag').click();
-  ok('declining a tag closes the form', !blockEl(e9.d, 'b-three').querySelector('.la-taginput'));
+  /* C-8b: the picker offers tags already used, plus the standard intents */
+  env.w; // (unused)
+  btn(blockEl(e9.d, 'b-one'), 'tag').click();
+  const items = [...pop(e9.d).querySelectorAll('.la-tagmenu-item')].map((n) => n.textContent);
+  ok('the picker lists tags already used in the document', items.includes('#for:sales'), items.join(','));
+  ok('and suggests the standard intents', items.includes('#seed-next'), items.join(','));
+  pop(e9.d).querySelector('.la-taginput').value = 'seed';
+  pop(e9.d).querySelector('.la-taginput').dispatchEvent(new e9.w.Event('input'));
+  const filtered = [...pop(e9.d).querySelectorAll('.la-tagmenu-item')].map((n) => n.textContent);
+  ok('typing narrows the list', filtered.length === 1 && filtered[0] === '#seed-next', filtered.join(','));
+  [...pop(e9.d).querySelectorAll('.la-tagmenu-item')][0].click();
+  ok('picking from the list applies it',
+    [...blockEl(e9.d, 'b-one').querySelectorAll('.la-tag')].some((c) => c.textContent === '#seed-next'));
+  /* highlights arrive mid-word from a real drag; they must not be stored that way */
+  const snap = (t, q) => e9.w.__la.snapToWords(t, q);
+  eq('a mid-word start grows to the whole word',
+    snap('This page is the tool explaining itself.', 'ng itself'), 'explaining itself.');
+  /* "t witho" straddles a space, so it correctly grows to BOTH words */
+  eq('a fragment straddling a space grows to both words',
+    snap('review this document without writing', 't witho'), 'document without');
+  eq('a clean word selection is left alone',
+    snap('alpha beta gamma', 'beta'), 'beta');
+  eq('both ends grow at once',
+    snap('the document is a rendering', 'ocument is a render'), 'document is a rendering');
 }
 {
   const eA = boot(wrap(buildBody(fixture()), 'x'));
   await settle();
-  /* tag several blocks from one selection */
+  /* C-7a: tag several blocks from one selection */
   eA.w.__la.offerTag('b-one', null, ['b-one', 'b-two', 'b-three']);
-  ok('the form says how many blocks it will tag',
-    /3 blocks/.test(blockEl(eA.d, 'b-one').querySelector('.la-quote').textContent));
-  blockEl(eA.d, 'b-one').querySelector('.la-taginput').value = 'seed-next';
-  btn(blockEl(eA.d, 'b-one'), '+ tag').click();
+  ok('the picker says how many blocks it will tag',
+    /3 blocks/.test(pop(eA.d).querySelector('.la-tagpop-head').textContent));
+  pickTag(eA, 'seed-next');
   ok('every selected block got the tag',
     ['b-one', 'b-two', 'b-three'].every((id) =>
       [...blockEl(eA.d, id).querySelectorAll('.la-tag')].some((c) => c.textContent === '#seed-next')));
@@ -319,38 +340,55 @@ console.log('\nC-7: highlighter, multi-block tags, colours, filter');
       ![...blockEl(eA.d, id).querySelectorAll('.la-tag')].some((c) => c.textContent === '#seed-next')));
   eA.w.__la.redo();
 
-  /* colours */
-  const chip = [...eA.d.querySelectorAll('.la-tag')].find((c) => c.textContent === '#seed-next');
+  /* C-7e: colours */
+  const chip = [...eA.d.querySelectorAll('.la-meta .la-tag')].find((c) => c.textContent === '#seed-next');
   ok('a tag chip carries its own hue', /--tag-h:\s*\d+/.test(chip.getAttribute('style') || ''));
   eA.w.__la.offerTag('b-four', null, null);
-  blockEl(eA.d, 'b-four').querySelector('.la-taginput').value = 'for:sales';
-  btn(blockEl(eA.d, 'b-four'), '+ tag').click();
-  const hues = [...eA.d.querySelectorAll('.la-tag:not(.filterchip)')]
-    .map((c) => (c.getAttribute('style') || '').match(/--tag-h:\s*(\d+)/)?.[1])
-    .filter(Boolean);
+  pickTag(eA, 'for:sales');
+  const hues = [...eA.d.querySelectorAll('.la-meta .la-tag')]
+    .map((c) => (c.getAttribute('style') || '').match(/--tag-h:\s*(\d+)/)?.[1]).filter(Boolean);
   ok('different tags get different hues', new Set(hues).size > 1, hues.join(','));
 
-  /* filter */
-  ok('a filter row appears once tags exist', !!eA.d.querySelector('.la-filter'));
-  eA.w.__la.setFilter(['for:sales']);
+  /* C-8c: the filter is a bottom-bar menu of tickboxes now */
+  ok('there is no filter row in the header', !eA.d.querySelector('.la-head .la-filter'));
+  const fbtn = [...eA.d.querySelectorAll('.la-bar button')].find((b) => /^Filter/.test(b.textContent));
+  ok('the bar carries a Filter button', !!fbtn);
+  fbtn.click();
+  const menu = eA.d.querySelector('#la-filtermenu');
+  ok('the filter menu lists every tag as a tickbox',
+    menu.querySelectorAll('.la-filterrow input[type=checkbox]').length === Object.keys(eA.w.__la.tags()).length);
+  const row = [...menu.querySelectorAll('.la-filterrow')].find((r) => /for:sales/.test(r.textContent));
+  row.querySelector('input').checked = true;
+  row.querySelector('input').dispatchEvent(new eA.w.Event('change'));
   const visible = [...eA.d.querySelectorAll('.la-block')].filter((b) => !b.hidden)
     .map((b) => b.dataset.blockId).sort();
-  /* b-two carries for:sales in the fixture, b-four was just tagged with it */
-  ok('exactly the blocks carrying the tag stay visible',
-    visible.join(',') === 'b-four,b-two', visible.join(','));
-  ok('filtering says it is a view, not an edit',
-    /not an edit/i.test(eA.d.querySelector('.la-filter').textContent));
+  ok('ticking a label filters the page', visible.join(',') === 'b-four,b-two', visible.join(','));
+
+  /* C-8d: rebuild a version containing only the ticked labels */
+  const exported = eA.w.__la.buildStatic();
+  ok('the export is a full standalone document', exported.startsWith('<!doctype html>'));
+  ok('the export carries only the filtered sections',
+    /Doomed block/.test(exported) === false && /Body text/.test(exported));
+  ok('the export has no editor runtime in it', !/la-runtime|window.claude/.test(exported));
+  ok('the export has no model embedded either', !/id="la-model"/.test(exported));
+  ok('the export names the labels it was built from', /for:sales/.test(exported));
+
   eA.w.__la.setFilter([]);
   ok('clearing the filter brings everything back',
     [...eA.d.querySelectorAll('.la-block')].every((b) => !b.hidden));
-
-  /* the filter must never reach the model */
   eA.w.__la.setFilter(['for:sales']);
   await eA.w.__la.flush();
   await settle();
   const mm = extractModel(eA.published[eA.published.length - 1]);
   ok('the published model carries no filter state', mm.filter === undefined);
   ok('tag colours ARE persisted, so they are stable', !!mm.tagColors && Object.keys(mm.tagColors).length >= 2);
+  ok('nothing is hidden in the published document',
+    !/hidden=""/.test(eA.published[eA.published.length - 1]));
+  /* with nothing pending, the bar reports the filter rather than the save */
+  eA.w.__la.setFilter(['for:sales']);
+  ok('the bar says the filter is a view and the document is unchanged',
+    /view, the document is unchanged/.test(eA.d.getElementById('la-status').textContent),
+    eA.d.getElementById('la-status').textContent);
 }
 
 console.log('\nfailure paths');

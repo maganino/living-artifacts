@@ -25,7 +25,8 @@
   var statusTimer = null, drag = null;
   var undoStack = [], redoStack = [], baseline = null;
   var saveTimer = null, filesForm = null, SAVE_DEBOUNCE = 2500, UNDO_DEPTH = 60;
-  var highlightMode = false, filter = [], inGroup = false, groupPushed = false;
+  var filter = [], inGroup = false, groupPushed = false, selAnchor = null;
+  var KNOWN = ['expand', 'summarize', 'seed-next', 'rewrite', 'cut', 'verify'];
 
   /* ------------------------------------------------------------------ util */
   function el(tag, cls, text) {
@@ -249,8 +250,6 @@
     h.appendChild(el('h1', 'la-title', model.title));
     if (model.updated) h.appendChild(el('p', 'la-updated', 'Updated: ' + model.updated));
     h.appendChild(renderContract());
-    var f = renderFilterRow();
-    if (f) h.appendChild(f);
     return h;
   }
 
@@ -377,7 +376,7 @@
       wrap.appendChild(renderEditor(b));
     } else {
       var body = renderBody(b);
-      if (!readOnly && b.type !== 'divider' && !highlightMode) {
+      if (!readOnly && b.type !== 'divider') {
         /* A click anywhere on the box edits it. A click that ended a text
            selection must NOT — that gesture belongs to tagging. */
         body.onclick = function (e) {
@@ -391,7 +390,7 @@
       wrap.appendChild(body);
     }
 
-    if ((b.tags && b.tags.length) || (b.marks && b.marks.length) || tagging === b.id) {
+    if ((b.tags && b.tags.length) || (b.marks && b.marks.length)) {
       wrap.appendChild(renderMeta(b));
     }
     return wrap;
@@ -416,10 +415,14 @@
       var x = el('button', 'la-act' + (cls ? ' ' + cls : ''), label);
       x.title = title;
       x.setAttribute('aria-label', title);
-      x.onclick = function (e) { e.stopPropagation(); fn(); };
+      x.onclick = function (e) { e.stopPropagation(); fn(x); };
       acts.appendChild(x);
     }
-    act('tag', 'Tag this whole block', function () { offerTag(b.id, null); });
+    act('tag', 'Tag this whole block', function (btn) {
+      var r = btn && btn.getBoundingClientRect ? btn.getBoundingClientRect() : null;
+      openTagPop(b.id, null, null,
+        r && r.width ? { top: r.bottom + window.scrollY + 6, left: r.left + window.scrollX - 150 } : null);
+    });
     act('note', b.note ? 'Edit the note to Claude' : 'Pin a note to Claude on this block',
       function () { promptNote(b); });
     act('✕', 'Delete this block', function () { removeBlock(b); }, 'danger');
@@ -451,59 +454,109 @@
       };
       m.appendChild(chip);
     });
-    if (!readOnly && tagging === b.id) m.appendChild(renderTagForm(b));
     return m;
   }
 
   /* Three things can be tagged: this block, a highlighted passage inside it,
-     or every block a selection spanned. `tagTargets` says which. */
-  function renderTagForm(b) {
-    var box = el('span', 'la-inline');
-    box.style.margin = '0';
-    var quote = tagQuote, targets = tagTargets;
-    if (targets && targets.length > 1) {
-      box.appendChild(el('span', 'la-quote', targets.length + ' blocks'));
-    } else if (quote) {
-      box.appendChild(el('span', 'la-quote', '\u201C' + clip(quote, 36) + '\u201D'));
-    }
+     or every block a selection spanned. The popover opens where the gesture
+     happened — beside the selection, or under the block's own tag button. */
+  function closeTagPop() {
+    var n = document.getElementById('la-tagpop');
+    if (n) n.remove();
+    tagging = null; tagQuote = null; tagTargets = null;
+  }
+
+  function applyTag(b, v, quote, targets) {
+    if (!v) return;
+    group(function () {
+      if (targets && targets.length > 1) {
+        targets.forEach(function (id) {
+          var t = getBlock(id);
+          if (!t) return;
+          t.tags = (t.tags || []).concat([v]);
+          record({ op: 'tag', block: id, tag: v, withBlocks: targets.length });
+        });
+      } else if (quote) {
+        var mk = (b.marks || []).filter(function (o) { return o.quote === quote; })[0];
+        if (mk) { mk.tag = v; } else { b.marks = (b.marks || []).concat([{ tag: v, quote: quote }]); }
+        record({ op: 'tag', block: b.id, tag: v, quote: quote });
+      } else {
+        b.tags = (b.tags || []).concat([v]);
+        record({ op: 'tag', block: b.id, tag: v });
+      }
+    });
+    tagHue(v);
+  }
+
+  function openTagPop(blockId, quote, targets, anchor) {
+    var b = getBlock(blockId);
+    if (!b || readOnly) return false;
+    closeTagPop();
+    tagging = blockId;
+    tagQuote = (quote && quote !== blockText(b)) ? quote : null;
+    tagTargets = targets && targets.length > 1 ? targets : null;
+
+    var pop = el('div', 'la-tagpop');
+    pop.id = 'la-tagpop';
+    if (anchor) { pop.style.top = anchor.top + 'px'; pop.style.left = anchor.left + 'px'; }
+
+    var head = el('div', 'la-tagpop-head');
+    head.textContent = tagTargets ? 'Tag ' + tagTargets.length + ' blocks'
+      : tagQuote ? '\u201C' + clip(tagQuote, 44) + '\u201D'
+        : 'Tag this block';
+    pop.appendChild(head);
+
     var inp = el('input', 'la-taginput');
-    inp.placeholder = targets && targets.length > 1 ? 'tag these blocks\u2026'
-      : quote ? 'tag this passage (optional)\u2026' : 'tag this block\u2026';
+    inp.placeholder = 'pick one below, or type a new tag';
     inp.setAttribute('aria-label', 'Tag name');
-    var add = el('button', 'la-btn primary', '+ tag');
-    var skip = el('button', 'la-btn', quote ? 'no tag' : 'cancel');
-    function close() { tagging = null; tagQuote = null; tagTargets = null; render(); }
-    function commit() {
-      var v = inp.value.trim().replace(/^#/, '');
-      if (!v) return close();
-      group(function () {
-        if (targets && targets.length > 1) {
-          targets.forEach(function (id) {
-            var t = getBlock(id);
-            if (!t) return;
-            t.tags = (t.tags || []).concat([v]);
-            record({ op: 'tag', block: id, tag: v, withBlocks: targets.length });
-          });
-        } else if (quote) {
-          var mk = (b.marks || []).filter(function (o) { return o.quote === quote; })[0];
-          if (mk) { mk.tag = v; } else { b.marks = (b.marks || []).concat([{ tag: v, quote: quote }]); }
-          record({ op: 'tag', block: b.id, tag: v, quote: quote });
-        } else {
-          b.tags = (b.tags || []).concat([v]);
-          record({ op: 'tag', block: b.id, tag: v });
-        }
-      });
-      tagHue(v);
-      close();
+    pop.appendChild(inp);
+
+    var menu = el('div', 'la-tagmenu');
+    pop.appendChild(menu);
+
+    function choose(v) {
+      applyTag(b, v, tagQuote, tagTargets);
+      closeTagPop();
+      render();
     }
-    add.onclick = commit;
-    skip.onclick = close;
+    /* every tag already used in this document, then the standard intents */
+    function renderMenu() {
+      var q = inp.value.trim().replace(/^#/, '').toLowerCase();
+      var used = Object.keys(allTags()).sort();
+      var rest = KNOWN.filter(function (k) { return used.indexOf(k) === -1; });
+      menu.textContent = '';
+      var any = false;
+      [[used, 'used here'], [rest, 'suggested']].forEach(function (pair) {
+        var list = pair[0].filter(function (t) { return !q || t.toLowerCase().indexOf(q) !== -1; });
+        if (!list.length) return;
+        any = true;
+        menu.appendChild(el('div', 'la-tagmenu-label', pair[1]));
+        list.forEach(function (t) {
+          var row = paint(el('button', 'la-tag la-tagmenu-item', '#' + t), t);
+          row.onclick = function () { choose(t); };
+          menu.appendChild(row);
+        });
+      });
+      if (!any && q) {
+        menu.appendChild(el('div', 'la-tagmenu-label', 'press enter to create #' + q));
+      }
+    }
+    inp.oninput = renderMenu;
     inp.onkeydown = function (e) {
-      if (e.key === 'Enter') { e.preventDefault(); commit(); }
-      if (e.key === 'Escape') close();
+      if (e.key === 'Enter') { e.preventDefault(); choose(inp.value.trim().replace(/^#/, '')); }
+      if (e.key === 'Escape') { e.preventDefault(); closeTagPop(); render(); }
     };
-    box.appendChild(inp); box.appendChild(add); box.appendChild(skip);
-    return box;
+    renderMenu();
+
+    var foot = el('div', 'la-tagpop-foot');
+    var skip = el('button', 'la-btn', tagQuote ? 'leave it untagged' : 'cancel');
+    skip.onclick = function () { closeTagPop(); render(); };
+    foot.appendChild(skip);
+    pop.appendChild(foot);
+
+    document.body.appendChild(pop);
+    setTimeout(function () { inp.focus(); }, 0);
+    return true;
   }
 
   function renderEditor(b) {
@@ -630,17 +683,7 @@
 
   /* --------------------------------------------------- selection -> tagging */
   function offerTag(blockId, quote, targets) {
-    var b = getBlock(blockId);
-    if (!b) return false;
-    tagging = blockId;
-    tagQuote = (quote && quote !== blockText(b)) ? quote : null;
-    tagTargets = targets && targets.length > 1 ? targets : null;
-    render();
-    setTimeout(function () {
-      var i = document.querySelector('[data-block-id="' + blockId + '"] .la-taginput');
-      if (i) i.focus();
-    }, 0);
-    return true;
+    return openTagPop(blockId, quote, targets, selAnchor);
   }
 
   function blockOf(node) {
@@ -658,6 +701,19 @@
       .map(function (n) { return n.dataset.blockId; });
   }
 
+  /* A dragged selection lands wherever the pointer did, so real highlights
+     arrive mid-word — the first reader's were "ng itself\u2026" and "t witho".
+     Nobody means that: grow the quote to whole words before storing it, so the
+     mark reads properly on the page and anchors on something meaningful. */
+  function snapToWords(text, quote) {
+    var i = text.indexOf(quote);
+    if (i < 0) return quote;
+    var a = i, b = i + quote.length;
+    while (a > 0 && /\S/.test(text.charAt(a - 1))) a--;
+    while (b < text.length && /\S/.test(text.charAt(b))) b++;
+    return text.slice(a, b).trim();
+  }
+
   /* Finishing a highlight creates the highlight straight away and THEN offers a
      tag — the tag is optional, the highlight on its own is already signal. */
   function finishHighlight() {
@@ -672,9 +728,14 @@
     if (ids.length > 1) { offerTag(ids[0], null, ids); return true; }
     var b = getBlock(ids[0]);
     if (!b || blockText(b).indexOf(text) < 0) { offerTag(ids[0], null, null); return true; }
-    b.marks = (b.marks || []).concat([{ quote: text }]);
-    record({ op: 'highlight', block: b.id, quote: text });
-    offerTag(b.id, text, null);
+    var quote = snapToWords(blockText(b), text);
+    if ((b.marks || []).some(function (m) { return m.quote === quote; })) {
+      offerTag(b.id, quote, null);
+      return true;
+    }
+    b.marks = (b.marks || []).concat([{ quote: quote }]);
+    record({ op: 'highlight', block: b.id, quote: quote });
+    offerTag(b.id, quote, null);
     return true;
   }
 
@@ -699,11 +760,14 @@
     c.title = 'Tag the highlighted text';
     c.hidden = false;
     c.onclick = function () { hideSelChip(); finishHighlight(); };
+    /* to the right of where the selection ends, not above the block */
     try {
-      var r = sel.getRangeAt(0).getBoundingClientRect();
-      if (r && r.width) {
-        c.style.top = (r.top + window.scrollY - 36) + 'px';
-        c.style.left = (r.left + window.scrollX) + 'px';
+      var rects = sel.getRangeAt(0).getClientRects();
+      var last = rects[rects.length - 1];
+      if (last && last.width) {
+        c.style.top = (last.top + window.scrollY + last.height / 2 - 13) + 'px';
+        c.style.left = (last.right + window.scrollX + 8) + 'px';
+        selAnchor = { top: last.top + window.scrollY, left: last.right + window.scrollX + 8 };
       }
     } catch (e) { /* no geometry — the chip still works, just parked */ }
   }
@@ -712,41 +776,103 @@
     if (c) c.hidden = true;
   }
 
-  function setHighlightMode(on) {
-    highlightMode = !!on;
-    document.body.classList.toggle('la-highlighting', highlightMode);
-    if (highlightMode) { editing = null; tagging = null; tagQuote = null; tagTargets = null; }
-    else hideSelChip();
-    /* the blocks' click handlers differ between modes, so re-render them all —
-       renderBar() alone leaves the old handlers bound */
-    render();
+  /* ---------------------------------------------------------------- filter */
+  /* Ticking labels hides everything else on the page. This is a VIEW: nothing
+     here reaches the model or the journal. The export below is how a filtered
+     view becomes something you can hand to someone. */
+  function closeFilterMenu() {
+    var n = document.getElementById('la-filtermenu');
+    if (n) n.remove();
+  }
+  function toggleFilterMenu() {
+    if (document.getElementById('la-filtermenu')) return closeFilterMenu();
+    var counts = allTags(), names = Object.keys(counts).sort();
+    var menu = el('div', 'la-filtermenu');
+    menu.id = 'la-filtermenu';
+    menu.appendChild(el('div', 'la-tagmenu-label', 'show only blocks labelled'));
+    if (!names.length) {
+      menu.appendChild(el('div', 'la-filter-count', 'No tags on this document yet.'));
+    }
+    names.forEach(function (t) {
+      var row = el('label', 'la-filterrow');
+      var cb = el('input');
+      cb.type = 'checkbox';
+      cb.checked = filter.indexOf(t) !== -1;
+      cb.onchange = function () {
+        filter = cb.checked ? filter.concat([t]) : filter.filter(function (x) { return x !== t; });
+        render();
+        var open = document.getElementById('la-filtermenu');
+        if (open) { closeFilterMenu(); toggleFilterMenu(); }
+      };
+      row.appendChild(cb);
+      row.appendChild(paint(el('span', 'la-tag', '#' + t), t));
+      row.appendChild(el('span', 'la-filter-count', String(counts[t])));
+      menu.appendChild(row);
+    });
+    var foot = el('div', 'la-tagpop-foot');
+    if (filter.length) {
+      var shown = model.blocks.filter(matchesFilter).length;
+      foot.appendChild(el('span', 'la-filter-count',
+        shown + ' of ' + model.blocks.length + ' blocks'));
+      var clear = el('button', 'la-btn', 'show all');
+      clear.onclick = function () { filter = []; closeFilterMenu(); render(); };
+      foot.appendChild(clear);
+      var exp = el('button', 'la-btn primary', 'Build this version');
+      exp.title = 'Rebuild the document with only these labels, as a plain shareable copy';
+      exp.onclick = function () { buildFilteredVersion(); };
+      foot.appendChild(exp);
+    }
+    menu.appendChild(foot);
+    document.body.appendChild(menu);
   }
 
-  /* ---------------------------------------------------------------- filter */
-  function renderFilterRow() {
-    var counts = allTags(), names = Object.keys(counts).sort();
-    if (!names.length) return null;
-    var row = el('div', 'la-filter');
-    row.appendChild(el('span', 'la-filter-label', 'filter'));
-    names.forEach(function (t) {
-      var on = filter.indexOf(t) !== -1;
-      var chip = paint(el('button', 'la-tag filterchip' + (on ? ' on' : ''),
-        '#' + t + ' ' + counts[t]), t);
-      chip.onclick = function () {
-        filter = on ? filter.filter(function (x) { return x !== t; }) : filter.concat([t]);
-        render();
-      };
-      row.appendChild(chip);
-    });
-    if (filter.length) {
-      var clear = el('button', 'la-btn', 'show all');
-      clear.onclick = function () { filter = []; render(); };
-      row.appendChild(clear);
-      var shown = model.blocks.filter(matchesFilter).length;
-      row.appendChild(el('span', 'la-filter-count',
-        shown + ' of ' + model.blocks.length + ' blocks · filter is a view, not an edit'));
+  /* ---------------------------------------------------------------- export */
+  /* A plain document, not a tool: no editor, no model, no db — which is also
+     what makes it shareable at all, since a db artifact is org-internal. */
+  function buildStatic(blocks, labels) {
+    var css = document.getElementById(STYLE_EL).textContent;
+    var host = el('div');
+    blocks.forEach(function (b) { host.appendChild(renderBody(b)); });
+    var note = labels.length
+      ? '<p class="la-updated">Labelled ' + labels.map(function (l) { return '#' + esc(l); }).join(', ')
+        + ' \u00B7 ' + blocks.length + ' of ' + model.blocks.length + ' sections</p>'
+      : '';
+    return '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
+      + '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
+      + '<title>' + esc(model.title) + '</title>\n'
+      + '<style>\n' + css + '\n</style>\n</head>\n<body>\n'
+      + '<div class="la-shell"><header class="la-head"><h1 class="la-title">'
+      + esc(model.title) + '</h1>' + note + '</header><div class="la-blocks">'
+      + host.innerHTML + '</div></div>\n</body>\n</html>\n';
+  }
+
+  async function buildFilteredVersion() {
+    var blocks = model.blocks.filter(matchesFilter);
+    var labels = filter.slice();
+    var html = buildStatic(blocks, labels);
+    var name = (model.docId + '-' + labels.join('-') + '.html').replace(/[^A-Za-z0-9._-]/g, '-');
+    closeFilterMenu();
+
+    /* record it so Claude can publish it as its own artifact on request */
+    if (caps.db) {
+      try {
+        await caps.db.doc('docs/' + model.docId + '/exports/' + Date.now()).set({
+          at: nowIso(), labels: labels, title: model.title,
+          blockIds: blocks.map(function (b) { return b.id; }), filename: name
+        });
+      } catch (e) { /* the download below is still worth offering */ }
     }
-    return row;
+    var dl = null;
+    try { dl = await claude.use('downloads'); } catch (e) { /* not granted */ }
+    if (dl) {
+      try {
+        await dl.save({ filename: name, data: html });
+        return status('Built ' + blocks.length + ' sections. Ask Claude to publish it as its own link.');
+      } catch (e) {
+        if (e && e.code === 'cancelled') return status('Export cancelled.');
+      }
+    }
+    status('Export recorded (' + blocks.length + ' sections) — ask Claude to publish it.');
   }
 
   function renderAddRow() {
@@ -783,10 +909,12 @@
       ? 'Read-only view — editing is unavailable here.'
       : (pending.length
         ? pending.length + ' change' + (pending.length > 1 ? 's' : '') + ' — saving shortly…'
-        : highlightMode
-          ? 'Highlighting — drag across any text to mark it, then tag it if you want'
+        : filter.length
+          ? 'Filtered to ' + filter.map(function (t) { return '#' + t; }).join(' ')
+            + ' — ' + model.blocks.filter(matchesFilter).length + ' of '
+            + model.blocks.length + ' blocks · this is a view, the document is unchanged'
           : 'Saved · rev ' + model.rev
-            + ' · click a block to edit, drag the handle to reorder, highlight text to tag');
+            + ' · click a block to edit, drag the handle to reorder, select text to tag it');
     bar.appendChild(st);
     if (!readOnly) {
       var u = el('button', 'la-btn', '↶ Undo');
@@ -797,13 +925,13 @@
       r.title = 'Redo (shift+cmd+z)';
       r.disabled = !redoStack.length;
       r.onclick = redo;
-      var hl = el('button', 'la-btn' + (highlightMode ? ' on' : ''), '\u270E Highlight');
-      hl.title = highlightMode
-        ? 'Highlighting: drag across text to mark it. Click to go back to editing.'
-        : 'Highlight text instead of editing — drag across any passage to mark it';
-      hl.setAttribute('aria-pressed', highlightMode ? 'true' : 'false');
-      hl.onclick = function () { setHighlightMode(!highlightMode); };
-      bar.appendChild(u); bar.appendChild(r); bar.appendChild(hl);
+      var counts = allTags(), nTags = Object.keys(counts).length;
+      var f = el('button', 'la-btn' + (filter.length ? ' on' : ''),
+        filter.length ? 'Filter · ' + filter.length : 'Filter');
+      f.title = 'Show only blocks with the labels you tick';
+      f.disabled = !nTags;
+      f.onclick = function (e) { e.stopPropagation(); toggleFilterMenu(); };
+      bar.appendChild(u); bar.appendChild(r); bar.appendChild(f);
       if (pending.length) {
         var save = el('button', 'la-btn primary', 'Save now');
         save.onclick = function () { doSave(); };
@@ -1004,7 +1132,7 @@
 
     document.addEventListener('keydown', function (e) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') { e.preventDefault(); doSave(); }
-      if (e.key === 'Escape') hideSelChip();
+      if (e.key === 'Escape') { hideSelChip(); closeTagPop(); closeFilterMenu(); }
       /* inside a textarea or input, cmd+z is the browser's, not ours */
       var t = e.target && e.target.tagName;
       if (t === 'TEXTAREA' || t === 'INPUT') return;
@@ -1014,12 +1142,16 @@
       }
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
     });
-    document.addEventListener('mouseup', function () {
-      setTimeout(function () {
-        if (highlightMode) { if (!finishHighlight()) hideSelChip(); }
-        else onSelectionSettled();
-      }, 0);
-    });
+    /* Selecting text already works without a mode: the block's click handler
+       bails when the click ended a selection. The v1.3 highlighter button was
+       redundant and is gone. */
+    document.addEventListener('mouseup', function () { setTimeout(onSelectionSettled, 0); });
+    document.addEventListener('pointerdown', function (e) {
+      if (!e.target.closest) return;
+      if (!e.target.closest('#la-tagpop') && !e.target.closest('#la-selchip')
+        && !e.target.closest('.la-act')) { closeTagPop(); }
+      if (!e.target.closest('#la-filtermenu') && !e.target.closest('.la-bar')) closeFilterMenu();
+    }, true);
     document.addEventListener('keyup', function (e) {
       if (e.shiftKey || /^Arrow/.test(e.key)) setTimeout(onSelectionSettled, 0);
     });
@@ -1044,9 +1176,12 @@
     offerTag: function (id, q, targets) { return offerTag(id, q, targets); },
     moveTo: function (id, to) { var r = moveTo(id, to); render(); return r; },
     undo: undo, redo: redo,
-    highlight: function (on) { setHighlightMode(on); },
+    snapToWords: snapToWords,
     finishHighlight: finishHighlight,
     setFilter: function (t) { filter = t; render(); },
+    filterMenu: toggleFilterMenu,
+    buildStatic: function () { return buildStatic(model.blocks.filter(matchesFilter), filter.slice()); },
+    exportNow: buildFilteredVersion,
     tags: allTags,
     flush: function () { return doSave(); },
     debounce: function (ms) { SAVE_DEBOUNCE = ms; }

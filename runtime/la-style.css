@@ -251,6 +251,9 @@ body.la-dragging { cursor: grabbing; user-select: none; }
 
 /* ---------- additions for selection-scoped tagging ---------- */
 .la-tag.ranged { border-style: dashed; }
+/* the chips under a block are its tags — clicking one removes it */
+.la-meta .la-tag:hover::after { content: ' \00D7'; font-weight: 700; }
+.la-meta .la-tag:hover { filter: brightness(.96); }
 .la-quote {
   font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-muted);
   background: var(--teal-tint); border-radius: 4px; padding: 3px 8px;
@@ -299,25 +302,38 @@ body.la-dragging { cursor: grabbing; user-select: none; }
   background: var(--surface-2); box-shadow: inset 0 -2px 0 var(--line-strong);
 }
 
-/* ---------- filter row ---------- */
-.la-filter {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 7px;
-  margin: 16px 0 0; padding-top: 14px; border-top: 1px solid var(--line);
+/* ---------- popovers: tag picker and filter menu ---------- */
+.la-tagpop, .la-filtermenu {
+  position: absolute; z-index: 70; width: 268px;
+  background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .18); padding: 10px;
+  display: flex; flex-direction: column; gap: 8px;
 }
-.la-filter-label, .la-filter-count {
-  font-family: var(--font-mono); font-size: 11px; letter-spacing: .07em;
-  text-transform: uppercase; color: var(--ink-muted);
+.la-filtermenu { position: fixed; bottom: 52px; left: clamp(16px, 4vw, 40px); max-height: 52vh; overflow-y: auto; }
+.la-tagpop-head {
+  font-family: var(--font-mono); font-size: 11px; color: var(--ink-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.la-filter-count { text-transform: none; letter-spacing: 0; flex-basis: 100%; }
-.la-tag.filterchip { opacity: .55; }
-.la-tag.filterchip.on, .la-filter:hover .la-tag.filterchip { opacity: 1; }
-.la-tag.filterchip.on { box-shadow: 0 0 0 2px hsl(var(--tag-h) 55% 62%); }
+.la-tagpop .la-taginput, .la-tagpop input {
+  width: 100%; max-width: none; font-family: var(--font-mono); font-size: 13px;
+  padding: 6px 9px; border: 1px solid var(--line-strong); border-radius: 5px;
+  background: var(--bg); color: var(--ink);
+}
+.la-tagmenu { display: flex; flex-wrap: wrap; gap: 5px; max-height: 190px; overflow-y: auto; }
+.la-tagmenu-label {
+  flex-basis: 100%; font-family: var(--font-mono); font-size: 10px; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--ink-muted); margin-top: 2px;
+}
+.la-tagmenu-item { cursor: pointer; }
+.la-tagpop-foot {
+  display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+  border-top: 1px solid var(--line); padding-top: 8px;
+}
+.la-filter-count { font-family: var(--font-mono); font-size: 11px; color: var(--ink-muted); flex: 1; }
+.la-filterrow { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 2px 0; }
+.la-filterrow .la-tag { cursor: pointer; }
 
-/* ---------- highlighter mode ---------- */
-/* editing is suspended, so the whole page reads as a marking surface */
-body.la-highlighting .la-body { cursor: text; }
-body.la-highlighting .la-block:hover { background: none; box-shadow: 0 0 0 1px var(--line); }
-body.la-highlighting ::selection { background: hsl(48 90% 72%); color: #1C2220; }
 .la-btn.on {
   background: var(--amber); border-color: var(--amber); color: #fff; font-weight: 600;
 }
+.la-btn[disabled] { opacity: .4; cursor: default; }

@@ -15,10 +15,11 @@ set a standing instruction for the whole page's tone. Each one is recorded as a
 typed operation in a journal. Claude reads the journal, not a diff — so a round
 starts from *what you meant*.
 
-**Status:** v1.3. Editing without an Apply step, drag-reordering, a highlighter
-mode, tagging by block / passage / multi-block selection, coloured tags, tag
-filtering, pinned notes, writing rules, autosave and undo/redo all work end to
-end. Images and typed sketches are next; the cross-document index after that.
+**Status:** v1.4. Editing without an Apply step, drag-reordering, tagging by
+block / passage / multi-block selection with a picker of known tags, coloured
+tags, bottom-bar filtering, a filtered static export, pinned notes, writing
+rules, autosave and undo/redo all work end to end. Images and typed sketches are
+next; the cross-document index after that.
 
 ## How it works
 
