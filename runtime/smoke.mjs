@@ -116,6 +116,14 @@ ok('the Apply / Cancel buttons are gone',
   !btn(blockEl(d, 'b-two'), 'Apply') && !btn(blockEl(d, 'b-two'), 'Cancel'));
 ok('undo enables once there is an edit', btn(d.body, '↶ Undo').disabled === false);
 ok('a "Save now" flush appears while unsaved', !!btn(d.body, 'Save now'));
+{
+  const kids = [...d.getElementById('la-bar').children];
+  eq('Save now sits at the left end of the bar', kids[0].textContent, 'Save now');
+  ok('the status line follows it', kids[1].id === 'la-status');
+  ok('undo/redo/filter stay to its right',
+    kids.slice(2).map((n) => n.textContent.trim().split(' ').pop()).join(',') === 'Undo,Redo,Filter',
+    kids.slice(2).map((n) => n.textContent).join('|'));
+}
 
 console.log('\nC-1: tag a whole block, and tag a highlighted passage');
 btn(blockEl(d, 'b-one'), 'tag').click();

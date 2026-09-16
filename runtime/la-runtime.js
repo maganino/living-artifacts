@@ -915,6 +915,14 @@
             + model.blocks.length + ' blocks · this is a view, the document is unchanged'
           : 'Saved · rev ' + model.rev
             + ' · click a block to edit, drag the handle to reorder, select text to tag it');
+    /* "Save now" sits at the LEFT end, before the flexible status, so it has a
+       fixed home and its appearing does not shift the other controls. */
+    if (!readOnly && pending.length) {
+      var save = el('button', 'la-btn primary', 'Save now');
+      save.title = 'Publish this round immediately (cmd+s)';
+      save.onclick = function () { doSave(); };
+      bar.appendChild(save);
+    }
     bar.appendChild(st);
     if (!readOnly) {
       var u = el('button', 'la-btn', '↶ Undo');
@@ -932,13 +940,9 @@
       f.disabled = !nTags;
       f.onclick = function (e) { e.stopPropagation(); toggleFilterMenu(); };
       bar.appendChild(u); bar.appendChild(r); bar.appendChild(f);
-      if (pending.length) {
-        var save = el('button', 'la-btn primary', 'Save now');
-        save.onclick = function () { doSave(); };
-        bar.appendChild(save);
-      }
     }
   }
+
   function status(msg, isErr) {
     var st = document.getElementById('la-status');
     if (!st) return;
