@@ -47,6 +47,7 @@ const embed = (model) => JSON.stringify(model, null, 2).replace(/</g, '\\u003c')
 export function styleBundle() {
   return readFileSync(join(REPO, 'runtime/house.css'), 'utf8') + '\n'
     + readFileSync(join(REPO, 'runtime/desk.css'), 'utf8') + '\n'
+    + readFileSync(join(REPO, 'runtime/brief.css'), 'utf8') + '\n'
     + readFileSync(join(REPO, 'runtime/la-style.css'), 'utf8');
 }
 export function runtimeSource() {
@@ -143,6 +144,16 @@ export function extractModel(html) {
   return JSON.parse(m[1].replace(/\\u003c/g, '<'));
 }
 
+/* The read-mode layouts, read out of the runtime's own TEMPLATES registry so
+ * there is one list and not two. A template added to the runtime is accepted
+ * here the moment it is registered there. */
+export function knownTemplates() {
+  const src = readFileSync(join(REPO, 'runtime/la-runtime.js'), 'utf8');
+  const block = src.match(/var TEMPLATES = \{([\s\S]*?)\n  \};/);
+  if (!block) throw new Error('cannot find the TEMPLATES registry in la-runtime.js');
+  return [...block[1].matchAll(/^\s*'([^']+)':/gm)].map((m) => m[1]);
+}
+
 /* --- validation: catch what only shows up after publishing ---------------- */
 export function validate(model) {
   const errs = [];
@@ -151,6 +162,9 @@ export function validate(model) {
     errs.push(`docId "${model.docId}" is not a legal db path segment`);
   if (!model.title) errs.push('title is required');
   if (!Array.isArray(model.blocks) || !model.blocks.length) errs.push('blocks must be a non-empty array');
+  if (model.template && !knownTemplates().includes(model.template))
+    errs.push(`template "${model.template}" is not a read-mode layout — known: ${knownTemplates().join(', ')}.`
+      + ' A document never brings its own layout; add one to the runtime instead.');
   const seen = new Set();
   for (const b of model.blocks ?? []) {
     if (!b.id) errs.push('every block needs a stable id');

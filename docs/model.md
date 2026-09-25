@@ -15,7 +15,9 @@ as a text diff.
   "title": "Data Completeness & Correctness",  // stable noun, not a step label
   "thread": "traffic-opportunities",  // optional grouping for the index
   "component": "Completeness",        // optional; decompose-problem-artifacts
-  "template": "desk-research",        // optional; read-mode layout, default is the house (PRD) layout
+  "template": "desk-research",        // optional; read-mode layout: house (default,
+                                     // tabbed spec) | desk-research | brief.
+                                     // Validated against the runtime's TEMPLATES registry.
   "url": "https://claude.ai/...",     // recorded on first publish, reused after
   "rev": 7,                           // increments on every save
   "updated": "3 edits by viewer · 2026-09-09",

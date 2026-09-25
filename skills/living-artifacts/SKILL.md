@@ -64,16 +64,11 @@ the organization — see the sharing constraint below.
    `raw` block and never an image dropped into prose. See *Diagrams and
    pictures* below; the short version is that the model stores the source and
    the words, never the rendering.
-3. **Build and publish.**
-   ```sh
-   node "$LA/runtime/build.mjs" build docs/<name>/<name>.doc.json /tmp/<name>.html
-   ```
-   Publish the built file with
-   `capabilities: {artifact: {}, db: {}, downloads: {}}`.
-   `artifact` lets the page save the reader's edits; `db` carries the journal;
-   `downloads` is what the `⤓` full-copy button calls — leave it out and that
-   button reports "Downloading is not available in this view", which is the
-   no-lock-in escape hatch quietly not existing.
+3. **Build and publish** by *Publishing a document: the fused form* below.
+   One artifact is both the editor and the published page; the shell form
+   (`build.mjs shell`) is the only one to use. Do not use `build.mjs build` for
+   a new document — it inlines the runtime into a single file, which was the
+   pre-fusion form and is kept only for the legacy documents and the tests.
 4. **Put the URL in your reply to the human**, on every publish and on every
    later republish. They cannot open what they cannot see, and a round that
    moves three surfaces needs three lines.
@@ -87,74 +82,89 @@ the organization — see the sharing constraint below.
    reader saves, the republish notification arrives here — that is the signal
    to read back, not a reason to act unasked.
 
+## Publishing a document: the fused form
+
+One artifact is both the editor and the published page. There is no separate
+shared copy any more and no exporter to run.
+
+1. Build the shell: `node runtime/build.mjs shell <doc.json> <outdir>` writes
+   `index.html`, `model.js`, and local copies of `runtime.js` and `style.css`
+   so the folder opens from disk exactly as it will publish.
+2. Publish with the Artifact tool: `file_path` the shell's `index.html`, `files`
+   mapping `model.js` to the local file and `runtime.js` and `style.css` to
+   `{artifact: <design-system url>, path: ...}`, so they are copied server side
+   and never uploaded or read back. Declare `capabilities: {artifact: {},
+   db: {}, downloads: true}` on the first publish.
+   The design system is https://claude.ai/code/artifact/1e1428f7-4fab-494a-98f5-58eaec6b2a6d.
+   After a runtime change: `node runtime/build.mjs ds <outdir>`, republish the
+   design system from that folder, then republish each document's two shared
+   files from it.
+3. Read back: `Artifact read` on the document, then `build.mjs extract` on the
+   saved `model.js` (the tool lists a multi-file artifact's files with
+   `scope: "files"` and saves one with `path`). The model file is the only file
+   that changes between the reader's saves, and the only one to read. Keep a
+   copy of it: it is the "what the reader saw" side of the next diff.
+4. Edit the model, then mark what changed by diff, never by hand:
+   `node runtime/mark-changes.mjs <last-seen.doc.json> <doc.json> --rev <next>`
+   writes word-level `touched.spans` per surface (a table cell as
+   `{cell, quote}`), clears stale claude marks and the reader's own amber
+   marks (their edits were read in this round). The `last-seen` file is the
+   copy the reader last *reviewed*, not necessarily the one they last saved
+   from: a save that only records control trials leaves the unread marks due.
+5. Republish: rebuild the shell, publish `index.html` with
+   `files: {"model.js": ...}` only. The two shared files are carried over. A
+   refusal means the reader saved in between: read the live `model.js`, merge
+   their ops (`layout`, `variant`, edits, notes, journal entries past your rev)
+   into the model, set `rev` above theirs, and publish again.
+
+The writer edits in the published layout itself: hover a block for its chrome
+(`tag`, `note`, delete), click to edit in place, drag to move, add at the end
+of a section. `Edit | Preview` in the bar is one toggle; switching keeps the
+scroll position. `Outline` is the flat block list for restructuring. A reader
+with the link gets the page and nothing else. Give the reader the same URL as
+the writer: there is one.
+
+Notes are granular: a block, a table cell, a flow step, a scope item, a metric
+card, or a selected passage (`+ note` on the selection, stored as
+`marks[].note`). Moving a level-3 or level-4 heading takes its blocks with it;
+a level-2 heading, a tab, moves alone; a drop lands before or after the target
+by the side the pointer is on, previewed live with a translucent copy under
+the pointer, the origin left as a hole until the drop; a card's middle means
+inside it, its edges beside it, where a plain block becomes a new card with a
+heading of its own. Width (`layout.w`) is set by dragging a block's or a
+card's right edge, snapped to quarter, third, half, two thirds or full, the
+block growing downward to keep its content;
+look (`variant`) is not on the chrome, the reader asks in a note and Claude
+sets it in the model. `+ Add` in the bar names a type, then a click places it
+anywhere; Escape on a block just added and left empty removes it again.
+
 ## Where the document lives, and when
 
 - **While it is being worked on, the published artifact is the only truth.**
   Every save mints an immutable version with a version picker, so an uncommitted
   document is not an unbacked one. Do not try to keep the repo in step round by
   round; it will drift and the drift is invisible.
-- **The repo holds the `.doc.json` as the seed, plus one built copy** at
-  `docs/<name>/<name>.editable.html`, rebuilt on every round so the pair is
-  visible next to the seed. It is derivable, never edited by hand, and never the
-  truth while the published page is under review. `dist/` stays gitignored.
+- **The repo holds the `.doc.json` as the seed, plus the built `shell/`** at
+  `docs/<name>/shell/`, rebuilt on every round so the pair is visible next to
+  the seed and the folder opens from disk exactly as it publishes. It is
+  derivable, never edited by hand, and never the truth while the published page
+  is under review. `dist/` stays gitignored.
 - **When the reader says the document is done**: read the live artifact, pull
   its model down over the `.doc.json`
-  (`node "$LA/runtime/build.mjs" extract <saved.html> <doc>.json`), export the final
-  static copy, commit that, and set the artefact record to `done`.
+  (`node "$LA/runtime/build.mjs" extract <saved model.js> <doc>.json`), rebuild
+  the shell, commit the seed and the shell, and set the artefact record to
+  `done`. There is no separate static copy to export.
 - **The reader can always take a full copy themselves** — the `⤓` button saves
   the whole living document, editor and model included, to their disk. Say so
   if they ask about lock-in; it is the honest answer.
 
-## Finishing: the shareable copy (superseded on 23 September 2026)
+## The shareable copy is gone
 
-**Read this section as history.** In the fused form there is no separate shared
-copy: the document's own read mode is the published page, and a reader with the
-link gets it. What follows applies only to documents published before the
-change, and to the two SSO artifacts kept for review. New documents follow
-"Publishing a document: the fused form" at the end of this file.
-
-**A review copy with the changes highlighted.** When a reviewer holds an
-older copy and asks what is new, build a copy from the source of the copy they
-hold plus only the confirmed changes, mark it with `mark-changes.mjs` against
-that source, set `publicMarks: true` and a one-line `publicMarksNote` on the
-model, give it its own `docId`, and publish it as a new artifact with
-`capabilities: {}`. Readers then see the purple words and rails, and nothing
-else of the working state. Never rebuild the copy they already hold.
-
-A living document cannot be shared outside the organization, because declaring
-`db` makes the artifact org-internal. The final hand-off is therefore always a
-separate, plain copy.
-
-**Two surfaces, one model.** The editable document and the shared copy are
-rendered from the same blocks and deliberately do not look alike. The editable
-one is a single column with no cards: a border between the reader and the text
-is a border between them and the edit they came to make. The shared copy is
-wider, tabbed, and laid out as cards, because it is read rather than driven.
-Everything that is decoration rather than content belongs to the shared copy
-only, and the rule for adding any of it is that it goes in `buildStatic`, never
-in a document.
-
-**The shared copy is tabbed, not folded.** One tab per top-level section, only
-one open at a time, with its own switching script and no editor. The living
-document folds because its reader is hunting for a section to edit; the reader
-of a shared copy wants a short page per subject and then to stop. Links into a
-closed tab open that tab, and printing reveals every panel. The cost to know
-about: moving a section between tabs orphans any comment anchored to it, which
-is tolerable on a copy that is replaced rather than edited.
-
-```sh
-node "$LA/runtime/build.mjs" export <doc>.json --tags dev,eng out.html  # those labels
-node "$LA/runtime/build.mjs" export <doc>.json out.html                 # everything
-```
-
-It renders through the page's own renderer (booted headlessly), so the export
-can never drift from what the reader saw. No editor, no model, no `db`.
-
-Then **publish each shared version as its own artifact** — a new URL, not a
-republish of the living one and not an overwrite of a previous share — declaring
-no capabilities at all (`capabilities: {}`). Add a row to the artefact record's
-*Shared versions* table: date, labels, URL, who it went to. The history of what
-was shared with whom is worth more than a tidy URL list.
+There is no separate shared copy and no exporter to run. The document's read
+mode *is* the published page, and a reader with the link gets it. Two SSO
+artifacts published before 23 September 2026 still carry the old two-surface
+form; everything else follows *Publishing a document* above. The procedure that
+used to live here is in git history if a legacy document ever needs it.
 
 ## Reading back — the whole point
 
@@ -499,6 +509,50 @@ answer.
   sense; regenerating from the ops is Execution. Don't collapse them into one
   step — the read-back gate is where the round is won or lost.
 
+## Choosing the template
+
+The look is always Verbolia and is not a decision. The **template** is the
+decision, and the document's purpose makes it. Set it with `"template"` on the
+model; leaving it out means `house`.
+
+| Purpose | `template` | What the reader gets |
+|---|---|---|
+| a PRD, a spec, a proposal | `house` (default) | tabs, one subject at a time, a hero with the thesis and the open questions |
+| research, analysis, an audit, a findings report | `desk-research` | one long page, sticky nav with a scroll-spy, stat tiles, bars, tiers, donuts, a grouped inventory table |
+| a one-pager, a memo, a short recommendation | `brief` | the house look with the tabs unfolded into one continuous page, read top to bottom |
+
+Three rules around it:
+
+- **When no template fits, say so and use `house`.** Do not invent a layout
+  inside a document. A document that styles itself is the failure this repo
+  exists to prevent, and the next document will need the same thing anyway.
+- **The template is a view, not content.** Changing it never touches a block,
+  so a brief that grows into a spec becomes one by changing one field and
+  republishing. Offer that rather than rewriting the document.
+- **`build.mjs` rejects an unknown template** and names the known ones. The
+  list comes from the runtime's own `TEMPLATES` registry, so there is one list
+  and not two.
+
+There is no presentation or deck template. A deck is not a living document —
+it has no blocks a reader edits as prose — so a request for one is a request
+for a different tool, and saying so is the honest answer.
+
+## The brief template
+
+The one-pager. Every level-2 heading becomes a labelled band on a single page
+instead of a tab, the sub-nav becomes a quiet row of jump links, and the
+measure narrows to 820px. Everything else is inherited from the house look on
+purpose.
+
+Two differences worth knowing:
+
+- **A level-2 heading is editable in place here**, as it is in
+  `desk-research` and is not in the tabbed layout, where it renders as a tab
+  button. `preflight.mjs` reports that gap on a house document rather than
+  failing it.
+- **It prints as one piece.** Bands do not break across a page, and the top bar
+  is dropped, because a one-pager is pasted and printed more often than a spec.
+
 ## The desk-research template
 
 A second read-mode layout, for research and analysis pages rather than
@@ -536,58 +590,3 @@ How the model maps onto it:
 Everything degrades to plain text when the reader edits a block into another
 shape, so nothing here is a constraint on editing.
 
-## Publishing a document: the fused form
-
-One artifact is both the editor and the published page. There is no separate
-shared copy any more and no exporter to run.
-
-1. Build the shell: `node runtime/build.mjs shell <doc.json> <outdir>` writes
-   `index.html`, `model.js`, and local copies of `runtime.js` and `style.css`
-   so the folder opens from disk exactly as it will publish.
-2. Publish with the Artifact tool: `file_path` the shell's `index.html`, `files`
-   mapping `model.js` to the local file and `runtime.js` and `style.css` to
-   `{artifact: <design-system url>, path: ...}`, so they are copied server side
-   and never uploaded or read back. Declare `capabilities: {artifact: {},
-   db: {}, downloads: true}` on the first publish.
-   The design system is https://claude.ai/code/artifact/1e1428f7-4fab-494a-98f5-58eaec6b2a6d.
-   After a runtime change: `node runtime/build.mjs ds <outdir>`, republish the
-   design system from that folder, then republish each document's two shared
-   files from it.
-3. Read back: `Artifact read` on the document, then `build.mjs extract` on the
-   saved `model.js` (the tool lists a multi-file artifact's files with
-   `scope: "files"` and saves one with `path`). The model file is the only file
-   that changes between the reader's saves, and the only one to read. Keep a
-   copy of it: it is the "what the reader saw" side of the next diff.
-4. Edit the model, then mark what changed by diff, never by hand:
-   `node runtime/mark-changes.mjs <last-seen.doc.json> <doc.json> --rev <next>`
-   writes word-level `touched.spans` per surface (a table cell as
-   `{cell, quote}`), clears stale claude marks and the reader's own amber
-   marks (their edits were read in this round). The `last-seen` file is the
-   copy the reader last *reviewed*, not necessarily the one they last saved
-   from: a save that only records control trials leaves the unread marks due.
-5. Republish: rebuild the shell, publish `index.html` with
-   `files: {"model.js": ...}` only. The two shared files are carried over. A
-   refusal means the reader saved in between: read the live `model.js`, merge
-   their ops (`layout`, `variant`, edits, notes, journal entries past your rev)
-   into the model, set `rev` above theirs, and publish again.
-
-The writer edits in the published layout itself: hover a block for its chrome
-(`tag`, `note`, delete), click to edit in place, drag to move, add at the end
-of a section. `Edit | Preview` in the bar is one toggle; switching keeps the
-scroll position. `Outline` is the flat block list for restructuring. A reader
-with the link gets the page and nothing else. Give the reader the same URL as
-the writer: there is one.
-
-Notes are granular: a block, a table cell, a flow step, a scope item, a metric
-card, or a selected passage (`+ note` on the selection, stored as
-`marks[].note`). Moving a level-3 or level-4 heading takes its blocks with it;
-a level-2 heading, a tab, moves alone; a drop lands before or after the target
-by the side the pointer is on, previewed live with a translucent copy under
-the pointer, the origin left as a hole until the drop; a card's middle means
-inside it, its edges beside it, where a plain block becomes a new card with a
-heading of its own. Width (`layout.w`) is set by dragging a block's or a
-card's right edge, snapped to quarter, third, half, two thirds or full, the
-block growing downward to keep its content;
-look (`variant`) is not on the chrome, the reader asks in a note and Claude
-sets it in the model. `+ Add` in the bar names a type, then a click places it
-anywhere; Escape on a block just added and left empty removes it again.
