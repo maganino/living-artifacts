@@ -192,11 +192,152 @@ thread you did not activate" tax no longer applies to ordinary review.
 - A Claude republish during a review round rejects the reader's save with
   `conflict`. The runtime stashes their unsaved ops in `sessionStorage` and
   shows them back, but they must re-apply them — so don't republish mid-round.
-- No `assets` capability on this account: v2 images get downscaled in-browser
-  and stored in `db`, not embedded as data URIs, to stay under the 16 MB limit.
+- ~~No `assets` capability on this account~~ — **wrong as of 2026-09-16.**
+  `assets` is available and is the right home for a real plot: upload it, put
+  the returned URL in a `figure` block's `src`. The model rides inside the page
+  on every save, so a data URI is paid for on every write; keep those small.
 
 ## What v1 deliberately does not have
 
-Images, freehand drawing, typed sketches, the cross-document index, static
-audience export, and drag-to-reorder (v1 uses ↑/↓, which is reliable in a
-sandboxed frame). Each is a v2/v3 item, not an oversight.
+Freehand drawing, typed sketches and the cross-document index. Each is a v2/v3
+item, not an oversight. Drag-to-reorder, static audience export and images have
+since landed.
+
+## 2026-09-16 — tables, diagrams and figures
+
+Three changes, one rule holding them together: **a new way to edit is never a
+new kind of operation.** Every editor, whatever its shape, produces one source
+string and records one `edit` op carrying `before` and `after`, so undo, the
+journal and the read-back learned nothing new.
+
+- **Tables are edited as a grid**, one input per cell, enter walking down a
+  column, `×` dropping a row or column. The old tab-separated textarea is still
+  there behind `as text`, because pasting a table in from elsewhere is a real
+  thing and a grid is bad at it. The grid serialises back to exactly that TSV.
+- **`mermaid` blocks** draw a diagram from source the reader can open and edit
+  by clicking it. The model stores the source, never the SVG. Mermaid 11.15.0
+  loads from cdnjs on demand and only when a document holds a diagram — the
+  runtime's one external dependency, and it degrades to the source text rather
+  than to a blank. A static export emits `<pre class="mermaid">` and lets the
+  artifact viewer draw it, so a shared copy needs no runtime and no library.
+- **`figure` blocks** carry a picture Claude drew and the reader cannot edit,
+  plus the words printed on it — caption, alt, and a `labels` map of *where on
+  the picture* to *what it reads*. Editing a label is an ordinary `edit` op and
+  a redraw request; acting on it means regenerating the image and replacing
+  `src`. A figure with a caption and no `src` is how a chart gets asked for.
+
+Rejected: a visual diagram editor, where the reader drags boxes around the
+chart itself. It is the complete answer and it is also a second application.
+The workflow that wins instead is cheaper and already works — mark the diagram
+up by hand, send the photo, Claude rewrites the source; or, for wording, edit
+the source directly, which is faster than describing the change.
+
+## 2026-09-16 — sections fold, and carry the template's own brief
+
+Asked for on the SSO PRD and taken as a general rule, because every document
+that follows a template has the same two problems: the reader cannot see its
+shape, and the reader does not know what a section is supposed to contain.
+
+- **Folding.** Headings delimit sections; the document opens as an outline,
+  leaf sections closed, container sections open. Four collapsed lines was the
+  first attempt and it was a table of contents for a table of contents — the
+  useful default shows every section NAME with what it is holding. A closed
+  section reports its block count, what changed, what is tagged and what
+  carries a note, so folding never hides signal. It is a view: it never
+  reaches the model or the journal, and a filter beats a fold.
+- **`info` on a heading** — an ⓘ carrying what the section is for, taken
+  **verbatim from the template the document follows** rather than paraphrased.
+  Edited as the heading's second paragraph, the shape `callout` already uses.
+  Where the template describes nothing, the ⓘ is absent rather than invented.
+- **Empty sections keep their heading** and render `<>`, which starts a block
+  when clicked. Carrying the template's unused sections is the point: a
+  missing section is forgotten, an empty one is a decision the reader owns.
+
+Also fixed: the changed-since-last-round gutter was an inset shadow, which
+followed the block's 8px corners and drew a bracket. At outline density, with
+most rows changed, it read as damage. It is now its own bar.
+
+## 2026-09-16 — the Verbolia design system, and section provenance
+
+- **The palette is Verbolia's, in the runtime, for every document.** `--teal`
+  becomes black (links, focus, the solid-black CTA), `--amber` becomes Verbolia
+  orange and carries "changed", `--rose` becomes Verbolia red. Lexend loads by
+  `@import` inside `#la-style`, which is the only place that survives the page
+  republishing itself — a `<link>` in the head would be dropped by
+  `buildDocument()`. Controls are fully round, headings are Extra Light.
+  `--on-accent` is new: the primary button had `color: #fff` hardcoded, which
+  breaks the moment the accent is white in dark mode.
+- **`badge` on a heading** — provenance, shown beside the title. Written for
+  "which of these sections does the Jira template require?", and the answer is
+  legible because the badged ones carry it and the invented ones do not.
+- **Section separation** — depth-based indentation from the fold chain, a rule
+  above every top-level section, and a tint on an open section's heading. The
+  model stays flat; only the rendering nests.
+
+## 2026-09-16 — the shared copy is tabbed
+
+The living page folds, the export tabs. Two readers, two jobs: the first is
+looking for one section to change, the second wants to read a subject and stop.
+Tabs cost nothing on a copy that has no editor, and they were the one thing
+worth taking from the other PRD skill in the team, which is tabbed throughout.
+
+Also fixed: `export` reported "45 of 137 blocks" because it counted blocks
+visible in the DOM and folding had hidden the rest. The count now comes from the
+model. The file was always complete, only the number was wrong.
+
+## 2026-09-17 — labels over claims, and a violet for state
+
+Both came from reading the other PRD skill in the team
+(`bpfsteam/product-team-processes`) against a document built here.
+
+- **`eyebrow` on a heading.** Their pages put a small label over a heading that
+  states a claim, and it is the single biggest readability difference between
+  the two. Ported as a heading field rather than as a convention, so it is
+  editable and survives a round.
+- **The surface is theirs now**: grey page, white cards, anthracite text. Two
+  PRDs from the same team should not look like two products.
+- **Changed blocks are violet**, `#6E56CF` light and `#A392F9` dark,
+  deliberately outside the brand palette. Orange was doing double duty as both
+  "highlight" and "changed since you looked", and the brand's four accents are
+  spoken for by meaning. State is not meaning, so it gets its own hue.
+- **What we did not take**: their multi-column card layout. It suits a page that
+  is read; a page that is edited wants one column and an obvious click target.
+
+The lesson worth keeping: the drift happened because the look was rebuilt from
+a rendered example instead of from their template, which already carried every
+component as a reusable piece. Read the template, not the screenshot.
+
+## 2026-09-17 — the export gets the design, the editor keeps the column
+
+Asked for directly: cards, multi-column and the brand treatment belong to the
+published copy, not to the page being written. That is the right line and it is
+now the rule. The export renders sub-sections as cards on the grey page, pairs
+short ones two to a row, keeps anything holding a table, a figure or a diagram
+full width, and opens with a hero. The editable page is untouched.
+
+Two bugs found while doing it, both in the export:
+
+- A deep link never opened its tab. The handler built the id as
+  `"t" + location.hash`, which is `t#h-problem` rather than `t-h-problem`, so
+  every link into a closed tab silently did nothing.
+- The hero kicker printed the model's `updated` field, which is a working note
+  about which round produced the document. A shared copy now says what it is and
+  the date it was cut.
+
+Also worth recording, because it cost a round: eyebrows looked missing in the
+published copy. They were there. The first tab is the summary, which holds the
+thesis and the meta table and no sections at all, so nothing on the opening
+screen carries one.
+
+## 2026-09-17 — jump links inside a tab
+
+Missing from the first pass at the shared copy and asked for directly: a tab is
+a long page, and the tabs alone do not get a reader to a section. Each tab now
+opens with a sticky row of jump links, named by each section's label. This is
+the second job the label does, and the reason a claim cannot replace it: a
+sentence makes a poor pill.
+
+It also surfaced a naming collision the document could not show on its own. Two
+sections both carried the label "Unknowns", one open and one answered, which
+read fine as headings and read as a duplicate in a nav. The nav is a second
+proof-reader for section names.

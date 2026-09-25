@@ -1,0 +1,161 @@
+{
+ "v": 1,
+ "docId": "blocks-demo",
+ "title": "Tables, diagrams and figures",
+ "thread": "living-artifacts",
+ "component": "Runtime demo",
+ "rev": 1,
+ "updated": "first pass · 2026-09-16",
+ "style": {
+  "directives": []
+ },
+ "blocks": [
+  {
+   "id": "b-lede",
+   "type": "para",
+   "author": "claude",
+   "tags": [],
+   "text": "Three things a living document could not hold until now: a table you edit as a table, a diagram that draws itself from the text behind it, and a picture whose words you own even though the picture is mine. Drive all three on this page — it is a scratch document, nothing here matters."
+  },
+  {
+   "id": "b-h1",
+   "type": "heading",
+   "level": 2,
+   "author": "claude",
+   "tags": [],
+   "text": "A table is edited as a table"
+  },
+  {
+   "id": "b-t1",
+   "type": "para",
+   "author": "claude",
+   "tags": [],
+   "text": "Click the table below. Every cell is its own box. Enter walks down a column and makes a new row at the bottom. The **×** on a heading drops that column, the one at the end of a row drops the row. **as text** hands back the old tab-separated form for pasting a table in from somewhere else, and **as a grid** comes back."
+  },
+  {
+   "id": "b-t2",
+   "type": "table",
+   "author": "claude",
+   "tags": [],
+   "head": [
+    "Step",
+    "Ships",
+    "Who",
+    "Effort"
+   ],
+   "rows": [
+    [
+     "1",
+     "Sign-in works at all",
+     "Verbolia staff, Google Workspace",
+     "4.5–5.5 d"
+    ],
+    [
+     "2",
+     "The first customer",
+     "Dior, on Okta",
+     "2 d"
+    ],
+    [
+     "3",
+     "Removing a person removes access",
+     "Everyone already live",
+     "not estimated"
+    ]
+   ]
+  },
+  {
+   "id": "b-t3",
+   "type": "para",
+   "author": "claude",
+   "tags": [],
+   "text": "A row left entirely empty is not kept when the grid closes — the same rule the text form has always had. Fill it or it goes."
+  },
+  {
+   "id": "b-h2",
+   "type": "heading",
+   "level": 2,
+   "author": "claude",
+   "tags": [],
+   "text": "A diagram is a view of its text"
+  },
+  {
+   "id": "b-m1",
+   "type": "para",
+   "author": "claude",
+   "tags": [],
+   "text": "Click the diagram: it opens the mermaid source, which is all the model ever stores. Edit the text, click away, and it redraws. If the source does not parse, the page says so and shows the text rather than going blank."
+  },
+  {
+   "id": "b-m2",
+   "type": "mermaid",
+   "author": "claude",
+   "tags": [],
+   "text": "flowchart TB\n  A[Email typed] --> B{domain on SSO?}\n  B -- yes --> C[Continue with provider]\n  B -- no --> D[Password field, as today]\n  C --> E[Provider authenticates]\n  E --> F{account already invited?}\n  F -- yes --> G[Signed in]\n  F -- no --> H[Refused and audited]"
+  },
+  {
+   "id": "b-m3",
+   "type": "para",
+   "author": "claude",
+   "tags": [],
+   "text": "For a redraw by hand: mark it up on paper, send me the photo, and I rewrite the source. For a wording change, the source is right there and faster to edit than to describe."
+  },
+  {
+   "id": "b-h3",
+   "type": "heading",
+   "level": 2,
+   "author": "claude",
+   "tags": [],
+   "text": "A figure keeps its words editable"
+  },
+  {
+   "id": "b-f1",
+   "type": "para",
+   "author": "claude",
+   "tags": [],
+   "text": "The picture is drawn outside the page and cannot be edited here. What can be edited is every word printed on it. Click the figure: caption, alt text, and one row per label — the name says where on the picture it sits, the value says what it reads. Changing one records an edit the same way any other block does, which is how I know to redraw."
+  },
+  {
+   "id": "b-f2",
+   "type": "figure",
+   "author": "claude",
+   "tags": [],
+   "src": "",
+   "alt": "Identity providers across the customer base, by number of identities",
+   "caption": "What the customers run — 949 identities across 234 domains",
+   "labels": {
+    "title": "Identity providers in the customer base",
+    "y axis": "Identities",
+    "x axis": "Provider",
+    "note": "Google Workspace is 6 identities — ours"
+   }
+  },
+  {
+   "id": "b-f3",
+   "type": "para",
+   "author": "claude",
+   "tags": [],
+   "text": "This one has no picture yet, which is itself a legitimate state: a figure with a caption and no image is how you ask for a chart. Add one from the row at the bottom and write the caption as the request."
+  },
+  {
+   "id": "b-h4",
+   "type": "heading",
+   "level": 2,
+   "author": "claude",
+   "tags": [],
+   "text": "What did not change"
+  },
+  {
+   "id": "b-end",
+   "type": "list",
+   "author": "claude",
+   "tags": [],
+   "items": [
+    "Every editor still ends in one `edit` op carrying before and after. Undo, the journal and the read-back learned nothing new.",
+    "A click outside keeps the work, escape discards it — the grid and the figure form make the same bargain the textarea always made.",
+    "The model holds source, never rendering: mermaid text, never the drawn SVG.",
+    "A static export hands the viewer a `<pre class=\"mermaid\">` and lets it draw the diagram itself, so a shared copy needs no runtime."
+   ]
+  }
+ ]
+}

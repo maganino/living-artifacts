@@ -1,0 +1,270 @@
+/* The house look: Alicia's PRD template stylesheet, comments stripped and every
+   rule scoped under .house so it never leaks into the editor. Read mode renders
+   the same class names the exporter used, so this is the one stylesheet for
+   the published look. The editor chrome lives in la-style.css. Regenerated from
+   the template by build.mjs house; do not edit by hand. */
+:root { --bg: #F6F6F6; --surface: #FFFFFF; --surface-2: #EDEDED; --text: #454545; --muted: #6D6D6D; --border: #D1D1D1; --red: #D9414E; --orange: #FC6E1C; --yellow: #FDAB1D; --green: #12B31F; --red-text: #C2353F; --orange-text: #C4530E; --yellow-text: #A66E00; --green-text: #0E8A18; --code-bg: #EFEEEE; --shadow: 0 1px 2px rgba(69, 69, 69, 0.06), 0 6px 20px rgba(69, 69, 69, 0.05); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #1F1F1F; --surface: #2A2A2A; --surface-2: #353535; --text: #F6F6F6; --muted: #B9B9B9; --border: #454545; --red-text: #F06A75; --orange-text: #FC8A47; --yellow-text: #FDBE4F; --green-text: #3FCB4A; --code-bg: #333333; --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 20px rgba(0, 0, 0, 0.25); }
+}
+:root[data-theme="dark"] { --bg: #1F1F1F; --surface: #2A2A2A; --surface-2: #353535; --text: #F6F6F6; --muted: #B9B9B9; --border: #454545; --red-text: #F06A75; --orange-text: #FC8A47; --yellow-text: #FDBE4F; --green-text: #3FCB4A; --code-bg: #333333; --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 20px rgba(0, 0, 0, 0.25); }
+.house * { box-sizing: border-box; }
+.house { margin: 0; background: var(--bg); color: var(--text); font-family: 'Lexend', 'Segoe UI', Helvetica, Arial, sans-serif; font-weight: 300; font-size: 15px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+.house code, .house .mono { font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.86em; background: var(--code-bg); color: var(--text); padding: 0.1em 0.4em; border-radius: 4px; }
+.house h1, .house h2, .house h3, .house h4 { font-weight: 600; line-height: 1.2; text-wrap: balance; margin: 0; }
+.house h2 { font-size: 1.6rem; }
+.house h3 { font-size: 1.1rem; font-weight: 600; }
+.house p { margin: 0; }
+.house a { color: inherit; }
+.house strong { font-weight: 600; }
+.house .eyebrow { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--red-text); }
+.house .eyebrow a { color: inherit; text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: 3px; }
+.house .muted { color: var(--muted); }
+.house .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+.house .topbar { position: sticky; top: 0; z-index: 10; background: var(--surface); border-bottom: 1px solid var(--border); }
+.house .topbar .wrap { display: flex; align-items: center; gap: 20px; height: 52px; }
+.house .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 0.9rem; white-space: nowrap; }
+.house .brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--red); }
+.house .brand .sep { color: var(--border); }
+.house .brand .doc { font-weight: 400; color: var(--muted); }
+.house nav.sections { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; margin-left: auto; }
+.house nav.sections::-webkit-scrollbar { display: none; }
+.house nav.sections a { text-decoration: none; font-size: 0.78rem; font-weight: 500; color: var(--muted); padding: 6px 10px; border-radius: 999px; white-space: nowrap; }
+.house nav.sections a:hover, .house nav.sections a:focus-visible { color: var(--text); background: var(--surface-2); outline: none; }
+.house .hero { padding: 56px 0 40px; }
+.house .hero-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 40px; align-items: start; }
+.house .hero h1 { font-size: clamp(2rem, 4vw, 3rem); font-weight: 700; letter-spacing: -0.01em; margin: 10px 0 18px; }
+.house .hero h1 .mark { display: inline-block; width: 0.5em; height: 0.5em; background: var(--red); border-radius: 3px; margin-left: 0.15em; vertical-align: baseline; }
+.house .thesis { font-size: 1.15rem; font-weight: 400; line-height: 1.55; max-width: 34ch; }
+.house .meta-row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 22px; font-size: 0.82rem; color: var(--muted); }
+.house .meta-row b { color: var(--text); font-weight: 500; }
+.house .question-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 22px 24px; box-shadow: var(--shadow); }
+.house .question-card .label { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.house .question-card .qs { margin: 10px 0 18px; padding: 0; list-style: none; display: grid; gap: 10px; }
+.house .question-card .qs li { font-size: 1.1rem; font-weight: 500; line-height: 1.35; padding-left: 16px; border-left: 3px solid var(--red); }
+.house .io { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: center; }
+.house .io .box { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 0.8rem; line-height: 1.45; background: var(--bg); }
+.house .io .box .t { font-weight: 600; font-size: 0.78rem; margin-bottom: 4px; }
+.house .io .arrow { color: var(--muted); font-size: 1.3rem; }
+.house .io .box.in { border-left: 3px solid var(--orange); }
+.house .io .box.out { border-left: 3px solid var(--green); }
+.house .question-card .note { margin-top: 14px; font-size: 0.8rem; color: var(--muted); }
+.house section { padding: 44px 0; border-top: 1px solid var(--border); }
+.house .sec-head { display: flex; flex-direction: column; gap: 6px; margin-bottom: 26px; }
+.house .sec-head p { max-width: 74ch; color: var(--muted); font-weight: 300; }
+.house .sub-head { display: flex; flex-direction: column; gap: 4px; margin: 30px 0 16px; }
+.house .sub-head h3 { font-size: 1.05rem; }
+.house .sub-head p { font-size: 0.88rem; color: var(--muted); max-width: 80ch; }
+.house .blocks { display: flex; flex-direction: column; gap: 18px; align-items: stretch; }
+.house .blocks > p { max-width: 82ch; }
+.house .blocks > ul, .house .blocks > ol { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 7px; max-width: 82ch; }
+.house .blocks > .sub-head { margin: 16px 0 -4px; }
+.house .blocks > .sub-head:first-child { margin-top: 0; }
+.house .cite-wrap { position: relative; display: inline; }
+.house .cite { font: inherit; color: inherit; cursor: pointer; padding: 0 1px; display: inline; text-align: inherit; background: color-mix(in srgb, var(--yellow, #E8B931) 22%, transparent); border: 0; border-bottom: 1px dotted currentColor; border-radius: 2px; }
+.house .cite::after { content: "\2139"; font-size: 0.7em; vertical-align: super; margin-left: 2px; opacity: 0.65; }
+.house .cite:hover { background: color-mix(in srgb, var(--yellow, #E8B931) 38%, transparent); }
+.house .cite[aria-expanded="true"] { background: color-mix(in srgb, var(--yellow, #E8B931) 45%, transparent); }
+.house .cite-pop { position: absolute; z-index: 30; left: 0; top: calc(100% + 8px); display: block; width: min(30rem, 78vw); background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; box-shadow: 0 10px 34px rgba(0, 0, 0, 0.16); font-size: 0.85rem; line-height: 1.5; font-weight: 400; text-align: left; white-space: normal; cursor: auto; }
+.house .cite-pop[hidden] { display: none; }
+.house .cite-h { display: block; font-weight: 650; font-size: 0.8rem; margin-bottom: 10px; }
+.house .cite-g { display: grid; grid-template-columns: 6.5rem 1fr; gap: 6px 14px; }
+.house .cite-k { font-size: 0.68rem; font-weight: 650; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); padding-top: 2px; }
+.house .cite-v { display: block; }
+.house .cite-step { display: block; margin-bottom: 3px; padding-left: 1.4em; text-indent: -1.4em; }
+.house .cite-step i { font-style: normal; color: var(--muted); margin-right: 0.5em; }
+@media (max-width: 640px) {
+  .house .cite-pop { position: fixed; left: 12px; right: 12px; width: auto; top: auto; bottom: 12px; }
+  .house .cite-g { grid-template-columns: 1fr; gap: 2px; }
+  .house .cite-k { margin-top: 8px; }
+}
+.house .scenario { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px 22px; }
+.house .scenario h4 { font-size: 0.97rem; font-weight: 650; margin: 0 0 10px; }
+.house .scenario .fields { display: grid; grid-template-columns: 8.5rem 1fr; gap: 6px 16px; margin: 0; align-items: baseline; }
+.house .scenario .fields dt { font-size: 0.72rem; font-weight: 650; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.house .scenario .fields dd { margin: 0; max-width: 78ch; }
+.house .scenario > p { margin-top: 10px; max-width: 78ch; }
+@media (max-width: 640px) {
+  .house .scenario .fields { grid-template-columns: 1fr; gap: 2px; }
+  .house .scenario .fields dd { margin-bottom: 8px; }
+}
+.house .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.house .grid-2 { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
+.house .grid-2 > * { grid-column: span 6; min-width: 0; }
+.house .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px; display: flex; flex-direction: column; gap: 8px; }
+.house .card h3 { font-size: 1rem; }
+.house .card p { font-size: 0.9rem; color: var(--text); }
+.house .card .sub { font-size: 0.82rem; color: var(--muted); }
+.house .card .kicker { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.house .card .src { font-size: 0.76rem; color: var(--muted); }
+.house .card .src a { color: var(--muted); }
+.house blockquote { margin: 6px 0 0; padding: 10px 14px; border-left: 3px solid var(--red); background: color-mix(in srgb, var(--red) 6%, var(--surface)); font-size: 0.88rem; font-weight: 300; line-height: 1.5; border-radius: 0 8px 8px 0; }
+.house blockquote cite { display: block; margin-top: 6px; font-style: normal; font-size: 0.74rem; color: var(--muted); }
+.house .context-strip { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
+.house .context-strip > * { grid-column: span 4; min-width: 0; }
+.house .context-strip .card { border-top: 3px solid var(--red); }
+.house figure { margin: 0; }
+.house figure svg { width: 100%; height: auto; display: block; color: var(--text); font-family: 'Lexend', sans-serif; }
+.house figure .mono-t { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+.house figcaption { margin-top: 12px; font-size: 0.84rem; color: var(--muted); max-width: 80ch; }
+.house .diagram-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 22px; overflow-x: auto; }
+.house .steps { display: grid; gap: 10px; counter-reset: step; }
+.house .steps.six { grid-template-columns: repeat(6, 1fr); }
+.house .steps.five { grid-template-columns: repeat(5, 1fr); }
+.house .steps.four { grid-template-columns: repeat(4, 1fr); }
+.house .step { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 14px 16px; position: relative; display: flex; flex-direction: column; gap: 6px; min-height: 150px; }
+.house .step::before { counter-increment: step; content: counter(step); font-size: 0.72rem; font-weight: 600; color: var(--muted); letter-spacing: 0.05em; }
+.house .step .who { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.house .step h4 { font-size: 0.92rem; font-weight: 600; }
+.house .step p { font-size: 0.78rem; color: var(--muted); line-height: 1.45; }
+.house .step.t1 { border-top: 3px solid var(--orange); }
+.house .step.ex { border-top: 3px solid var(--green); }
+.house .step.ai { border-top: 3px solid var(--border); }
+.house .step.rm { border-top: 3px dashed var(--muted); border-style: dashed; }
+.house .step .who.t1 { color: var(--orange-text); }
+.house .step .who.ex { color: var(--green-text); }
+.house .step .who.ai, .house .step .who.rm { color: var(--muted); }
+.house .legend { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 16px; font-size: 0.78rem; color: var(--muted); }
+.house .legend span::before { content: ''; display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 7px; vertical-align: -2px; }
+.house .legend .l-t1::before { background: var(--orange); }
+.house .legend .l-ex::before { background: var(--green); }
+.house .legend .l-ai::before { background: var(--border); }
+.house .legend .l-rm::before { border: 2px dashed var(--muted); box-sizing: border-box; }
+.house .endpoint { border-radius: 14px; border: 1px solid var(--border); background: var(--surface); overflow: hidden; display: flex; flex-direction: column; }
+.house .endpoint header { padding: 18px 22px 14px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; border-top: 4px solid var(--orange); }
+.house .endpoint .tier { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--orange-text); }
+.house .endpoint .path { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 0.86rem; word-break: break-all; }
+.house .endpoint .path .m { font-weight: 500; color: var(--green-text); margin-right: 8px; }
+.house .endpoint .summary { font-weight: 500; font-size: 1.02rem; }
+.house .endpoint .body { padding: 16px 22px 20px; display: grid; grid-template-columns: 1.3fr 1fr; gap: 24px; }
+.house .endpoint h4 { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.house .endpoint ul { margin: 0; padding-left: 18px; font-size: 0.86rem; display: grid; gap: 6px; }
+.house .params { display: grid; grid-template-columns: minmax(170px, auto) 1fr; gap: 10px 14px; font-size: 0.82rem; margin: 0; }
+.house .params dt { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 0.76rem; padding-top: 2px; }
+.house .params dd { margin: 0; }
+.house .params dd .why { display: block; color: var(--muted); font-size: 0.78rem; }
+.house .params dd .meta { display: block; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 0.72rem; color: var(--muted); margin-top: 3px; }
+.house .params dt .q { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: var(--yellow); color: #454545; font-family: 'Lexend', sans-serif; font-size: 0.7rem; font-weight: 700; margin-left: 6px; vertical-align: middle; cursor: help; }
+.house .examples { display: grid; grid-template-columns: 1fr 1.25fr; gap: 16px; margin-top: 16px; }
+.house .examples > div { min-width: 0; }
+.house .examples h4 { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.house pre.json { margin: 0; max-width: 100%; background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 0.74rem; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text); }
+.house pre.json .c { color: var(--muted); }
+.house pre.json + pre.json { margin-top: 10px; }
+.house .deferred { border: 1px dashed var(--border); border-radius: 12px; padding: 16px 20px; display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: start; color: var(--muted); font-size: 0.88rem; margin-top: 18px; }
+.house .deferred .tag { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; white-space: nowrap; }
+.house .consumers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.house .consumer { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.house .consumer .ico { width: 34px; height: 34px; border-radius: 8px; display: grid; place-items: center; flex: none; background: color-mix(in srgb, var(--red) 10%, var(--surface)); color: var(--red-text); font-weight: 600; font-size: 0.78rem; }
+.house .consumer h4 { font-size: 0.9rem; font-weight: 600; }
+.house .consumer p { font-size: 0.8rem; color: var(--muted); }
+.house .split { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+.house .list { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.house .list li { position: relative; padding-left: 28px; font-size: 0.92rem; }
+.house .list li::before { content: ''; position: absolute; left: 0; top: 5px; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--green); box-sizing: border-box; }
+.house .metric { display: grid; grid-template-columns: 1fr; gap: 2px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.house .metric:last-child { border-bottom: 0; }
+.house .metric .name { font-weight: 500; font-size: 0.92rem; }
+.house .metric .how { font-size: 0.8rem; color: var(--muted); }
+.house .baseline { margin-top: 18px; padding: 14px 16px; border-radius: 10px; background: color-mix(in srgb, var(--yellow) 14%, var(--surface)); border: 1px solid color-mix(in srgb, var(--yellow) 50%, var(--border)); font-size: 0.84rem; }
+.house .baseline b { display: block; font-weight: 600; margin-bottom: 4px; }
+.house .scope { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.house .scope .card ul { margin: 0; padding-left: 0; list-style: none; display: grid; gap: 8px; font-size: 0.88rem; }
+.house .scope .card li { position: relative; padding-left: 28px; }
+.house .scope .in li::before { content: ''; position: absolute; left: 0; top: 6px; width: 12px; height: 12px; background: var(--green); border-radius: 3px; }
+.house .scope .out li::before { content: ''; position: absolute; left: 0; top: 6px; width: 12px; height: 12px; border: 2px solid var(--border); border-radius: 3px; box-sizing: border-box; }
+.house .scope .in { border-top: 3px solid var(--green); }
+.house .scope .out { border-top: 3px solid var(--border); }
+.house .std { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 24px; font-size: 0.86rem; }
+.house .std div { position: relative; padding: 8px 0 8px 28px; border-bottom: 1px solid var(--border); }
+.house .std div::before { content: '✓'; position: absolute; left: 0; top: 8px; color: var(--green-text); font-weight: 700; }
+.house .tbl-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.house table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.house th, .house td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.house th { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); background: var(--surface-2); }
+.house tr:last-child td { border-bottom: 0; }
+.house .pill { display: inline-block; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.house .pill.high { background: color-mix(in srgb, var(--red) 14%, var(--surface)); color: var(--red-text); }
+.house .pill.medium { background: color-mix(in srgb, var(--orange) 16%, var(--surface)); color: var(--orange-text); }
+.house .pill.low { background: var(--surface-2); color: var(--muted); }
+.house .pill.it { background: var(--surface-2); color: var(--text); }
+.house .pill.pm { background: color-mix(in srgb, var(--yellow) 22%, var(--surface)); color: var(--yellow-text); }
+.house .pill.cs { background: color-mix(in srgb, var(--green) 14%, var(--surface)); color: var(--green-text); }
+.house .pill.role { --role-h: 188; margin: 0 4px 3px 0; background: hsl(var(--role-h) 62% 93%); color: hsl(var(--role-h) 60% 26%); border: 1px solid hsl(var(--role-h) 42% 70%); }
+.house .role-lead { color: var(--muted); margin-right: 6px; font-size: 0.85em; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .pill.role { background: hsl(var(--role-h) 38% 17%); color: hsl(var(--role-h) 70% 76%); border-color: hsl(var(--role-h) 32% 36%); }
+}
+:root[data-theme="dark"] .pill.role { background: hsl(var(--role-h) 38% 17%); color: hsl(var(--role-h) 70% 76%); border-color: hsl(var(--role-h) 32% 36%); }
+.house footer { padding: 36px 0 60px; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.82rem; }
+.house footer .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+.house footer h4 { font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+.house footer ul { margin: 0; padding-left: 16px; display: grid; gap: 4px; }
+.house footer a { color: var(--muted); }
+@media (max-width: 900px) {
+  .house .grid-2 > *, .house .context-strip > *, .house .blk { grid-column: span 12; }
+  .house .hero-grid, .house .split, .house .grid-3, .house .consumers, .house .scope, .house .std, .house .examples, .house .endpoint .body, .house footer .cols { grid-template-columns: 1fr; }
+  .house .steps.six, .house .steps.five, .house .steps.four { grid-template-columns: repeat(2, 1fr); }
+  .house .hero { padding: 36px 0 28px; }
+  .house .brand .doc { display: none; }
+}
+@media (max-width: 560px) {
+  .house .steps.six, .house .steps.five, .house .steps.four { grid-template-columns: 1fr; }
+  .house .io { grid-template-columns: 1fr; }
+  .house .io .arrow { transform: rotate(90deg); justify-self: center; }
+  .house .params { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .house .card, .house .step, .house .endpoint { transition: border-color 0.15s ease; }
+  .house .card:hover, .house .step:hover { border-color: var(--muted); }
+}
+.house .tabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; margin-left: auto; }
+.house .tabs::-webkit-scrollbar { display: none; }
+.house .tabs button { font-family: inherit; font-size: 0.8rem; font-weight: 500; color: var(--muted); background: none; border: 0; padding: 7px 13px; border-radius: 999px; white-space: nowrap; cursor: pointer; }
+.house .tabs button:hover { color: var(--text); background: var(--surface-2); }
+.house .tabs button[aria-selected="true"] { color: var(--red-text); background: color-mix(in srgb, var(--red) 10%, var(--surface)); font-weight: 600; }
+.house .tabs button:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+.house .subnav { position: sticky; top: 52px; z-index: 9; background: var(--bg); border-bottom: 1px solid var(--border); }
+.house .subnav .wrap { display: flex; align-items: center; gap: 4px; height: 44px; overflow-x: auto; scrollbar-width: none; }
+.house .subnav .wrap::-webkit-scrollbar { display: none; }
+.house .subnav a { text-decoration: none; font-size: 0.76rem; font-weight: 500; color: var(--muted); padding: 5px 9px; border-radius: 999px; white-space: nowrap; }
+.house .subnav a:hover, .house .subnav a:focus-visible { color: var(--text); background: var(--surface-2); outline: none; }
+.house .subnav a { position: relative; --p: 0; }
+.house .subnav a::after { content: ''; position: absolute; left: 9px; right: 9px; bottom: 1px; height: 2px; border-radius: 2px; background: var(--red); transform: scaleX(var(--p)); transform-origin: left center; opacity: 0; transition: transform 0.12s linear, opacity 0.2s ease; }
+.house .subnav a.active { color: var(--text); }
+.house .subnav a.active::after { opacity: 1; }
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
+.house .tabpanel > section:first-of-type { border-top: 0; }
+.house .roles-tbl td:first-child { white-space: nowrap; font-weight: 500; }
+@media print {
+  .house .topbar, .house .subnav { position: static; }
+  .house .tabs { display: none; }
+  .house [hidden].tabpanel { display: block !important; }
+}
+
+/* ---- prd-two-stage / living-artifacts additions for read mode ------------- */
+/* Widths: a block's `layout.w` becomes a span on a 12-column grid, so
+   consecutive narrow blocks pack into a row and everything else stays full. */
+.house .blocks { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 18px 16px; align-items: start; }
+.house .blocks > * { grid-column: span 12; min-width: 0; }
+.house .blk.w-quarter { grid-column: span 3; }
+.house .blk.w-third { grid-column: span 4; }
+.house .blk.w-half { grid-column: span 6; }
+.house .blk.w-two-thirds { grid-column: span 8; }
+.house .blk.w-full { grid-column: span 12; }
+.house .blocks > .blk > * + * { margin-top: 12px; }
+@media (max-width: 800px) { .house .blk { grid-column: span 12; } }
+
+/* Variants: the look of a callout comes from the design system, not a picker. */
+.house .deferred[data-variant="warning"] { border-color: color-mix(in srgb, var(--orange) 55%, var(--border)); }
+.house .deferred[data-variant="warning"] .tag { background: color-mix(in srgb, var(--orange) 16%, var(--surface)); color: var(--orange-text); }
+.house .deferred[data-variant="decision"] { border-color: color-mix(in srgb, var(--green) 55%, var(--border)); }
+.house .deferred[data-variant="decision"] .tag { background: color-mix(in srgb, var(--green) 14%, var(--surface)); color: var(--green-text); }
+.house .deferred[data-variant="design"] .tag { background: color-mix(in srgb, var(--yellow) 22%, var(--surface)); color: var(--yellow-text); }
+.house .deferred[data-variant="excluded"] { border-color: color-mix(in srgb, var(--red) 55%, var(--border)); }
+.house .deferred[data-variant="excluded"] .tag { background: color-mix(in srgb, var(--red) 14%, var(--surface)); color: var(--red-text); }
+.house .deferred[data-variant="deferred"] .tag { background: var(--surface-2); color: var(--muted); }
+.house .tbl-wrap.striped tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--surface-2) 55%, var(--surface)); }
+.house ul.list.checks li::before { content: "\2713"; color: var(--green-text); font-weight: 700; }

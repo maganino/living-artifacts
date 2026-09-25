@@ -1,36 +1,53 @@
+@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@200;300;400;600;700&display=swap');
+
 /* living-artifacts runtime stylesheet.
    Self-contained on purpose: a document self-publishes a FULL html file and
    must look identical whether it was wrapped by the Artifact tool or emitted
    by buildDocument(). So the reset lives here, not in a host wrapper. */
 
+/* Verbolia's design system, mapped onto the runtime's roles.
+   Black and white dominate and the accents are spent sparingly, which is the
+   brand's own rule: `--teal` is the primary role (links, focus, the solid-black
+   CTA), `--amber` is Verbolia orange and marks what changed, `--rose` is
+   Verbolia red and marks danger. Four values are interpolated because the brand
+   palette has no step there — the greys between #F6F6F6 and #D1D1D1, and the
+   tints behind orange and red. Everything else is a brand hex. */
 :root {
-  --bg: #EEF1EE; --surface: #F8FAF8; --surface-2: #E7EBE7;
-  --ink: #1C2220; --ink-muted: #5B655F;
-  --line: #D5DAD5; --line-strong: #BFC6C0;
-  --teal: #2C6A60; --teal-tint: #DEEBE7;
-  --amber: #8A5A12; --amber-tint: #F1E1BE;
-  --rose: #9C4430; --rose-tint: #F3DED9;
-  --font-display: ui-serif, "Iowan Old Style", "Palatino Linotype", Georgia, serif;
-  --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  /* Grey page, white cards, anthracite text: the surface treatment the other
+     Verbolia PRD template uses, so two PRDs read as one family. */
+  --bg: #F6F6F6; --surface: #FFFFFF; --surface-2: #EDEDED;
+  --ink: #454545; --ink-muted: #6D6D6D;
+  --line: #D1D1D1; --line-strong: #A8A8A8;
+  --teal: #000000; --teal-tint: #FFFFFF; --on-accent: #FFFFFF;
+  --amber: #FC6E1C; --amber-tint: #FFEDE1;
+  --rose: #D9414E; --rose-tint: #FBE7E9;
+  /* Deliberately outside the brand palette. It marks the STATE of the document,
+     not a meaning in it, and the four brand accents are spoken for: orange
+     highlights, red warns, green is opportunity, yellow is data quality. */
+  --changed: #6E56CF; --changed-tint: #F0EDFB;
+  --font-display: Lexend, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-body: Lexend, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #14181A; --surface: #1A201D; --surface-2: #212824;
-    --ink: #E7EAE6; --ink-muted: #98A29B;
-    --line: #2A322D; --line-strong: #394239;
-    --teal: #5FB3A6; --teal-tint: #1E322E;
-    --amber: #E3B166; --amber-tint: #3B2E16;
-    --rose: #DE8873; --rose-tint: #3A231D;
+    --bg: #1F1F1F; --surface: #2A2A2A; --surface-2: #353535;
+    --ink: #F6F6F6; --ink-muted: #B9B9B9;
+    --line: #454545; --line-strong: #6D6D6D;
+    --teal: #FFFFFF; --teal-tint: #2A2A2A; --on-accent: #1F1F1F;
+    --amber: #FC8A47; --amber-tint: #3B2A18;
+    --rose: #F06A75; --rose-tint: #3A1E22;
+    --changed: #A392F9; --changed-tint: #2A2340;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #14181A; --surface: #1A201D; --surface-2: #212824;
-  --ink: #E7EAE6; --ink-muted: #98A29B;
-  --line: #2A322D; --line-strong: #394239;
-  --teal: #5FB3A6; --teal-tint: #1E322E;
-  --amber: #E3B166; --amber-tint: #3B2E16;
-  --rose: #DE8873; --rose-tint: #3A231D;
+  --bg: #1F1F1F; --surface: #2A2A2A; --surface-2: #353535;
+  --ink: #F6F6F6; --ink-muted: #B9B9B9;
+  --line: #454545; --line-strong: #6D6D6D;
+  --teal: #FFFFFF; --teal-tint: #2A2A2A; --on-accent: #1F1F1F;
+  --amber: #FC8A47; --amber-tint: #3B2A18;
+  --rose: #F06A75; --rose-tint: #3A1E22;
+  --changed: #A392F9; --changed-tint: #2A2340;
 }
 
 * { box-sizing: border-box; }
@@ -60,7 +77,7 @@ a { color: var(--teal); text-underline-offset: 2px; }
   padding: 1px 7px; font-size: 11px; color: var(--ink-muted);
 }
 .la-title {
-  font-family: var(--font-display); font-weight: 500; margin: 0 0 10px;
+  font-family: var(--font-display); font-weight: 200; margin: 0 0 10px;
   font-size: clamp(2rem, 4.6vw, 2.9rem); line-height: 1.06; letter-spacing: -.01em;
   text-wrap: balance;
 }
@@ -92,8 +109,8 @@ a { color: var(--teal); text-underline-offset: 2px; }
    in a bar that only exists after a selection step. */
 .la-blocks { padding-top: 8px; }
 .la-block {
-  position: relative; margin: 2px 0; border-radius: 8px;
-  padding: 6px 46px 6px 34px;
+  position: relative; margin: 12px 0 2px; border-radius: 8px;
+  padding: 6px 16px 6px 34px;
   transition: background-color .12s ease, box-shadow .12s ease;
 }
 .la-block:hover, .la-block:focus-within {
@@ -102,14 +119,16 @@ a { color: var(--teal); text-underline-offset: 2px; }
 }
 .la-block[data-type="divider"]:hover { background: none; box-shadow: 0 0 0 1px var(--line); }
 
-/* the changed-since-last-round gutter, as an inset so nothing shifts */
-.la-block[data-touched="1"] { box-shadow: inset 3px 0 0 var(--amber); }
-.la-block[data-touched="1"]:hover, .la-block[data-touched="1"]:focus-within {
-  box-shadow: inset 3px 0 0 var(--amber), 0 0 0 1px var(--line), 0 1px 3px rgba(0, 0, 0, .05);
+/* The changed-since-last-round gutter. A bar of its own rather than an inset
+   shadow: an inset follows the block's 8px corners and renders as a bracket,
+   which at outline density reads as damage rather than as a mark. */
+.la-block[data-touched]::before {
+  content: ''; position: absolute; left: 8px; top: 7px; bottom: 7px;
+  width: 3px; border-radius: 2px; background: var(--changed);
 }
 
 .la-block .la-handle {
-  position: absolute; left: 4px; top: 8px; width: 22px; height: 24px;
+  position: absolute; left: 4px; top: 6px; width: 22px; height: 24px;
   border: 0; background: none; cursor: grab; padding: 0; border-radius: 5px;
   color: var(--ink-muted); font-size: 14px; line-height: 24px;
   opacity: 0; transition: opacity .12s ease;
@@ -119,14 +138,16 @@ a { color: var(--teal); text-underline-offset: 2px; }
 .la-handle:active { cursor: grabbing; }
 
 .la-acts {
-  position: absolute; right: 4px; top: 4px; display: flex; gap: 3px;
+  position: absolute; right: 6px; top: -13px; z-index: 4;
+  display: flex; gap: 3px;
   opacity: 0; transition: opacity .12s ease;
 }
 .la-block:hover .la-acts, .la-block:focus-within .la-acts { opacity: 1; }
 .la-act {
   font-family: var(--font-mono); font-size: 10.5px; line-height: 1; cursor: pointer;
-  border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--ink-muted);
-  border-radius: 5px; padding: 4px 7px;
+  border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-muted);
+  border-radius: 999px; padding: 4px 9px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .10);
 }
 .la-act:hover { color: var(--ink); border-color: var(--ink-muted); }
 .la-act.danger { font-size: 12px; padding: 3px 7px; }
@@ -150,15 +171,15 @@ body.la-dragging { cursor: grabbing; user-select: none; }
 .la-selchip {
   position: absolute; z-index: 60; top: 0; left: 0;
   font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; cursor: pointer;
-  background: var(--teal); color: #fff; border: 0; border-radius: 5px; padding: 5px 11px;
+  background: var(--teal); color: var(--on-accent); border: 0; border-radius: 5px; padding: 5px 11px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, .18);
 }
 
 .la-body > :first-child { margin-top: 0; }
 .la-body > :last-child { margin-bottom: 0; }
 .la-body h2 {
-  font-family: var(--font-display); font-weight: 500; font-size: 1.55rem;
-  margin: 30px 0 10px; line-height: 1.2;
+  font-family: var(--font-display); font-weight: 300; font-size: 1.5rem;
+  margin: 26px 0 8px; line-height: 1.2;
 }
 .la-body h3 { font-size: 1.12rem; font-weight: 650; margin: 22px 0 8px; }
 .la-body p { margin: 0 0 14px; }
@@ -175,7 +196,7 @@ body.la-dragging { cursor: grabbing; user-select: none; }
 .la-body pre code { background: none; padding: 0; }
 .la-tablewrap { overflow-x: auto; margin: 0 0 14px; }
 .la-body table { border-collapse: collapse; font-size: 14.5px; min-width: 100%; }
-.la-body th, .la-body td { text-align: left; padding: 7px 14px 7px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+.la-body th, .la-body td { text-align: left; padding: 7px 14px 7px 0; border-bottom: 1px solid var(--line); vertical-align: top; position: relative; }
 .la-body th { font-family: var(--font-mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-muted); font-weight: 700; }
 .la-callout {
   border: 1px solid var(--amber); background: var(--amber-tint);
@@ -186,6 +207,22 @@ body.la-dragging { cursor: grabbing; user-select: none; }
   letter-spacing: .08em; text-transform: uppercase; color: var(--amber); margin-bottom: 6px;
 }
 .la-divider { border: 0; border-top: 1px solid var(--line); margin: 26px 0; }
+
+/* A raw block hosts finished markup that brings its own everything. The
+   document's rules above would rewrite it — .la-body table/th/td alone would
+   redo an email's borders, padding and column widths — so they are reset back
+   to the browser default inside it. The light colour-scheme is deliberate too:
+   what goes in here is a light-only artefact carrying explicit colours of its
+   own, and a dark-mode --ink leaking in would recolour half of it. */
+.la-raw { overflow-x: auto; margin: 0 0 14px; color-scheme: light;
+  font: 14px/1.4 var(--font-body); color: #1C2220; }
+.la-raw table { border-collapse: separate; font-size: inherit; min-width: 0; }
+.la-raw th, .la-raw td {
+  text-align: inherit; padding: 0; border: 0; vertical-align: inherit;
+  font-family: inherit; font-size: inherit; font-weight: inherit;
+  letter-spacing: normal; text-transform: none; color: inherit;
+}
+.la-raw p, .la-raw ul, .la-raw ol, .la-raw li { margin: 0; padding: 0; }
 
 /* ---------- per-block metadata ---------- */
 .la-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 10px; }
@@ -201,12 +238,121 @@ body.la-dragging { cursor: grabbing; user-select: none; }
   border-color: var(--line-strong); color: var(--ink-muted); background: var(--surface-2);
 }
 .la-tag.intent { font-weight: 650; }
+/* A role chip is a label, not a control: same shape as a tag so the vocabulary
+   stays one thing, but it is not clickable and it never offers to be removed. */
+.la-role {
+  cursor: default; font-weight: 650; letter-spacing: .02em;
+  display: inline-block; margin: 0 4px 3px 0;
+}
+.la-rolelead { color: var(--ink-muted); margin-right: 6px; }
+
+/* --- a cited figure -------------------------------------------------------
+   Marked where it sits, so the reader can see at a glance which numbers are
+   sourced, and opened on click: how a number was obtained is several lines of
+   mechanics that would wreck the sentence carrying it. */
+.la-cite-wrap { position: relative; display: inline; }
+.la-cite {
+  font: inherit; color: inherit; cursor: pointer; padding: 0 1px;
+  display: inline; text-align: inherit;
+  background: color-mix(in srgb, var(--amber) 20%, transparent);
+  border: 0; border-bottom: 1px dotted currentColor; border-radius: 2px;
+}
+.la-cite::after {
+  content: "\2139"; font-size: .7em; vertical-align: super; margin-left: 2px; opacity: .65;
+}
+.la-cite:hover { background: color-mix(in srgb, var(--amber) 34%, transparent); }
+.la-cite[aria-expanded="true"] { background: color-mix(in srgb, var(--amber) 42%, transparent); }
+.la-cite-pop {
+  position: absolute; z-index: 30; left: 0; top: calc(100% + 8px);
+  display: block; width: min(30rem, 78vw);
+  background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px;
+  padding: 14px 16px; box-shadow: 0 10px 30px rgba(0, 0, 0, .18);
+  font-size: 13.5px; line-height: 1.5; font-weight: 400; text-align: left;
+  white-space: normal; cursor: auto;
+}
+.la-cite-pop[hidden] { display: none; }
+.la-cite-h { display: block; font-weight: 650; font-size: 12.5px; margin-bottom: 9px; }
+.la-cite-g { display: grid; grid-template-columns: 6.5rem 1fr; gap: 5px 13px; }
+.la-cite-k {
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--ink-muted); font-weight: 700; padding-top: 2px;
+}
+.la-cite-v { display: block; }
+.la-cite-step { display: block; margin-bottom: 3px; padding-left: 1.4em; text-indent: -1.4em; }
+.la-cite-step i { font-style: normal; color: var(--ink-muted); margin-right: .5em; }
+@media (max-width: 640px) {
+  .la-cite-pop { position: fixed; left: 12px; right: 12px; width: auto; top: auto; bottom: 68px; }
+  .la-cite-g { grid-template-columns: 1fr; gap: 2px; }
+  .la-cite-k { margin-top: 8px; }
+}
 .la-note {
   font-family: var(--font-mono); font-size: 12.5px; color: var(--rose);
   border-left: 3px solid var(--rose); background: var(--rose-tint);
   padding: 7px 12px; border-radius: 0 4px 4px 0; margin: 0 0 12px;
 }
 .la-note b { font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; display: block; margin-bottom: 3px; }
+
+/* --- what Claude changed, and what it changed it for ---------------------
+   One colour for "this is not what you last read": the gutter bar already
+   uses it for the reader's own edits, and these are the same state seen from
+   the other side. A word-level mark where Claude rewrote words, a wash where
+   it wrote the whole block. Both are cleared by Claude's next round, never by
+   the reader's next keystroke. */
+.la-chg {
+  /* a marker, not a tint: the block behind it is white on hover and the page is
+     near-white, so the flat --changed-tint disappeared and left only a rule */
+  background: color-mix(in srgb, var(--changed) 24%, transparent); color: inherit;
+  box-shadow: inset 0 -2px 0 var(--changed);
+  border-radius: 2px; padding: 0 1px;
+}
+.la-block[data-changed="all"],
+.la-block[data-changed="all"]:hover,
+.la-block[data-changed="all"]:focus-within { background: var(--changed-tint); }
+
+/* a note that has been acted on: kept, not cleared, so the round reads back */
+.la-note.done {
+  color: var(--changed); border-left-color: var(--changed); background: var(--changed-tint);
+}
+.la-note-a {
+  display: block; margin-top: 6px; padding-top: 6px; font-family: var(--font-body);
+  font-size: 13.5px; color: var(--ink); line-height: 1.5;
+  border-top: 1px solid color-mix(in srgb, var(--changed) 30%, transparent);
+}
+
+/* --- a note pinned to one table cell -------------------------------------
+   Rendered inside its own cell, because on a six-column table "the table is
+   wrong" is not something anyone can act on. */
+.la-cellnote {
+  margin: 6px 0 2px; padding: 5px 8px; border-left: 3px solid var(--rose);
+  background: var(--rose-tint); border-radius: 0 4px 4px 0;
+  font-family: var(--font-mono); font-size: 11.5px; line-height: 1.45; color: var(--rose);
+  white-space: normal;
+}
+.la-cellnote b {
+  display: block; font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase;
+  margin-bottom: 2px;
+}
+.la-cellnote.done { border-left-color: var(--changed); background: var(--changed-tint); color: var(--changed); }
+.la-cellnote-a {
+  display: block; margin-top: 4px; font-family: var(--font-body); font-size: 12.5px; color: var(--ink);
+}
+.la-cellpin {
+  position: absolute; right: 2px; top: 3px; z-index: 2;
+  border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-muted);
+  font-family: var(--font-mono); font-size: 10px; line-height: 1;
+  border-radius: 999px; padding: 2px 6px; cursor: pointer;
+  opacity: 0; transition: opacity .12s;
+}
+.la-body td:hover > .la-cellpin, .la-body th:hover > .la-cellpin,
+.house td:hover > .la-cellpin, .house th:hover > .la-cellpin,
+.la-cellpin:focus { opacity: 1; }
+/* a house table cell takes a pin too: it needs to be positioned for it, and
+   room at its right so the pin never sits on the last word */
+.house.la-page td, .house.la-page th { position: relative; padding-right: 36px; }
+.la-cellpin:hover { color: var(--rose); border-color: var(--rose); }
+.la-cellnoteform { margin: 6px 0 2px; }
+.la-cellnoteform input { max-width: none; }
+table.la-grid td .la-cellnote, table.la-grid th .la-cellnote { margin: 0 9px 7px; }
 
 /* ---------- editing ---------- */
 .la-edit {
@@ -224,10 +370,10 @@ body.la-dragging { cursor: grabbing; user-select: none; }
 .la-btn {
   font-family: var(--font-mono); font-size: 11.5px; cursor: pointer;
   border: 1px solid var(--line-strong); background: var(--surface);
-  color: var(--ink-muted); border-radius: 5px; padding: 4px 10px;
+  color: var(--ink-muted); border-radius: 999px; padding: 4px 12px;
 }
 .la-btn:hover { color: var(--ink); border-color: var(--ink-muted); }
-.la-btn.primary { background: var(--teal); border-color: var(--teal); color: #fff; font-weight: 600; }
+.la-btn.primary { background: var(--teal); border-color: var(--teal); color: var(--on-accent); font-weight: 600; }
 .la-btn.primary[disabled] { opacity: .4; cursor: default; }
 .la-btn.danger:hover { color: var(--rose); border-color: var(--rose); }
 
@@ -334,7 +480,415 @@ body.la-dragging { cursor: grabbing; user-select: none; }
 .la-filterrow { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 2px 0; }
 .la-filterrow .la-tag { cursor: pointer; }
 
-.la-btn.on {
-  background: var(--amber); border-color: var(--amber); color: #fff; font-weight: 600;
+  .la-btn.on {
+  background: var(--amber); border-color: var(--amber); color: #FFFFFF; font-weight: 600;
 }
 .la-btn[disabled] { opacity: .4; cursor: default; }
+
+/* --- grid editor ---------------------------------------------------------
+   The cells are cells. Inputs sit flush inside them so the grid reads as the
+   table it will become, not as a form about a table. */
+.la-grid-edit .la-tablewrap { margin: 0 0 8px; }
+table.la-grid { width: 100%; }
+table.la-grid th, table.la-grid td { padding: 0; position: relative; }
+table.la-grid input {
+  width: 100%; border: 0; background: transparent; color: inherit;
+  font: inherit; padding: 7px 22px 7px 9px;
+}
+table.la-grid th input {
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--ink-muted); font-weight: 700;
+}
+table.la-grid input:focus { outline: 2px solid var(--teal); outline-offset: -2px; }
+/* body cells wrap and grow, so the whole cell is visible while it is edited */
+table.la-grid { table-layout: fixed; }
+table.la-grid td { vertical-align: top; border-bottom: 1px solid var(--line); }
+table.la-grid textarea.la-cellarea {
+  display: block; width: 100%; border: 0; background: transparent; color: inherit;
+  font: inherit; line-height: 1.45; padding: 7px 22px 7px 9px; margin: 0;
+  resize: none; overflow: hidden; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 2.2em;
+}
+table.la-grid textarea.la-cellarea:focus { outline: 2px solid var(--teal); outline-offset: -2px; }
+.la-grid-edit .la-tablewrap { overflow: visible; }
+.la-gridgutter { width: 26px; border-bottom: 1px solid var(--line); }
+.la-cellx {
+  position: absolute; right: 3px; top: 50%; transform: translateY(-50%);
+  border: 0; background: transparent; color: var(--ink-muted);
+  font-size: 13px; line-height: 1; cursor: pointer; padding: 3px 4px;
+  opacity: 0; transition: opacity .12s;
+}
+td:hover > .la-cellx, th:hover > .la-cellx, .la-field:hover > .la-cellx,
+.la-cellx:focus { opacity: 1; }
+.la-cellx:hover { color: var(--rose); }
+.la-field > .la-cellx { position: static; transform: none; opacity: .5; }
+
+/* --- figure --------------------------------------------------------------
+   Claude draws it; the reader owns every word printed on it. */
+.la-figure { margin: 0; }
+.la-figure img { max-width: 100%; height: auto; display: block; border-radius: 3px; }
+.la-figure figcaption {
+  font-size: 14px; color: var(--ink-muted); margin-top: 8px; line-height: 1.5;
+}
+.la-figure-missing {
+  border: 1px dashed var(--line-strong); border-radius: 3px; padding: 22px;
+  text-align: center; color: var(--ink-muted); font-size: 14px;
+}
+.la-figure-prev { margin-bottom: 10px; }
+.la-figure-prev img { max-width: 100%; max-height: 160px; border-radius: 3px; opacity: .85; }
+.la-field { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.la-field label { display: flex; align-items: center; gap: 8px; flex: 1; font-size: 13px;
+  color: var(--ink-muted); }
+.la-field input {
+  flex: 1; font: inherit; font-size: 14px; color: var(--ink);
+  background: var(--surface); border: 1px solid var(--line); border-radius: 3px;
+  padding: 6px 8px;
+}
+.la-field input:focus { outline: 2px solid var(--teal); outline-offset: -2px; }
+.la-field-pair .la-key { flex: 0 0 34%; font-family: var(--font-mono); font-size: 12px; }
+.la-hint { font-size: 12.5px; color: var(--ink-muted); line-height: 1.5; }
+p.la-hint { margin: 0 0 10px; }
+
+/* --- mermaid -------------------------------------------------------------
+   The drawn diagram is a view of the block's text. When it cannot be drawn —
+   no network, or a syntax error mid-edit — the source shows instead, so the
+   document still says what the diagram said. */
+.la-mermaid { text-align: center; overflow-x: auto; }
+.la-mermaid svg { max-width: 100%; height: auto; }
+.la-mermaid-src, pre.mermaid {
+  text-align: left; white-space: pre; overflow-x: auto;
+  font-family: var(--font-mono); font-size: 12.5px; line-height: 1.55;
+  background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: 3px; padding: 12px 14px; margin: 0; color: var(--ink-muted);
+}
+.la-mermaid-why { font-size: 12.5px; color: var(--amber); margin: 0 0 8px; text-align: left; }
+/* An inline-SVG figure inherits the page: text uses currentColor, so the chart
+   follows the document's theme instead of being a picture of one theme. */
+.la-figure-svg svg { display: block; width: 100%; height: auto; }
+.la-figure-prev .la-figure-svg, .la-figure-prev svg { max-height: 150px; }
+
+/* --- folding -------------------------------------------------------------
+   A heading is the handle for its section. Closed is the default, so the
+   document opens as an outline and a reader chooses what to open. */
+.la-headrow { display: flex; align-items: baseline; gap: 8px; }
+.la-headrow .la-headbody { flex: 1 1 auto; min-width: 0; }
+.la-caret {
+  flex: 0 0 auto; border: 0; background: none; cursor: pointer; padding: 0 2px;
+  color: var(--ink-muted); font-size: 12px; line-height: 1.6; border-radius: 4px;
+}
+.la-caret:hover { color: var(--ink); }
+.la-block[data-level="3"] .la-headrow { padding-left: 14px; }
+.la-block[data-level="4"] .la-headrow { padding-left: 28px; }
+.la-block[data-level="4"] h4 { font-size: 15px; font-weight: 600; margin: 0; }
+.la-foldsum {
+  flex: 0 0 auto; border: 0; background: none; cursor: pointer;
+  font-family: var(--font-mono); font-size: 11px; color: var(--ink-muted);
+  padding: 2px 0;
+}
+.la-foldsum:hover { color: var(--teal); }
+/* a closed section that changed since the last round still says so */
+.la-block[data-open="0"][data-touched] .la-foldsum { color: var(--changed); }
+/* two colours: purple is Claude's last round, amber is what the reader
+   changed since. A rebuild clears both. */
+
+
+/* the ⓘ: what this section is FOR, in the words of the template it follows */
+.la-info {
+  flex: 0 0 auto; width: 17px; height: 17px; border-radius: 50%;
+  border: 1px solid var(--line-strong); background: var(--surface);
+  color: var(--ink-muted); cursor: help; padding: 0;
+  font-family: var(--font-display); font-style: italic; font-size: 11px; line-height: 1;
+}
+.la-info:hover { color: var(--teal); border-color: var(--teal); }
+.la-infobox {
+  border-left: 3px solid var(--teal); background: var(--teal-tint);
+  padding: 9px 13px; border-radius: 0 5px 5px 0; margin: 2px 0 12px;
+  font-size: 13.5px; color: var(--ink); line-height: 1.55;
+}
+.la-infobox b {
+  display: block; font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--teal); margin-bottom: 4px;
+}
+
+/* an empty section keeps its title and says it is empty on purpose */
+.la-empty {
+  display: block; border: 1px dashed var(--line-strong); background: none;
+  border-radius: 5px; padding: 7px 12px; margin: 2px 0 10px;
+  font-family: var(--font-mono); font-size: 13px; color: var(--ink-muted);
+  cursor: pointer; text-align: left; width: 100%;
+}
+.la-empty:hover { border-color: var(--teal); color: var(--teal); }
+.la-empty-ro { cursor: default; }
+.la-empty-ro:hover { border-color: var(--line-strong); color: var(--ink-muted); }
+
+/* --- section separation --------------------------------------------------
+   The model is flat; these make the nesting visible. A top-level section
+   starts against a rule, a sub-section is indented under it, and body blocks
+   sit indented under their own heading. */
+.la-block[data-depth="1"] { margin-left: 18px; }
+.la-block[data-depth="2"] { margin-left: 36px; }
+.la-block[data-depth="3"] { margin-left: 50px; }
+.la-block[data-type="heading"][data-level="2"] {
+  margin-top: 34px; padding-top: 16px; border-top: 1px solid var(--line);
+}
+.la-block[data-type="heading"][data-level="2"]:first-child { border-top: 0; margin-top: 0; }
+.la-block[data-type="heading"][data-level="3"] { margin-top: 12px; }
+.la-block[data-type="heading"][data-level="3"] .la-headbody h3 {
+  margin: 0; font-weight: 600; font-size: 1rem;
+}
+.la-block[data-type="heading"][data-level="2"] .la-headbody h2 { margin: 0; }
+/* an open section is tinted just enough to see where it starts and ends */
+.la-block[data-type="heading"][data-open="1"] { background: var(--surface); }
+
+/* where a section came from — the template the document follows */
+.la-badge {
+  flex: 0 0 auto; font-family: var(--font-mono); font-size: 9.5px;
+  letter-spacing: .07em; text-transform: uppercase; font-weight: 700;
+  color: var(--ink-muted); border: 1px solid var(--line);
+  border-radius: 999px; padding: 2px 8px; white-space: nowrap;
+}
+
+/* --- the shared copy is tabbed -------------------------------------------
+   The living document folds, because its reader is looking for one section to
+   edit. The export tabs, because its reader wants a short page per subject. */
+.la-tabbar {
+  display: flex; flex-wrap: wrap; gap: 6px; margin: 20px 0 6px;
+  border-bottom: 1px solid var(--line); padding-bottom: 10px;
+}
+.la-tabbar button {
+  font-family: var(--font-body); font-size: 13.5px; cursor: pointer;
+  border: 1px solid var(--line-strong); background: var(--surface);
+  color: var(--ink-muted); border-radius: 999px; padding: 6px 15px;
+}
+.la-tabbar button:hover { color: var(--ink); border-color: var(--ink-muted); }
+.la-tabbar button[aria-selected="true"] {
+  background: var(--teal); border-color: var(--teal); color: var(--on-accent); font-weight: 600;
+}
+[role="tabpanel"] { padding-top: 10px; }
+.la-tabtitle {
+  font-family: var(--font-display); font-weight: 200; font-size: 1.9rem;
+  margin: 8px 0 20px; line-height: 1.1;
+}
+@media print { [role="tabpanel"][hidden] { display: block !important; } .la-tabbar { display: none; } }
+
+/* the label above a section heading: where you are, over what is being claimed */
+.la-headtext { flex: 1 1 auto; min-width: 0; }
+.la-eyebrow-sec {
+  font-family: var(--font-body); font-size: 0.72rem; font-weight: 600;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--rose);
+  margin-bottom: 2px; display: block;
+}
+.la-block[data-level="3"] .la-eyebrow-sec { color: var(--ink-muted); }
+
+/* --- the published copy only ---------------------------------------------
+   Wider, carded and multi-column. None of this reaches the editable document,
+   where one column keeps the click target obvious and a card would put a
+   border between the reader and the text they are about to change. */
+.la-export { max-width: 1120px; }
+.la-export .la-kicker {
+  font-family: var(--font-body); font-size: 0.72rem; font-weight: 600;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--rose); margin: 0 0 10px;
+}
+.la-export .la-title { font-size: clamp(2rem, 4vw, 3rem); font-weight: 200; }
+.la-cards {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px; align-items: start;
+}
+.la-card {
+  grid-column: 1 / -1;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+  padding: 20px 24px;
+  box-shadow: 0 1px 2px rgba(69,69,69,.06), 0 6px 20px rgba(69,69,69,.05);
+}
+.la-card.half { grid-column: auto; }
+.la-card > .la-body + .la-body { margin-top: 12px; }
+.la-card .la-body h3 { margin-top: 0; }
+.la-card .la-eyebrow-sec { color: var(--rose); }
+@media (max-width: 800px) { .la-cards { grid-template-columns: 1fr; } .la-card.half { grid-column: 1 / -1; } }
+@media print { .la-card { break-inside: avoid; box-shadow: none; } }
+
+/* the row of jump links inside a tab, named by each section's label */
+.la-export .la-tabbar {
+  position: sticky; top: 0; z-index: 6; background: var(--bg);
+  margin: 0 0 0; padding-top: 14px;
+}
+.la-subnav {
+  position: sticky; top: var(--tabbar-h, 54px); z-index: 5; background: var(--bg);
+  display: flex; flex-wrap: wrap; gap: 4px;
+  padding: 10px 0 12px; margin: 0 0 4px;
+  border-bottom: 1px solid var(--line);
+}
+.la-subnav a {
+  text-decoration: none; font-size: 0.78rem; font-weight: 500; color: var(--ink-muted);
+  padding: 4px 2px; white-space: nowrap;
+  border-bottom: 2px solid transparent; margin-right: 14px;
+}
+.la-subnav a:hover, .la-subnav a:focus-visible {
+  color: var(--ink); border-bottom-color: var(--line-strong); outline: none;
+}
+/* the section the reader is actually in */
+.la-subnav a.here { color: var(--ink); border-bottom-color: var(--rose); font-weight: 600; }
+/* No `scroll-behavior: smooth` on the document. It also animates the browser's
+   own fragment navigation, which then races the script that opens the tab and
+   leaves the reader partway to the section. Smooth belongs on the click, where
+   it is asked for, and the code passes it there. */
+.la-export [id] { scroll-margin-top: calc(var(--sticky-h, 110px) + 14px); }
+@media (max-width: 800px) {
+  .la-export .la-tabbar, .la-subnav { position: static; }
+  .la-export [id] { scroll-margin-top: 24px; }
+}
+
+/* what the edit box accepts, shown under it */
+.la-syntax {
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+  margin: -6px 0 12px; font-family: var(--font-mono); font-size: 11px;
+  color: var(--ink-muted);
+}
+.la-syntax code { background: var(--surface-2); padding: 1px 6px; border-radius: 3px; }
+.la-syntax-shape { margin-right: 4px; font-style: italic; }
+
+/* --- the way back from the published view --------------------------------
+   A writer looking at the document as a reader sees it needs one control and
+   no bar: the bar is the editor's. A reader never sees this. */
+.la-modepill {
+  position: fixed; right: clamp(16px, 4vw, 40px); bottom: 18px; z-index: 40;
+  font-family: var(--font-mono); font-size: 12px; font-weight: 600; cursor: pointer;
+  background: var(--teal); color: var(--on-accent); border: 0; border-radius: 999px;
+  padding: 9px 16px; box-shadow: 0 4px 16px rgba(0, 0, 0, .18);
+}
+.la-modepill:hover { filter: brightness(1.15); }
+/* the width and look controls read as what they are: a state, not a verb */
+.la-act.state { font-weight: 700; }
+
+/* --- editing in the page --------------------------------------------------
+   The published layout is where a writer edits. A block shows its handle and
+   actions on hover, exactly as in the outline, and opens its editor in place
+   on click. Nothing here is visible to a reader: their page has no .la-blk. */
+.la-blk { position: relative; border-radius: 8px; transition: box-shadow .12s ease; }
+.la-blk:hover, .la-blk:focus-within { box-shadow: 0 0 0 1px var(--line-strong); }
+.la-blk > .la-blk:hover { box-shadow: 0 0 0 1px var(--line); }
+.la-blk .la-handle {
+  position: absolute; left: -26px; top: 0; width: 22px; height: 24px; z-index: 5;
+  border: 0; background: none; cursor: grab; padding: 0; border-radius: 5px;
+  color: var(--ink-muted); font-size: 14px; line-height: 24px;
+  opacity: 0; transition: opacity .12s ease; touch-action: none;
+}
+.la-blk:hover > .la-handle, .la-blk:focus-within > .la-handle { opacity: 1; }
+.la-blk .la-acts { position: absolute; right: 4px; top: -13px; z-index: 4; display: flex; gap: 3px; opacity: 0; transition: opacity .12s ease; }
+.la-blk:hover > .la-acts, .la-blk:focus-within > .la-acts { opacity: 1; }
+.la-blk[data-touched]::before {
+  content: ''; position: absolute; left: -10px; top: 4px; bottom: 4px; width: 3px; border-radius: 2px; background: var(--changed);
+}
+.la-blk[data-changed="all"] { background: var(--changed-tint); }
+.la-blk.la-editing { box-shadow: 0 0 0 1px var(--teal); padding: 8px; background: var(--surface); }
+.la-blk.la-drop-into { box-shadow: inset 0 2px 0 var(--teal), 0 0 0 1px var(--teal); }
+/* where the drop will land: a line above or below, or beside a block that shares its row */
+.la-blk.la-drop-before { box-shadow: 0 -3px 0 0 var(--teal), 0 0 0 1px var(--teal); }
+.la-blk.la-drop-after { box-shadow: 0 3px 0 0 var(--teal), 0 0 0 1px var(--teal); }
+.la-blk.la-drop-left { box-shadow: -3px 0 0 0 var(--teal), 0 0 0 1px var(--teal); }
+.la-blk.la-drop-right { box-shadow: 3px 0 0 0 var(--teal), 0 0 0 1px var(--teal); }
+/* the right edge resizes a block in the section grid */
+.la-blk .la-resize {
+  position: absolute; right: -5px; top: 0; bottom: 0; width: 10px; padding: 0; border: 0;
+  background: transparent; cursor: ew-resize; opacity: 0; transition: opacity .12s ease; touch-action: none; z-index: 4;
+}
+.la-blk .la-resize::after { content: ''; position: absolute; left: 3px; top: 0; bottom: 0; width: 4px; border-radius: 2px; background: var(--teal); }
+.la-blk:hover > .la-resize, .la-blk .la-resize:focus, .la-blk.la-resize-src > .la-resize { opacity: .7; }
+.la-blk.la-resize-src { box-shadow: 0 0 0 1px var(--teal); }
+body.la-resizing { cursor: ew-resize; user-select: none; }
+.la-blk > .la-note { margin: 0 0 8px; }
+.la-blk > .la-meta { margin: 6px 0 0; }
+/* the reading measure survives the wrapper: what the section grid caps for
+   its direct children it caps for a wrapped child too */
+.house .blocks > .la-blk > p { max-width: 82ch; }
+.house .blocks > .la-blk > ul, .house .blocks > .la-blk > ol { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 7px; max-width: 82ch; }
+.house .blocks > .la-blk.blk > p, .house .blocks > .la-blk.blk > ul, .house .blocks > .la-blk.blk > ol { max-width: none; }
+/* a card that is a block: the wrapper takes the grid cell, the card fills it */
+.la-blk.la-cardblk { display: flex; flex-direction: column; }
+.la-blk.la-cardblk > .card { flex: 1; }
+/* a section heading that is a block keeps its rhythm */
+.la-blk.la-sechead { margin-bottom: 26px; }
+.la-blk.la-sechead > .sec-head { margin-bottom: 0; }
+/* a section a reader never sees, shown to the writer with a mark */
+.house .la-internal-sec { border-left: 3px dashed var(--line-strong); }
+.la-blk.la-internal .eyebrow::after { content: ' · internal, not published'; color: var(--ink-muted); text-transform: none; letter-spacing: 0; font-weight: 400; }
+/* moving: a translucent copy follows the pointer, the blocks themselves sit
+   faded where they would land; adding: a dashed placeholder does the same */
+.la-ghost {
+  position: fixed; z-index: 60; pointer-events: none; opacity: .6;
+  background: var(--surface); border-radius: 8px; box-shadow: 0 14px 36px rgba(0,0,0,.2);
+  transform: rotate(-.5deg); max-height: 60vh; overflow: hidden;
+}
+.la-ghost .la-handle, .la-ghost .la-acts, .la-ghost .la-resize, .la-ghost .la-cellpin { display: none; }
+.la-ghost-new {
+  padding: 6px 10px; font-family: var(--font-mono); font-size: 11.5px; color: var(--ink);
+  border: 1px dashed var(--teal); opacity: .95; transform: none; white-space: nowrap;
+}
+.la-blk.la-drag-src { opacity: .38; outline: 2px dashed var(--teal); outline-offset: 2px; }
+.la-placeholder {
+  border: 2px dashed var(--teal); border-radius: 8px; padding: 16px; text-align: center;
+  font-family: var(--font-mono); font-size: 11.5px; color: var(--teal);
+  background: color-mix(in srgb, var(--teal) 8%, transparent); grid-column: span 12;
+}
+body.la-placing { cursor: copy; }
+.la-addmenu {
+  position: fixed; bottom: 52px; z-index: 50; display: flex; flex-direction: column; gap: 2px; padding: 6px;
+  background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.14);
+}
+.la-addmenu .la-btn { text-align: left; }
+/* the flow's one-line intro, as a block of its own */
+.house .flow-who { font-size: 0.88rem; color: var(--muted); max-width: 80ch; }
+
+/* --- Edit | Preview as one control ----------------------------------------- */
+.la-seg { display: inline-flex; }
+.la-seg .la-btn { border-radius: 0; margin-left: -1px; }
+.la-seg .la-btn:first-child { border-radius: 999px 0 0 999px; margin-left: 0; }
+.la-seg .la-btn:last-child { border-radius: 0 999px 999px 0; }
+.la-seg .la-btn.on { background: var(--teal); border-color: var(--teal); color: var(--on-accent); font-weight: 600; }
+
+/* --- the selection chip offers a tag or a note ------------------------------ */
+.la-selchip { display: inline-flex; gap: 1px; background: none; border: 0; padding: 0; box-shadow: none; }
+.la-selbtn {
+  font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; cursor: pointer;
+  background: var(--teal); color: var(--on-accent); border: 0; padding: 5px 11px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .18);
+}
+.la-selbtn:first-child { border-radius: 5px 0 0 5px; }
+.la-selbtn:last-child { border-radius: 0 5px 5px 0; }
+.la-selbtn:only-child { border-radius: 5px; }
+
+/* --- a note pinned to a passage -------------------------------------------- */
+.la-mark.has-note { box-shadow: inset 0 -2px 0 var(--rose); cursor: help; }
+.la-mark.has-note::after {
+  content: '\270E'; font-size: .7em; vertical-align: super; margin-left: 2px; color: var(--rose);
+}
+.la-mark.has-note.done { box-shadow: inset 0 -2px 0 var(--changed); }
+.la-mark.has-note.done::after { content: '\2713'; color: var(--changed); }
+.la-marknote {
+  display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: baseline;
+  font-family: var(--font-mono); font-size: 11.5px; color: var(--rose);
+  border-left: 3px solid var(--rose); background: var(--rose-tint);
+  padding: 3px 8px; border-radius: 0 4px 4px 0; max-width: 100%;
+}
+.la-marknote b { font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; }
+.la-marknote i { font-style: normal; font-family: var(--font-body); font-size: 12.5px; color: var(--ink); }
+.la-marknote.done { color: var(--changed); border-left-color: var(--changed); background: var(--changed-tint); }
+
+/* cell pins on the pieces of a flow, a scope card and a metric row */
+.house .step > .la-cellpin, .house .scope li > .la-cellpin, .house .metric > .la-cellpin { right: 6px; top: 6px; }
+.house .step:hover > .la-cellpin, .house .scope li:hover > .la-cellpin, .house .metric:hover > .la-cellpin { opacity: 1; }
+.house .step .la-cellnote, .house .scope li .la-cellnote, .house .metric .la-cellnote { margin-top: 8px; }
+
+/* two colours, declared last so they win: purple is Claude's last round,
+   amber is what the reader changed since. A rebuild clears both. */
+.la-block[data-touched="viewer"]::before, .la-blk[data-touched="viewer"]::before { background: var(--amber); }
+.la-block[data-open="0"][data-touched="viewer"] .la-foldsum { color: var(--amber); }
+/* a drop into a card: the card is ringed, not underlined */
+.la-blk.la-drop-into { box-shadow: inset 0 0 0 2px var(--teal); }
+
+/* the reader's own changed words, amber like their gutter */
+.la-chg.mine { background: color-mix(in srgb, var(--amber) 30%, transparent); box-shadow: inset 0 -2px 0 var(--amber); }
+/* while a block is dragged its origin stays empty at the same size */
+.la-hole { border: 2px dashed var(--line-strong); border-radius: 12px; background: color-mix(in srgb, var(--line) 30%, transparent); min-height: 40px; }
+.la-drag-hidden { display: none !important; }
+/* a narrower block keeps its content: text wraps, pictures scale, tables scroll */
+.house .blk img, .house .blk svg, .house .la-blk img, .house .la-blk svg, .house .card img, .house .card svg { max-width: 100%; height: auto; }
