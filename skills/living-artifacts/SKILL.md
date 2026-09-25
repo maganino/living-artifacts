@@ -113,6 +113,14 @@ link gets it. What follows applies only to documents published before the
 change, and to the two SSO artifacts kept for review. New documents follow
 "Publishing a document: the fused form" at the end of this file.
 
+**A review copy with the changes highlighted.** When a reviewer holds an
+older copy and asks what is new, build a copy from the source of the copy they
+hold plus only the confirmed changes, mark it with `mark-changes.mjs` against
+that source, set `publicMarks: true` and a one-line `publicMarksNote` on the
+model, give it its own `docId`, and publish it as a new artifact with
+`capabilities: {}`. Readers then see the purple words and rails, and nothing
+else of the working state. Never rebuild the copy they already hold.
+
 A living document cannot be shared outside the organization, because declaring
 `db` makes the artifact org-internal. The final hand-off is therefore always a
 separate, plain copy.

@@ -25,6 +25,7 @@
      not a meaning in it, and the four brand accents are spoken for: orange
      highlights, red warns, green is opportunity, yellow is data quality. */
   --changed: #6E56CF; --changed-tint: #F0EDFB;
+  --handled: #2F855A; --handled-tint: #EAF5EE;
   --font-display: Lexend, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-body: Lexend, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
@@ -38,6 +39,7 @@
     --amber: #FC8A47; --amber-tint: #3B2A18;
     --rose: #F06A75; --rose-tint: #3A1E22;
     --changed: #A392F9; --changed-tint: #2A2340;
+    --handled: #7BD3A1; --handled-tint: #1E3328;
   }
 }
 :root[data-theme="dark"] {
@@ -48,6 +50,7 @@
   --amber: #FC8A47; --amber-tint: #3B2A18;
   --rose: #F06A75; --rose-tint: #3A1E22;
   --changed: #A392F9; --changed-tint: #2A2340;
+  --handled: #7BD3A1; --handled-tint: #1E3328;
 }
 
 * { box-sizing: border-box; }
@@ -892,3 +895,13 @@ body.la-placing { cursor: copy; }
 .la-drag-hidden { display: none !important; }
 /* a narrower block keeps its content: text wraps, pictures scale, tables scroll */
 .house .blk img, .house .blk svg, .house .la-blk img, .house .la-blk svg, .house .card img, .house .card svg { max-width: 100%; height: auto; }
+
+/* a handled note settles to green; one answered in Claude's latest round
+   keeps the purple of that round so it reads as news */
+.la-note.done, .la-cellnote.done, .la-marknote.done { color: var(--handled); border-left-color: var(--handled); background: var(--handled-tint); }
+.la-note.done .la-note-a, .la-cellnote.done .la-cellnote-a { color: var(--ink); }
+.la-mark.has-note.done { box-shadow: inset 0 -2px 0 var(--handled); }
+.la-mark.has-note.done::after { color: var(--handled); }
+.la-note.done.recent, .la-cellnote.done.recent, .la-marknote.done.recent { color: var(--changed); border-left-color: var(--changed); background: var(--changed-tint); }
+.la-mark.has-note.done.recent { box-shadow: inset 0 -2px 0 var(--changed); }
+.la-mark.has-note.done.recent::after { color: var(--changed); }

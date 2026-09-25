@@ -268,3 +268,9 @@
 .house .deferred[data-variant="deferred"] .tag { background: var(--surface-2); color: var(--muted); }
 .house .tbl-wrap.striped tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--surface-2) 55%, var(--surface)); }
 .house ul.list.checks li::before { content: "\2713"; color: var(--green-text); font-weight: 700; }
+/* a shared copy that shows its readers what changed: a note under the top
+   bar, purple words (la-chg), and a purple rail on a block that is new */
+.house .pubnote { background: var(--changed-tint, #F0EDFB); color: var(--changed, #6E56CF); font-size: 0.86rem; padding: 9px 0; border-bottom: 1px solid var(--border); }
+.house .chg-new { box-shadow: inset 3px 0 0 var(--changed, #6E56CF); padding-left: 14px; border-radius: 4px; background: color-mix(in srgb, var(--changed, #6E56CF) 5%, transparent); }
+.house .context-strip > .chg-new, .house .grid-2 > .chg-new { padding-left: 0; box-shadow: none; }
+.house .context-strip > .chg-new > .card, .house .grid-2 > .chg-new > .card { box-shadow: inset 3px 0 0 var(--changed, #6E56CF); }
