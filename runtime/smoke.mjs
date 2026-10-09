@@ -1405,5 +1405,46 @@ console.log('\nnotes: a note is a paragraph, not a line');
   eq('Cmd+Enter commits, newline intact', w.model().blocks[1].note, 'first line\nsecond line');
 }
 
+
+/* ------------------------------------------------------------------------- */
+console.log('\ndownload: a whole document, and never a file the browser refuses');
+{
+  const m = fixture();
+  const saves = [];
+  const caps = async (n) => n === 'artifact'
+    ? Object.freeze({ publish: async () => ({ version: 'v2' }) })
+    : n === 'db' ? Object.freeze({ doc: () => ({ set: async () => {} }) })
+    : n === 'downloads' ? Object.freeze({ save: async (f) => { saves.push(f); } })
+    : null;
+
+  /* the inlined form: the page already carries its own runtime */
+  const e = boot(wrap(buildBody(m), 'Download Doc'), { use: caps });
+  await settle();
+  btn(e.d.getElementById('la-bar'), '\u2913').click();
+  await settle();
+  ok('the inlined document saves as one html file', saves.length === 1 && /\.html$/.test(saves[0].filename));
+  ok('and it is a complete document', saves[0].data.startsWith('<!doctype html>'));
+  ok('carrying the model with it', /la-model/.test(saves[0].data));
+
+  /* the shell form: runtime and stylesheet are separate files beside the page.
+     With no fetch to reach them, the model is what there is to hand over — and
+     it must never be offered as .js, which is the extension downloads refuse. */
+  saves.length = 0;
+  const shell = `<!doctype html><html><head><meta charset="utf-8">`
+    + `<link rel="stylesheet" href="style.css"></head><body>`
+    + `<div id="la-root"></div><script>window.__laModel = ${JSON.stringify(m)};<\/script>`
+    + `<script src="runtime.js"><\/script></body></html>`;
+  const rt = readFileSync(new URL('./la-runtime.js', import.meta.url), 'utf8');
+  const e2 = boot(shell.replace('<script src="runtime.js"><\/script>', `<script>${rt}<\/script>`),
+    { use: caps, page: true });
+  await settle();
+  btn(e2.d.getElementById('la-bar'), '\u2913').click();
+  await settle();
+  ok('a shell document still hands over something', saves.length === 1, JSON.stringify(saves[0] || null));
+  ok('and never as a .js file, which downloads refuse', !/\.js$/.test(saves[0].filename));
+  ok('the model comes back as json', /\.model\.json$/.test(saves[0].filename)
+    && JSON.parse(saves[0].data).blocks.length === m.blocks.length);
+}
+
 console.log(failed ? `\n${failed} failing\n` : '\nall green\n');
 process.exit(failed ? 1 : 0);

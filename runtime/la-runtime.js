@@ -3316,33 +3316,58 @@
      buildFilteredVersion(), which strips the editor for sharing. This one is
      the no-lock-in escape hatch: a complete self-contained copy, any time, with
      no session and no platform in the path. */
+  /* A shell document's runtime and stylesheet are separate files beside it.
+     They are this artifact's own files, so the page can fetch them and inline
+     them into one standalone copy — which is what the button promises. */
+  async function fetchShellAssets() {
+    var link = document.querySelector('link[rel="stylesheet"]');
+    var tag = [].slice.call(document.querySelectorAll('script[src]'))
+      .filter(function (n) { return /runtime\.js(\?|$)/.test(n.getAttribute('src') || ''); })[0];
+    if (!link || !tag || typeof fetch !== 'function') return null;
+    try {
+      var res = await Promise.all([fetch(link.getAttribute('href')), fetch(tag.getAttribute('src'))]);
+      if (!res[0].ok || !res[1].ok) return null;
+      var text = await Promise.all([res[0].text(), res[1].text()]);
+      return { css: text[0], js: text[1] };
+    } catch (e) { return null; }
+  }
+
   async function downloadDocument() {
-    var html;
+    var dl = null;
+    try { dl = await claude.use('downloads'); } catch (e) { /* not granted */ }
+    if (!dl) return status('Downloading is not available in this view.', true);
+
+    var html = null, assets = null;
     if (modelSource === 'file') {
-      /* The document IS the model. The runtime that draws it lives in the
-         design system, and in git. */
-      var dlm = null;
-      try { dlm = await claude.use('downloads'); } catch (e) { /* not granted */ }
-      if (!dlm) return status('Downloading is not available in this view.', true);
+      status('Building a standalone copy\u2026');
+      assets = await fetchShellAssets();
+    }
+    try { html = buildDocument(assets); }
+    catch (e) { html = null; }
+
+    if (html) {
       try {
-        await dlm.save({ filename: model.docId + '-rev' + model.rev + '.model.js', data: modelJs() });
-        return status('Saved the model of rev ' + model.rev + ' to your disk.');
+        await dl.save({ filename: model.docId + '-rev' + model.rev + '.html', data: html });
+        return status('Saved a full copy of rev ' + model.rev + ' to your disk.');
       } catch (e) {
         if (e && e.code === 'cancelled') return status('Download cancelled.');
         return status('Download failed (' + ((e && e.code) || 'unknown') + ').', true);
       }
     }
-    try { html = buildDocument(); }
-    catch (e) { return status('Could not build the document: ' + e.message, true); }
-    var dl = null;
-    try { dl = await claude.use('downloads'); } catch (e) { /* not granted */ }
-    if (!dl) return status('Downloading is not available in this view.', true);
+
+    /* Could not reach the shared runtime: hand over the model, which is the
+       part that is not recoverable from anywhere else. `.json`, never `.js` —
+       a download of a script is refused, which is what `rejected_extension`
+       was. The runtime is in the repo and in the design-system artifact. */
     try {
-      await dl.save({ filename: model.docId + '-rev' + model.rev + '.html', data: html });
-      status('Saved a full copy of rev ' + model.rev + ' to your disk.');
-    } catch (e) {
-      if (e && e.code === 'cancelled') return status('Download cancelled.');
-      status('Download failed (' + ((e && e.code) || 'unknown') + ').', true);
+      await dl.save({
+        filename: model.docId + '-rev' + model.rev + '.model.json',
+        data: JSON.stringify(model, null, 2)
+      });
+      return status('Saved the model of rev ' + model.rev + '. The runtime that draws it is in the repo.');
+    } catch (e2) {
+      if (e2 && e2.code === 'cancelled') return status('Download cancelled.');
+      return status('Download failed (' + ((e2 && e2.code) || 'unknown') + ').', true);
     }
   }
 
@@ -3480,9 +3505,13 @@
   }
 
   /* ------------------------------------------------------- document output */
-  function buildDocument() {
-    var css = document.getElementById(STYLE_EL).textContent;
-    var js = document.getElementById(RUNTIME_EL).textContent;
+  /* `assets` lets a shell-form document build the same standalone file an
+     inlined one builds, from its own fetched runtime and stylesheet. */
+  function buildDocument(assets) {
+    var styleEl = document.getElementById(STYLE_EL), runtimeEl = document.getElementById(RUNTIME_EL);
+    var css = (assets && assets.css) || (styleEl && styleEl.textContent) || '';
+    var js = (assets && assets.js) || (runtimeEl && runtimeEl.textContent) || '';
+    if (!css || !js) throw new Error('this view has no copy of the runtime to inline');
     /* '<' can only occur inside JSON string literals, where < is a legal
        escape — so this can never break out of the script element. */
     var json = JSON.stringify(model, null, 2).replace(/</g, '\\u003c');
