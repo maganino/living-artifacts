@@ -2228,7 +2228,12 @@
       var w0 = b.layout && b.layout.w;
       var cls0 = (w0 ? 'blk w-' + esc(w0) : '') + (model.publicMarks && changedWhole(b) ? ' chg-new' : '');
       cls0 = cls0.trim();
-      return (cls0 && html && !noWrap) ? '<div class="' + cls0 + '">' + html + '</div>' : html;
+      /* In a published copy a changed block is also a link target, so the
+         changelog at the top can point at it. The anchor only exists where the
+         marks do, so it never appears on an ordinary reader's page. */
+      var anchor = (model.publicMarks && b.touched) ? ' id="chg-' + esc(b.id) + '"' : '';
+      if (!html || noWrap) return html;
+      return (cls0 || anchor) ? '<div class="' + cls0 + '"' + anchor + '>' + html + '</div>' : html;
     }
     var w = b.layout && b.layout.w;
     var cls = 'la-blk' + (w ? ' blk w-' + esc(w) : '') + (extra ? ' ' + extra : '');
@@ -3476,6 +3481,13 @@
       add.onclick = function (e) { e.stopPropagation(); closeFilterMenu(); toggleAddMenu(add); };
       bar.appendChild(add);
       bar.appendChild(rules);
+      /* Publish cuts a read-only copy of this version, with the changes listed
+         at the top. It never replaces the download beside it: that one hands
+         back the whole editable document, which is the no-lock-in promise. */
+      var pub = el('button', 'la-btn', 'Publish');
+      pub.title = 'Save a read-only copy of this version, with what changed listed at the top';
+      pub.onclick = function (e) { e.stopPropagation(); publishCopy(); };
+      bar.appendChild(pub);
       bar.appendChild(modeToggle());
       bar.appendChild(dlb);
     }
@@ -3502,6 +3514,96 @@
     st.className = 'la-status' + (isErr ? ' err' : '');
     clearTimeout(statusTimer);
     if (!isErr) statusTimer = setTimeout(renderBar, 4000);
+  }
+
+
+  /* ------------------------------------------------------- publishing a copy */
+  /* What changed since the last rebuild, read from the same `touched` marks the
+     page already paints. The changelog is DERIVED, never stored: a stored one
+     is a second source of truth that has to be cleared every round, and the one
+     thing worse than no changelog is a stale one. */
+  function changeList() {
+    var out = [];
+    model.blocks.forEach(function (b) {
+      if (!b.touched) return;
+      var label = b.text || b.title || b.caption
+        || (b.items && b.items[0]) || (b.head && b.head.join(' \u00b7 ')) || b.type;
+      out.push({
+        id: b.id,
+        by: b.touched.by,
+        type: b.type,
+        label: clip(String(label).replace(/\s+/g, ' ').trim(), 70)
+      });
+    });
+    return out;
+  }
+
+  function changelogHtml(changes) {
+    if (!changes.length) return '';
+    var items = changes.map(function (c) {
+      return '<li><a href="#chg-' + esc(c.id) + '">' + esc(c.label) + '</a>'
+        + '<span class="who">' + (c.by === 'viewer' ? 'you' : 'Claude') + '</span></li>';
+    }).join('');
+    return '<nav class="la-changelog"><div class="wrap">'
+      + '<p class="la-changelog-h">' + changes.length + ' change'
+      + (changes.length === 1 ? '' : 's') + ' in this version</p>'
+      + '<ol>' + items + '</ol></div></nav>';
+  }
+
+  /* The published copy IS the preview: the same read-mode render, with the
+     change marks turned on for its readers and a changelog above it. No editor,
+     no journal, no `db` — it is a file, and a file cannot be edited back. */
+  function buildPreviewCopy(assets, changes) {
+    var styleEl = document.getElementById(STYLE_EL);
+    var css = (assets && assets.css) || (styleEl && styleEl.textContent) || '';
+    if (!css) throw new Error('this view has no copy of the stylesheet to inline');
+    var keepModel = model, keepEdit = pageEdit, keepRO = readOnly;
+    var copy = clone(model);
+    copy.publicMarks = true;
+    copy.publicMarksNote = 'Purple is what changed in this version \u00b7 rev ' + model.rev;
+    var body;
+    try {
+      model = copy; pageEdit = false; readOnly = true;
+      body = readHtml();
+    } finally {
+      model = keepModel; pageEdit = keepEdit; readOnly = keepRO;
+    }
+    return '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
+      + '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
+      + '<title>' + esc(model.title) + '</title>\n'
+      + '<style>\n' + css + '\n</style>\n</head>\n<body>\n'
+      + '<div class="house' + templateCls() + '">' + changelogHtml(changes) + body + '</div>\n'
+      + '</body>\n</html>\n';
+  }
+
+  async function publishCopy() {
+    if (readOnly) return status('This view cannot publish.', true);
+    var dl = null;
+    try { dl = await claude.use('downloads'); } catch (e) { /* not granted */ }
+
+    /* Save first, so the version this copy is cut from is the live one. */
+    if (pending.length) { status('Saving before publishing\u2026'); await doSave(); }
+
+    var changes = changeList();
+    var assets = (modelSource === 'file') ? await fetchShellAssets() : null;
+    var html;
+    try { html = buildPreviewCopy(assets, changes); }
+    catch (e) { return status('Could not build the copy: ' + e.message, true); }
+
+    record({ op: 'publish', rev: model.rev, changed: changes.map(function (c) { return c.id; }) });
+    scheduleSave();
+
+    if (!dl) {
+      return status('Built the copy for rev ' + model.rev + ', but this view cannot save files.', true);
+    }
+    try {
+      await dl.save({ filename: model.docId + '-rev' + model.rev + '.published.html', data: html });
+      status('Published rev ' + model.rev + ' \u00b7 ' + changes.length + ' change'
+        + (changes.length === 1 ? '' : 's') + ' listed at the top of the copy.');
+    } catch (e) {
+      if (e && e.code === 'cancelled') return status('Publishing cancelled.');
+      status('Could not save the copy (' + ((e && e.code) || 'unknown') + ').', true);
+    }
   }
 
   /* ------------------------------------------------------- document output */
@@ -3813,6 +3915,8 @@
     download: downloadDocument,
     tags: allTags,
     flush: function () { return doSave(); },
+    publishCopy: function () { return publishCopy(); },
+    changeList: changeList,
     setMode: setMode,
     mode: function () { return mode; },
     rangeOf: rangeOf,

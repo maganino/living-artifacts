@@ -4,7 +4,7 @@ window.__laModel = {
  "title": "How a living artefact is made",
  "url": "https://claude.ai/artifact/8dd3fQAxRDHxRP1HenzKL8",
  "thread": "living-artifacts",
- "rev": 3,
+ "rev": 5,
  "style": {
   "directives": [
    {
@@ -417,7 +417,7 @@ window.__laModel = {
    }
   }
  ],
- "updated": "revised by claude · 2026-10-09",
+ "updated": "1 edit by viewer · 2026-10-09",
  "journal": [
   {
    "rev": 1,
@@ -441,6 +441,18 @@ window.__laModel = {
      "block": "b-saved-table",
      "cell": "h2",
      "text": "give examples to understand practically"
+    }
+   ]
+  },
+  {
+   "rev": 4,
+   "at": "2026-10-09T13:51:21.911Z",
+   "by": "viewer",
+   "ops": [
+    {
+     "op": "note",
+     "block": "b-lede",
+     "text": ""
     }
    ]
   }
