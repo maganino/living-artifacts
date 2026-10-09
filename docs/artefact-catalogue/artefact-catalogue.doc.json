@@ -2,16 +2,25 @@
   "v": 1,
   "docId": "artefact-catalogue",
   "title": "What to make, and what it meets",
-  "url": "https://claude.ai/artifact/NZeK437rdhsLmBbRrrPCxz",
   "thread": "living-artifacts",
   "component": "Catalogue",
   "template": "brief",
-  "rev": 0,
+  "rev": 4,
   "blocks": [
     {
       "id": "b-lede",
       "type": "para",
       "text": "Eleven things you can ask for and six of them are not living artefacts. Your skills mostly stack on top of this runtime rather than compete with it; two genuinely collide, and one of those is the likeliest source of the next mess. Pin a note on any row."
+    },
+    {
+      "id": "b-words",
+      "type": "callout",
+      "title": "Three words used on this page",
+      "text": "The **model** is the document's content as data: a list of blocks with stable ids. It is the truth.\nThe **page** is what you are reading: a rendering of the model. Editing the page edits the model; the page is never read back.\nA **template** is one of three read-mode layouts the model can be drawn in. `house` is the default, a tabbed spec. `desk-research` is one long page for analysis. `brief` is a one-pager, which is what this page uses.",
+      "touched": {
+        "rev": 4,
+        "by": "claude"
+      }
     },
     {
       "id": "b-h-make",
@@ -203,6 +212,88 @@
       ]
     },
     {
+      "id": "b-h-prd",
+      "type": "heading",
+      "level": 2,
+      "text": "The two ways to publish a PRD",
+      "info": "D-1 in full: what the two actually are, and why only one of them can be read back.",
+      "touched": {
+        "rev": 4,
+        "by": "claude"
+      }
+    },
+    {
+      "id": "b-prd-table",
+      "type": "table",
+      "head": [
+        "",
+        "the `verbolia-prd` skill",
+        "this runtime, `house` template"
+      ],
+      "rows": [
+        [
+          "what it is",
+          "a skill that writes a PRD and publishes it as its own tabbed page",
+          "a skill that writes a model, which this runtime draws as a tabbed page"
+        ],
+        [
+          "where the content lives",
+          "in the published HTML",
+          "in the model, as blocks with stable ids"
+        ],
+        [
+          "can you edit it in the page",
+          "yes",
+          "yes"
+        ],
+        [
+          "do your edits come back to me as intent",
+          "no. I re-read the page and infer",
+          "yes. Each gesture is a typed operation in the journal"
+        ],
+        [
+          "layouts available",
+          "one",
+          "three, and a fourth is an entry in a registry"
+        ],
+        [
+          "change marks, tags, notes, style directives",
+          "no",
+          "yes"
+        ],
+        [
+          "who maintains it",
+          "itself, forked per document",
+          "the runtime, so a fix reaches every document on its next build"
+        ]
+      ],
+      "touched": {
+        "rev": 4,
+        "by": "claude"
+      }
+    },
+    {
+      "id": "b-visual",
+      "type": "callout",
+      "title": "The visual you are asking for already exists",
+      "text": "'How a living artefact is made' draws the whole flow: who does what between me, the node CLI and the runtime in the page, one round end to end as a sequence, where all five surfaces are saved, and what each version counter means.\nhttps://claude.ai/artifact/8dd3fQAxRDHxRP1HenzKL8\nIf it does not answer the question, say which step is unclear and I will extend that page rather than start a second one.",
+      "touched": {
+        "rev": 4,
+        "by": "claude"
+      }
+    },
+    {
+      "id": "b-pub",
+      "type": "callout",
+      "variant": "warning",
+      "title": "The Publish button: two of your three outputs work",
+      "text": "**A static read-only HTML, the same as Preview.** Possible today, two ways. `build.mjs export` already writes one into the document's folder from the model. The button itself can hand you the file through the download prompt, but it cannot choose the folder: a page cannot write to your disk, only offer a file.\n\n**Its own Claude artefact holding that static copy.** Not possible from the button. A page can republish itself and nothing else; the capability has no target other than the artefact it belongs to. What works instead: the button writes the static HTML into this document's own store, and I publish or update the companion artefact from there in a session. One click from you, one step from me, and the static artefact keeps its URL across updates.\n\n**Updating this artefact.** Already happens on every save: a new immutable version, same URL, version picker.",
+      "touched": {
+        "rev": 4,
+        "by": "claude"
+      }
+    },
+    {
       "id": "b-h-dec",
       "type": "heading",
       "level": 2,
@@ -221,18 +312,129 @@
         [
           "D-1",
           "Retire `verbolia-prd`, or keep it and point it at this runtime?",
-          "two vessels for the same document is the likeliest way to end up with a mess again. Retiring it is one edit to its description"
+          "The table above is the case: the two publish the same kind of page, but only one of them can read your edits back as intent. Retiring it is one edit to its description. Keeping both means every PRD starts with a coin toss"
         ],
         [
           "D-2",
-          "What is this runtime for, now that Claude Docs exists?",
-          "carried from the last round unanswered. It decides what gets built after the Publish button"
+          "Where does the static read-only copy live: a download, a file in the document's folder, or its own Claude artefact?",
+          "You asked for all three. Two are already possible and one is not, which is the row below this one. The answer decides what the Publish button does"
         ],
         [
           "D-3",
-          "Does the Publish button's changelog live in the model, or only in the page?",
-          "in the model it is content you can edit and I can read back; in the page it is a view that costs nothing and survives nothing"
+          "Does the changelog live in the model, or only in the page?",
+          "In the model you can edit it and I can read it back, and it costs a block. In the page it is free and disappears on the next build. Not urgent; decide when the button is built"
         ]
+      ],
+      "cellNotes": {
+        "r0c2": "could you show what are exactly the 2, the differences and why you suggest to retire one or the other?, i donno what is this house?",
+        "r1c2": "i think you can neglect this question. regarding the publish button, i see it important in updating the static read only versions, 1 html that is startic read only equivalent to what we see in preview, and save in same folder. i hoped the publish button is capable also to create or update a claude artefact that holds the static version",
+        "r2c2": "i do not understand and i realise you need to explain to me the full flow visually and what is the model what is the page .. etc."
+      },
+      "cellNotesDone": {
+        "r0c2": "Added the section above: what each one is, and the one difference that decides it.",
+        "r1c2": "Dropped the Docs question as you asked, and rewrote this row as your static-copy question. The callout below says which parts are possible.",
+        "r2c2": "You already have that visual: 'How a living artefact is made'. Link in the callout below. Next increment extends it rather than starting a second one."
+      },
+      "cellNotesDoneRev": {
+        "r0c2": 4,
+        "r1c2": 4,
+        "r2c2": 4
+      },
+      "touched": {
+        "rev": 4,
+        "by": "claude",
+        "spans": [
+          {
+            "cell": "r0c2",
+            "quote": "The table above is the case: the"
+          },
+          {
+            "cell": "r0c2",
+            "quote": "publish"
+          },
+          {
+            "cell": "r0c2",
+            "quote": "kind of page, but only one of them can read your edits back as intent."
+          },
+          {
+            "cell": "r0c2",
+            "quote": "description. Keeping both means every PRD starts with a coin toss"
+          },
+          {
+            "cell": "r1c1",
+            "quote": "Where does the static read-only copy live: a download, a file in the document's folder, or its own"
+          },
+          {
+            "cell": "r1c1",
+            "quote": "artefact?"
+          },
+          {
+            "cell": "r1c2",
+            "quote": "You asked for all three. Two are already possible and one is not, which is"
+          },
+          {
+            "cell": "r1c2",
+            "quote": "row below this one. The answer"
+          },
+          {
+            "cell": "r1c2",
+            "quote": "does"
+          },
+          {
+            "cell": "r2c2",
+            "quote": "it back, and it costs a block. In"
+          },
+          {
+            "cell": "r2c2",
+            "quote": "free"
+          },
+          {
+            "cell": "r2c2",
+            "quote": "disappears on the next build. Not urgent; decide when the button is built"
+          }
+        ]
+      }
+    }
+  ],
+  "updated": "revised by claude · 2026-10-09",
+  "journal": [
+    {
+      "rev": 1,
+      "at": "2026-10-09T11:25:31.321Z",
+      "by": "viewer",
+      "ops": [
+        {
+          "op": "note",
+          "block": "b-dec-table",
+          "cell": "r0c2",
+          "text": "could you show what are exactly the 2, the differences and why you suggest to retire one or the other?, i donno what is this house?"
+        }
+      ]
+    },
+    {
+      "rev": 2,
+      "at": "2026-10-09T11:29:28.181Z",
+      "by": "viewer",
+      "ops": [
+        {
+          "op": "note",
+          "block": "b-dec-table",
+          "cell": "r1c2",
+          "text": "i think you can neglect this question. regarding the publish button, i see it important in updating the static read only versions, 1 html that is startic read only equivalent to what we see in preview, and save in same folder. i hoped the publish button is capable also to create or update a claude artefact that holds the static version"
+        }
+      ]
+    },
+    {
+      "rev": 3,
+      "at": "2026-10-09T11:30:26.146Z",
+      "by": "viewer",
+      "ops": [
+        {
+          "op": "note",
+          "block": "b-dec-table",
+          "cell": "r2c2",
+          "text": "i do not understand and i realise you need to explain to me the full flow visually and what is the model what is the page .. etc."
+        }
       ]
     }
   ]
