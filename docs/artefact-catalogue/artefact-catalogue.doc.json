@@ -1,0 +1,239 @@
+{
+  "v": 1,
+  "docId": "artefact-catalogue",
+  "title": "What to make, and what it meets",
+  "url": "https://claude.ai/artifact/NZeK437rdhsLmBbRrrPCxz",
+  "thread": "living-artifacts",
+  "component": "Catalogue",
+  "template": "brief",
+  "rev": 0,
+  "blocks": [
+    {
+      "id": "b-lede",
+      "type": "para",
+      "text": "Eleven things you can ask for and six of them are not living artefacts. Your skills mostly stack on top of this runtime rather than compete with it; two genuinely collide, and one of those is the likeliest source of the next mess. Pin a note on any row."
+    },
+    {
+      "id": "b-h-make",
+      "type": "heading",
+      "level": 2,
+      "text": "What you can make",
+      "info": "The question that picks the row is what the thing is for, never what it looks like."
+    },
+    {
+      "id": "b-make-table",
+      "type": "table",
+      "head": [
+        "When you want",
+        "What gets made",
+        "Built by"
+      ],
+      "rows": [
+        [
+          "a document you and I revise over rounds",
+          "a living artefact, template by purpose",
+          "this repo"
+        ],
+        [
+          "a PRD or a spec",
+          "a living artefact, `house` template",
+          "this repo, but see D-1"
+        ],
+        [
+          "research, an audit, a findings page",
+          "a living artefact, `desk-research` template",
+          "this repo"
+        ],
+        [
+          "a one-pager, a memo, a short recommendation",
+          "a living artefact, `brief` template",
+          "this repo"
+        ],
+        [
+          "a document several people write in at once",
+          "a Claude Doc",
+          "the Docs connector"
+        ],
+        [
+          "a deck to present or send",
+          "a Slides artifact",
+          "the Slides type"
+        ],
+        [
+          "a page of live numbers",
+          "a Dashboard artifact",
+          "the Dashboard type"
+        ],
+        [
+          "a screen, a mockup, a landing page",
+          "a Design canvas",
+          "the Design type"
+        ],
+        [
+          "a brand reference others build on",
+          "a Design System artifact",
+          "the Design System type"
+        ],
+        [
+          "an animation, an explainer, a walkthrough",
+          "a Motion artifact",
+          "the Motion type"
+        ],
+        [
+          "anything going outside Verbolia",
+          "a static copy, no capabilities, no editor",
+          "this repo"
+        ]
+      ]
+    },
+    {
+      "id": "b-h-fit",
+      "type": "heading",
+      "level": 2,
+      "text": "Where your skills meet a living artefact",
+      "info": "These stack. None of them is an alternative to the runtime; each governs a different layer."
+    },
+    {
+      "id": "b-fit-table",
+      "type": "table",
+      "head": [
+        "Skill",
+        "What it governs",
+        "How it meets a living artefact"
+      ],
+      "rows": [
+        [
+          "`build-step-by-step`",
+          "the pace",
+          "one section or one decision per turn, corrected in place, never a second artefact for a fix"
+        ],
+        [
+          "`clear-writing`",
+          "the words",
+          "applies inside every block, and to the chat reply that hands it over"
+        ],
+        [
+          "`prd-two-stage`",
+          "what a PRD must contain",
+          "supplies the sections and the acceptance criteria; the `house` template is the vessel"
+        ],
+        [
+          "`decompose-problem-artifacts`",
+          "one artefact per component",
+          "this runtime is the mechanism that skill was written without"
+        ],
+        [
+          "`audience-views`",
+          "`for:<audience>` tags and the export",
+          "tag as you write; export only when it leaves the organization"
+        ],
+        [
+          "`dataviz`",
+          "every chart",
+          "charts live in `figure` blocks; run its validator before choosing a palette"
+        ],
+        [
+          "`verbolia-design-system`",
+          "brand for anything not built here",
+          "the runtime already ships the theme, so this is for decks, posts and mail"
+        ],
+        [
+          "`tray-handoff`",
+          "threads and picking work back up",
+          "`tray/` holds one artefact record per document, and the threads around it"
+        ],
+        [
+          "`confirm-before-sending`",
+          "anything outward",
+          "publishing a copy for someone outside is one of those"
+        ],
+        [
+          "`four-modes-of-ai-collaboration`",
+          "which kind of help is wanted",
+          "reading a round back is Reflection, regenerating from it is Execution; collapsing them loses the round"
+        ],
+        [
+          "`verbolia-vpage-triage`",
+          "VPage audits",
+          "produces desk-research pages; that template came out of it"
+        ]
+      ]
+    },
+    {
+      "id": "b-h-clash",
+      "type": "heading",
+      "level": 2,
+      "text": "Where they actually conflict",
+      "info": "Five tensions. Two are real conflicts, three only look like one until the rule is written down."
+    },
+    {
+      "id": "b-clash-table",
+      "type": "table",
+      "head": [
+        "Tension",
+        "What goes wrong",
+        "What I do unless you say otherwise"
+      ],
+      "rows": [
+        [
+          "`verbolia-prd` against the `house` template",
+          "two ways to publish a Verbolia PRD, both tabbed, both editable, both on brand. Whichever I pick, the other one rots",
+          "use this repo. `verbolia-prd` predates the fused form. D-1 settles it"
+        ],
+        [
+          "Claude Docs against a living artefact",
+          "both are \"a living document\". Docs wins on co-editing and comment threads; this wins on the typed journal and the templates",
+          "a living artefact when it is you and me over rounds, a Doc when more than one person writes. D-2"
+        ],
+        [
+          "`verbolia-design-system` against \"never style a page\"",
+          "reaching for brand tokens to style a document breaks the rule the whole runtime rests on",
+          "add what is missing to the runtime, never to a document"
+        ],
+        [
+          "`audience-views` against the fused form",
+          "that skill assumes a separate static copy per audience; the fused form says there is one page",
+          "one page inside Verbolia, a static copy only to leave it"
+        ],
+        [
+          "`decompose-problem-artifacts` against `build-step-by-step`",
+          "looks like a contradiction: one artefact per component, but one increment per turn",
+          "no conflict. One component per artefact, one section per turn, inside the same artefact"
+        ]
+      ]
+    },
+    {
+      "id": "b-h-dec",
+      "type": "heading",
+      "level": 2,
+      "text": "What is still open",
+      "info": "Three decisions. D-1 is the one that prevents the next mess."
+    },
+    {
+      "id": "b-dec-table",
+      "type": "table",
+      "head": [
+        "#",
+        "Decision",
+        "Why it matters"
+      ],
+      "rows": [
+        [
+          "D-1",
+          "Retire `verbolia-prd`, or keep it and point it at this runtime?",
+          "two vessels for the same document is the likeliest way to end up with a mess again. Retiring it is one edit to its description"
+        ],
+        [
+          "D-2",
+          "What is this runtime for, now that Claude Docs exists?",
+          "carried from the last round unanswered. It decides what gets built after the Publish button"
+        ],
+        [
+          "D-3",
+          "Does the Publish button's changelog live in the model, or only in the page?",
+          "in the model it is content you can edit and I can read back; in the page it is a view that costs nothing and survives nothing"
+        ]
+      ]
+    }
+  ]
+}
