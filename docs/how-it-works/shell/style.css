@@ -447,6 +447,17 @@
 .house.desk .opt b { font-family: var(--mono); font-weight: 600; margin-right: 6px; color: var(--ink-4); }
 .house.desk .opt.rec { background: var(--ink); color: var(--ground); border-color: var(--ink); font-weight: 600; }
 .house.desk .opt.rec b { color: var(--ground); opacity: .7; }
+/* Once a choice exists it takes the fill, and the recommendation keeps only a
+   ring — so a decision that went against the recommendation reads correctly. */
+.house.desk .opt.chosen { background: var(--core-green); color: #fff; border-color: var(--core-green); font-weight: 600; }
+.house.desk .opt.chosen b { color: #fff; opacity: .75; }
+.house.desk .opt.rec-soft { border-color: var(--ink-3); border-style: dashed; color: var(--ink-2); background: transparent; font-weight: 500; }
+.house.desk .opt.rec-soft::after { content: 'recommended'; margin-left: 8px; font-size: 9px; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--ink-4); }
+/* a chip a writer can press is a button, so it must not inherit button chrome */
+.house.desk button.opt { font-family: inherit; cursor: pointer; }
+.house.desk button.opt:hover { border-color: var(--core-orange); }
+.house.desk button.opt:focus-visible { outline: 2px solid var(--core-orange); outline-offset: 2px; }
 .house.desk .decision .recline { margin-top: 12px; font-size: 13px; }
 .house.desk .decision .recline b { color: var(--ink); }
 .house.desk section > .la-blk + .la-blk > .decision, .house.desk section > .decision + .decision { margin-top: 0; }
@@ -541,6 +552,76 @@
 .house.desk .gt-grp.g2 { color: var(--core-orange-strong, #A8410A); background: rgba(252,110,28,.14); }
 .house.desk .gt-grp.g3 { color: var(--core-red-strong, #B32B38); background: rgba(217,65,78,.12); }
 .house.desk .gt-grp.g4 { color: var(--ink-2, #454545); background: rgba(109,109,109,.15); }
+
+/* the ⓘ on a column header: its definition, opening downward over the rows */
+.th-i { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px;
+  margin-left: 5px; border-radius: 999px; border: 1px solid var(--rule); color: var(--ink-3);
+  font-size: 9.5px; font-style: normal; font-weight: 700; letter-spacing: 0; text-transform: none;
+  cursor: help; position: relative; vertical-align: middle; }
+.th-i:hover, .th-i:focus-within { border-color: var(--core-orange); color: var(--core-orange); outline: none; }
+.th-i::after { content: ''; position: absolute; left: -24px; right: -24px; top: 100%; height: 12px; }
+.th-pop { position: absolute; left: 50%; top: calc(100% + 8px); transform: translateX(-50%);
+  width: 290px; max-width: 70vw; background: var(--bg-surface, var(--surface, #fff)); color: var(--ink-2);
+  border: 1px solid var(--rule); border-radius: 10px; padding: 11px 13px; font-size: 11.5px; font-weight: 400;
+  letter-spacing: 0; text-transform: none; line-height: 1.5; text-align: left; white-space: pre-line;
+  box-shadow: 0 6px 22px rgba(0,0,0,.16); opacity: 0; visibility: hidden; transition: opacity .12s; z-index: 40; }
+.th-i:hover .th-pop, .th-i:focus-within .th-pop { opacity: 1; visibility: visible; }
+th:first-child .th-pop { left: -12px; transform: none; }
+th:last-child .th-pop, th:nth-last-child(2) .th-pop { left: auto; right: -12px; transform: none; }
+
+/* ---- brief template -------------------------------------------------------
+   The one-pager: the house look with the tabs unfolded into a single page that
+   is read top to bottom. Scoped under .house.brief so the tabbed layout is
+   untouched. Only three things differ from the house — a narrower measure, a
+   band rule per former tab, and a sub-nav that no longer needs to be sticky
+   because nothing is hidden behind it. Everything else is inherited on
+   purpose: a brief that grows into a spec should become one by changing the
+   template, not by being redrawn. */
+
+.house.brief .wrap { max-width: 820px; }
+
+/* The band is what a tab becomes: a labelled rule, not a card. A one-pager
+   that boxes each section reads as a stack of unrelated notes. */
+.house.brief .band { border-top: 1px solid var(--border); margin-top: 40px; padding-top: 4px; }
+.house.brief .band:first-of-type { border-top: 0; margin-top: 24px; }
+.house.brief .band-head {
+  font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--orange-text); padding: 10px 0 2px;
+}
+
+/* The tab panel loses its panel-ness: no hiding, no tab semantics, and the
+   sub-nav becomes a quiet row of jump links rather than a sticky bar. */
+.house.brief .tabpanel { display: block; }
+.house.brief .subnav {
+  position: static; background: none; border: 0; box-shadow: none;
+  padding: 0; margin: 0 0 8px;
+}
+.house.brief .subnav .wrap { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 0; }
+.house.brief .subnav a { font-size: 0.78rem; color: var(--muted); text-decoration: none; }
+.house.brief .subnav a:hover { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
+/* A band with a single section repeats its own name in the sub-nav; the band
+   head already said it. */
+.house.brief .band .subnav .wrap:has(a:only-child) { display: none; }
+
+/* The top bar carries jump links instead of tab buttons, so it needs the
+   same room the tabs had and none of their state. */
+.house.brief .topbar .sections { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center; }
+.house.brief .topbar .sections a {
+  font-size: 0.78rem; font-weight: 500; color: var(--muted); text-decoration: none;
+  padding: 4px 0; white-space: nowrap;
+}
+.house.brief .topbar .sections a:hover { color: var(--text); }
+
+/* A one-pager is printed and pasted more often than a spec is, so the bands
+   must not break across a page. */
+@media print {
+  .house.brief .topbar { display: none; }
+  .house.brief .band { break-inside: avoid; }
+}
+
+@media (max-width: 760px) {
+  .house.brief .topbar .sections { display: none; }
+}
 
 @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@200;300;400;600;700&display=swap');
 
@@ -908,7 +989,15 @@ table.la-grid td .la-cellnote, table.la-grid th .la-cellnote { margin: 0 9px 7px
   border-radius: 6px; padding: 10px 12px; resize: vertical; min-height: 84px;
 }
 .la-editbar { display: flex; gap: 8px; align-items: center; margin: 6px 0 12px; font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-muted); }
-.la-inline { display: flex; gap: 6px; margin: 4px 0 10px; }
+.la-inline { display: flex; gap: 6px; margin: 4px 0 10px; align-items: flex-start; }
+/* A note is usually a sentence or two, so the field is a textarea that grows
+   with what is typed into it rather than a one-line input showing its tail. */
+.la-noteinput { flex: 1 1 auto; min-width: 0; resize: none; overflow-y: auto;
+  font: inherit; line-height: 1.5; padding: 7px 10px; min-height: 36px; max-height: 320px;
+  border: 1px solid var(--la-border, #D1D1D1); border-radius: 8px;
+  background: var(--la-surface, #fff); color: inherit; }
+.la-noteinput:focus { outline: 2px solid var(--la-accent, #FC6E1C); outline-offset: -1px; }
+.la-inline .la-btn { flex: none; }
 .la-inline input {
   font-family: var(--font-mono); font-size: 13px; padding: 5px 9px; flex: 1; max-width: 340px;
   border: 1px solid var(--line-strong); border-radius: 5px; background: var(--surface); color: var(--ink);
@@ -1449,3 +1538,32 @@ body.la-placing { cursor: copy; }
 .la-note.done.recent, .la-cellnote.done.recent, .la-marknote.done.recent { color: var(--changed); border-left-color: var(--changed); background: var(--changed-tint); }
 .la-mark.has-note.done.recent { box-shadow: inset 0 -2px 0 var(--changed); }
 .la-mark.has-note.done.recent::after { color: var(--changed); }
+
+
+/* The writing rules, opened from the bar. They were the outline's header until
+   the outline was removed; as a panel they sit above the document because they
+   are instructions ABOUT the page, not part of it. */
+.la-contract { max-width: 820px; margin: 12px auto 0; padding: 14px 18px;
+  border: 1px solid var(--la-border, #D1D1D1); border-radius: 12px;
+  background: var(--la-surface, #fff); }
+.la-contract > summary { font-weight: 600; cursor: pointer; }
+.la-contract .la-contract-help { margin: 8px 0 10px; font-size: 0.86rem; opacity: .75; max-width: 70ch; }
+.la-contract ul { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 6px; }
+.la-contract li { display: flex; gap: 8px; align-items: baseline; }
+.la-contract li > span { flex: 1 1 auto; }
+.la-contract li.off > span { opacity: .45; text-decoration: line-through; }
+.la-contract input { flex: 1 1 auto; min-width: 0; font: inherit; padding: 7px 10px;
+  border: 1px solid var(--la-border, #D1D1D1); border-radius: 8px;
+  background: var(--la-surface, #fff); color: inherit; }
+
+/* An empty section says so, and starting it is one click. */
+.house.la-page .la-empty { font: inherit; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--muted, #6D6D6D); background: none; cursor: pointer;
+  border: 1px dashed var(--border, #D1D1D1); border-radius: 8px; padding: 10px 14px; }
+.house.la-page .la-empty:hover { color: var(--text, #454545); border-color: var(--muted, #6D6D6D); }
+
+/* Provenance: which sections the template demanded. Beside the title, quiet. */
+.house.la-page .la-badge, .house .la-badge { display: inline-block; margin-left: 10px;
+  font-size: 0.64rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  vertical-align: middle; padding: 2px 8px; border-radius: 999px;
+  border: 1px solid var(--border, #D1D1D1); color: var(--muted, #6D6D6D); }

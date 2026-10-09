@@ -27,7 +27,8 @@
      A reader without write rights only ever gets `read`. A writer starts where
      they left off and switches with one click, so the published look is never
      more than a click away from the thing being edited. */
-  var mode = 'read';   /* read | page | preview | outline, see renderRead */
+  var mode = 'read';   /* read | page | preview, see renderRead */
+  var rulesOpen = false;   /* the writing-rules panel, open from the bar */
   /* Where the model came from. `file` means a separate model.js next to a
      shared runtime, and a save then rewrites only that file; `inline` is the
      older single-file document, saved whole. */
@@ -45,7 +46,6 @@
   /* Folding is a VIEW, like the filter: it never reaches the model or the
      journal. Every section starts closed so the first thing a reader meets is
      the shape of the document rather than its first paragraph. */
-  var collapsed = {};
   var statusTimer = null, drag = null;
   var fresh = null;          /* { id, src }: a block just added, still untouched */
   var resize = null, placing = null;
@@ -507,37 +507,7 @@
     return l < 2 ? 2 : l > 4 ? 4 : l;
   }
   /* For each index: the chain of heading ids above it, outermost first. */
-  function foldChains() {
-    var chain = [], out = [];
-    model.blocks.forEach(function (b) {
-      var lvl = headingLevel(b);
-      if (lvl) {
-        while (chain.length && chain[chain.length - 1].level >= lvl) chain.pop();
-        out.push(chain.slice());           /* a heading is hidden by its PARENTS */
-        chain.push({ id: b.id, level: lvl });
-      } else {
-        out.push(chain.slice());
-      }
-    });
-    return out;
-  }
-  function foldHidden(chains, i) {
-    return chains[i].some(function (h) { return collapsed[h.id]; });
-  }
   /* What a closed section is holding, so nothing important hides silently. */
-  function sectionStats(i) {
-    var lvl = headingLevel(model.blocks[i]), n = 0, tagged = 0, notes = 0, touched = 0;
-    for (var j = i + 1; j < model.blocks.length; j++) {
-      var b = model.blocks[j], l = headingLevel(b);
-      if (l && l <= lvl) break;
-      if (l) continue;                      /* sub-headings are counted as sections */
-      n++;
-      if ((b.tags && b.tags.length) || (b.marks && b.marks.length)) tagged++;
-      if (b.note) notes++;
-      if (b.touched) touched++;
-    }
-    return { blocks: n, tagged: tagged, notes: notes, touched: touched };
-  }
   /* A section with no blocks of its own — the reader decides whether to fill it. */
   function sectionEmpty(i) {
     var lvl = headingLevel(model.blocks[i]);
@@ -548,34 +518,12 @@
     }
     return true;
   }
-  function eachHeading(fn) {
-    model.blocks.forEach(function (b) { if (headingLevel(b)) fn(b); });
-  }
-  function setAllFolded(v) {
-    collapsed = {};
-    if (v) eachHeading(function (b) { collapsed[b.id] = true; });
-  }
   /* Does this heading contain other headings? A section that only holds
      sub-sections has nothing of its own to hide. */
-  function hasSubheadings(i) {
-    var lvl = headingLevel(model.blocks[i]);
-    for (var j = i + 1; j < model.blocks.length; j++) {
-      var l = headingLevel(model.blocks[j]);
-      if (l && l <= lvl) return false;
-      if (l) return true;
-    }
-    return false;
-  }
   /* The opening view: every section NAME visible, no section CONTENT. Folding
      the container sections too would open the document on four words, which is
      a table of contents for a table of contents. Shift-click on "Collapse ▾"
      still gets there in one click for anyone who wants it. */
-  function setOutlineFolded() {
-    collapsed = {};
-    model.blocks.forEach(function (b, i) {
-      if (headingLevel(b) && !hasSubheadings(i)) collapsed[b.id] = true;
-    });
-  }
 
   /* ---------------------------------------------------------------- render */
   /* A grid or figure editor listens outside itself for the click that ends
@@ -589,51 +537,16 @@
 
   function render() {
     dropEditorHooks();
-    var root = document.getElementById('la-root');
-    if (readOnly || mode !== 'outline') { renderRead(root); return; }
-    var scroll = window.scrollY;
-    root.textContent = '';
-    root.appendChild(renderHead());
-    var wrap = el('div', 'la-blocks');
-    var chains = foldChains();
-    model.blocks.forEach(function (b, i) {
-      var node = renderBlock(b, i);
-      node.dataset.depth = Math.min(chains[i].length, 3);
-      /* Filtering and folding are both VIEWS, never edits — nothing here
-         reaches the model. A filter wins over a fold: a block that matches
-         must be reachable without hunting for the section holding it. */
-      if (!matchesFilter(b)) node.hidden = true;
-      else if (!filter.length && foldHidden(chains, i)) node.hidden = true;
-      wrap.appendChild(node);
-    });
-    root.appendChild(wrap);
-    if (!readOnly) root.appendChild(renderAddRow());
-    renderBar();
-    /* a full re-render resets scroll; restore it so an edit deep in a long
-       document does not throw the reader back to the top */
-    if (typeof window.scrollTo === 'function' && window.scrollY !== scroll) {
-      try { window.scrollTo(0, scroll); } catch (e) { /* unsupported */ }
-    }
+    renderRead(document.getElementById('la-root'));
   }
 
-  function renderHead() {
-    var h = el('header', 'la-head');
-    var eye = el('div', 'la-eyebrow');
-    if (model.thread) eye.appendChild(el('span', null, model.thread));
-    if (model.component) eye.appendChild(el('span', null, '· ' + model.component));
-    eye.appendChild(el('span', 'la-rev', 'rev ' + model.rev));
-    h.appendChild(eye);
-    h.appendChild(el('h1', 'la-title', model.title));
-    if (model.updated) h.appendChild(el('p', 'la-updated', 'Updated: ' + model.updated));
-    h.appendChild(renderContract());
-    return h;
-  }
 
   function renderContract() {
     var directives = (model.style && model.style.directives) || [];
     var active = directives.filter(function (x) { return x.active; }).length;
     var d = el('details', 'la-contract');
     d.open = true;
+    d.setAttribute('role', 'region');
     /* v1 called this "Style contract" and the first reader's comment was
        "not sure what is this". Say what it does, in the reader's words. */
     d.appendChild(el('summary', null,
@@ -680,7 +593,10 @@
         render();
       }
       add.onclick = commit;
-      inp.onkeydown = function (e) { if (e.key === 'Enter') { e.preventDefault(); commit(); } };
+      inp.onkeydown = function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); commit(); }
+        if (e.key === 'Escape') { e.preventDefault(); rulesOpen = false; render(); }
+      };
       row.appendChild(inp); row.appendChild(add);
       d.appendChild(row);
     }
@@ -840,12 +756,9 @@
   function cellNoteForm(host, b, key) {
     if (host.querySelector('.la-cellnoteform')) return;
     var form = el('div', 'la-inline la-cellnoteform');
-    var inp = el('input');
-    inp.value = (b.cellNotes || {})[key] || '';
-    inp.placeholder = 'what should Claude do with this cell?';
-    inp.setAttribute('aria-label', 'Note to Claude on this cell');
-    var ok = el('button', 'la-btn primary', 'Save note');
+    var committed = false;
     function commit() {
+      if (committed) return; committed = true;
       var v = inp.value.trim();
       b.cellNotes = b.cellNotes || {};
       if (v) b.cellNotes[key] = v; else delete b.cellNotes[key];
@@ -853,15 +766,14 @@
       record({ op: 'note', block: b.id, cell: key, text: v });
       render();
     }
+    function discard() { committed = true; dropEditorHooks(); form.remove(); }
+    var inp = noteField(form, (b.cellNotes || {})[key],
+      'what should Claude do with this cell?', 'Note to Claude on this cell',
+      commit, discard);
+    var ok = el('button', 'la-btn primary', 'Save note');
     ok.onclick = function (e) { e.stopPropagation(); commit(); };
-    inp.onkeydown = function (e) {
-      e.stopPropagation();
-      if (e.key === 'Enter') { e.preventDefault(); commit(); }
-      if (e.key === 'Escape') { form.remove(); }
-    };
     form.onclick = function (e) { e.stopPropagation(); };
-    form.onmousedown = function (e) { e.stopPropagation(); };
-    form.appendChild(inp); form.appendChild(ok);
+    form.appendChild(ok);
     host.appendChild(form);
     inp.focus();
   }
@@ -923,146 +835,11 @@
     });
   }
 
-  function renderBlock(b, index) {
-    var wrap = el('div', 'la-block');
-    wrap.dataset.blockId = b.id;
-    wrap.dataset.type = b.type;
-    if (headingLevel(b)) {
-      wrap.dataset.level = headingLevel(b);
-      wrap.dataset.open = collapsed[b.id] ? '0' : '1';
-    }
-    if (b.touched) wrap.dataset.touched = b.touched.by === 'claude' ? 'claude' : 'viewer';
-    if (changedWhole(b)) wrap.dataset.changed = 'all';
-    if (drag && drag.id === b.id) wrap.classList.add('la-drag-src');
-
-    if (!readOnly) wrap.appendChild(renderChrome(b));
-
-    if (b.note) {
-      /* A note that has been acted on keeps its text and says so, so the round
-         reads as a conversation rather than as a list that emptied itself. */
-      var n = el('div', 'la-note' + (b.noteDone ? doneCls(b.noteDoneRev) : ''));
-      n.appendChild(el('b', null, b.noteDone ? 'note handled' : 'note to claude'));
-      n.appendChild(document.createTextNode(b.note));
-      if (b.noteDone) n.appendChild(el('div', 'la-note-a', b.noteDone));
-      wrap.appendChild(n);
-    }
-
-    if (editing === b.id) {
-      wrap.appendChild(renderEditor(b));
-    } else if (headingLevel(b)) {
-      wrap.appendChild(renderHeadingRow(b, index));
-    } else {
-      var body = renderBody(b);
-      if (!readOnly && b.type !== 'divider' && b.type !== 'raw') {
-        /* A click anywhere on the box edits it. A click that ended a text
-           selection must NOT — that gesture belongs to tagging. */
-        body.onclick = function (e) {
-          if (e.target.closest && e.target.closest('a, .la-cite, .la-cite-pop')) return;
-          var sel = window.getSelection && window.getSelection();
-          if (sel && String(sel).trim().length) return;
-          editing = b.id; tagging = null; tagQuote = null; render();
-        };
-        body.title = 'Click to edit';
-      }
-      wrap.appendChild(body);
-    }
-
-    if ((b.tags && b.tags.length) || (b.marks && b.marks.length)) {
-      wrap.appendChild(renderMeta(b));
-    }
-    return wrap;
-  }
 
   /* A heading is the handle for its whole section: the caret opens it, the ⓘ
      says what the section is FOR (the wording comes from the template the
      document follows), and the closed state reports what is inside so a tagged
      block or a pinned note never hides behind a fold. */
-  function renderHeadingRow(b, index) {
-    var host = el('div', 'la-headrow');
-    var open = !collapsed[b.id];
-
-    var caret = el('button', 'la-caret', open ? '▾' : '▸');
-    caret.setAttribute('aria-expanded', open ? 'true' : 'false');
-    caret.setAttribute('aria-label', (open ? 'Collapse' : 'Expand') + ' section: ' + (b.text || ''));
-    caret.onclick = function (e) {
-      e.stopPropagation();
-      if (collapsed[b.id]) delete collapsed[b.id]; else collapsed[b.id] = true;
-      render();
-    };
-    host.appendChild(caret);
-
-    var col = el('div', 'la-headtext');
-    if (b.eyebrow) col.appendChild(el('span', 'la-eyebrow-sec', b.eyebrow));
-    var body = renderBody(b);
-    body.classList.add('la-headbody');
-    if (!readOnly) {
-      body.onclick = function (e) {
-        if (e.target.closest && e.target.closest('a, .la-cite, .la-cite-pop')) return;
-        var sel = window.getSelection && window.getSelection();
-        if (sel && String(sel).trim().length) return;
-        editing = b.id; tagging = null; tagQuote = null; render();
-      };
-      body.title = 'Click to edit';
-    }
-    col.appendChild(body);
-    host.appendChild(col);
-
-    if (b.badge) {
-      var bd = el('span', 'la-badge', b.badge);
-      bd.title = 'This section comes from ' + b.badge;
-      host.appendChild(bd);
-    }
-    if (b.info) {
-      var i = el('button', 'la-info', 'i');
-      i.title = b.info;
-      i.setAttribute('aria-label', 'What this section is for');
-      i.onclick = function (e) {
-        e.stopPropagation();
-        var open2 = host.parentNode.querySelector('.la-infobox');
-        if (open2) return open2.remove();
-        var box = el('div', 'la-infobox');
-        box.appendChild(el('b', null, 'What goes here'));
-        box.appendChild(document.createTextNode(b.info));
-        host.parentNode.insertBefore(box, host.nextSibling);
-      };
-      host.appendChild(i);
-    }
-
-    var st = sectionStats(index);
-    if (!open) {
-      var bits = [st.blocks + (st.blocks === 1 ? ' block' : ' blocks')];
-      if (!st.blocks) bits = ['empty'];
-      if (st.touched) bits.push(st.touched + ' changed');
-      if (st.tagged) bits.push(st.tagged + ' tagged');
-      if (st.notes) bits.push(st.notes + (st.notes === 1 ? ' note' : ' notes'));
-      var sum = el('button', 'la-foldsum', bits.join(' · '));
-      sum.title = 'Open this section';
-      sum.onclick = function (e) { e.stopPropagation(); delete collapsed[b.id]; render(); };
-      host.appendChild(sum);
-    }
-
-    var frag = document.createDocumentFragment();
-    frag.appendChild(host);
-    /* An open section with nothing in it says so, and offers to be filled.
-       Keeping the empty heading is the point: the template's shape stays
-       visible, and leaving a section empty stays a visible decision. */
-    if (open && !readOnly && sectionEmpty(index)) {
-      var ph = el('button', 'la-empty', '\u003c\u003e');
-      ph.title = 'Nothing here yet — click to write this section';
-      ph.setAttribute('aria-label', 'Add content to ' + (b.text || 'this section'));
-      ph.onclick = function () {
-        var nb = { id: uid('b'), type: 'para', author: 'viewer', tags: [], text: '' };
-        model.blocks.splice(index + 1, 0, nb);
-        record({ op: 'insert', block: nb.id, type: 'para', at: index + 1 });
-        editing = nb.id;
-        render();
-      };
-      frag.appendChild(ph);
-    } else if (open && readOnly && sectionEmpty(index)) {
-      frag.appendChild(el('div', 'la-empty la-empty-ro', '\u003c\u003e'));
-    }
-    return frag;
-  }
 
   /* Hover chrome: drag handle on the left, actions at the top right. */
   function renderChrome(b) {
@@ -1635,26 +1412,61 @@
     var host = document.querySelector('[data-block-id="' + b.id + '"]');
     if (!host || host.querySelector('.la-noteform')) return;
     var form = el('div', 'la-inline la-noteform');
-    var inp = el('input');
-    inp.value = b.note || '';
-    inp.placeholder = 'what should Claude do here?';
-    inp.setAttribute('aria-label', 'Note to Claude');
-    var ok = el('button', 'la-btn primary', 'Save note');
+    var committed = false;
     function commit() {
+      if (committed) return; committed = true;
       var v = inp.value.trim();
       b.note = v || undefined;
       delete b.noteDone;          /* re-asking reopens it */
       record({ op: 'note', block: b.id, text: v });
       render();
     }
+    function discard() { committed = true; dropEditorHooks(); form.remove(); }
+    var inp = noteField(form, b.note, 'what should Claude do here?',
+      'Note to Claude', commit, discard);
+    var ok = el('button', 'la-btn primary', 'Save note');
     ok.onclick = commit;
-    inp.onkeydown = function (e) {
-      if (e.key === 'Enter') { e.preventDefault(); commit(); }
-      if (e.key === 'Escape') { form.remove(); }
-    };
-    form.appendChild(inp); form.appendChild(ok);
+    form.appendChild(ok);
     host.appendChild(form);
     inp.focus();
+  }
+
+
+  /* ------------------------------------------------------------ note field */
+  /* One field for all three kinds of note: on a block, on a table cell, on a
+     selected passage. A textarea rather than an input, because a note is
+     usually a sentence or two and a single line showed only its tail while it
+     was being written. It grows with its content to a ceiling, Enter makes a
+     new line and never submits, Cmd or Ctrl with Enter commits, clicking
+     outside commits — the same bargain the block editor already makes — and
+     Escape discards. */
+  function noteField(form, value, placeholder, aria, commit, discard) {
+    var ta = el('textarea', 'la-noteinput');
+    ta.value = value || '';
+    ta.placeholder = placeholder;
+    ta.setAttribute('aria-label', aria);
+    ta.rows = 1;
+    function grow() {
+      /* jsdom has no layout, so scrollHeight is 0 there; leave the height alone
+         rather than collapsing the field to nothing under the test harness. */
+      if (!ta.scrollHeight) return;
+      ta.style.height = 'auto';
+      ta.style.height = Math.min(ta.scrollHeight, 320) + 'px';
+    }
+    ta.oninput = grow;
+    ta.onkeydown = function (e) {
+      e.stopPropagation();
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); commit(); return; }
+      if (e.key === 'Escape') { e.preventDefault(); discard(); }
+    };
+    var away = function (e) { if (!form.contains(e.target)) commit(); };
+    /* armed on the next tick, or the click that opened the form closes it */
+    setTimeout(function () { document.addEventListener('mousedown', away, true); }, 0);
+    dropEditorHooks();
+    editorCleanup = function () { document.removeEventListener('mousedown', away, true); };
+    form.appendChild(ta);
+    setTimeout(grow, 0);
+    return ta;
   }
 
   /* -------------------------------------------------------------- reorder */
@@ -1719,7 +1531,7 @@
     document.body.classList.add('la-dragging');
     var wrap = document.querySelector('[data-block-id="' + id + '"]');
     if (wrap) wrap.classList.add('la-drag-src');
-    if (mode !== 'outline' && wrap) {
+    if (wrap) {
       /* In the page the move is previewed live: the blocks being moved travel
          to where they would land, faded, and a translucent copy follows the
          pointer. A section heading brings the wrappers of the blocks it owns. */
@@ -1756,19 +1568,6 @@
   }
   function onDragMove(e) {
     if (!drag) return;
-    if (mode === 'outline') {
-      var blocks = [].slice.call(document.querySelectorAll('.la-block')), to = drag.to;
-      for (var i = 0; i < blocks.length; i++) {
-        var r = blocks[i].getBoundingClientRect();
-        if (!r.height) continue;
-        if (e.clientY >= r.top && e.clientY <= r.bottom) { to = i; break; }
-      }
-      if (to !== drag.to) {
-        drag.to = to;
-        blocks.forEach(function (bl, i) { bl.classList.toggle('la-drop-into', i === to); });
-      }
-      return;
-    }
     /* In the page the DOM order is not the model order, so the target is the
        innermost block under the pointer, and the move is to a model index. */
     if (drag.ghost) { drag.ghost.style.left = (e.clientX - drag.dx) + 'px'; drag.ghost.style.top = (e.clientY - drag.dy) + 'px'; }
@@ -1982,9 +1781,7 @@
     if (d.ghost && d.ghost.parentNode) d.ghost.parentNode.removeChild(d.ghost);
     if (d.hole && d.hole.parentNode) d.hole.parentNode.removeChild(d.hole);
     d.nodes.forEach(function (n) { n.classList.remove('la-drag-hidden'); });
-    unfitRows();
-    if (mode === 'outline') { if (d.to !== blockIndex(d.id)) moveTo(d.id, d.to); }
-    else if (d.toId && d.toId !== d.id && d.dest != null) {
+    if (d.toId && d.toId !== d.id && d.dest != null) {
       var sr = rangeOf(d.id), dest = d.dest;
       /* the moved range lands at the index the preview showed; a drop inside
          what is being moved is a no-op */
@@ -2268,26 +2065,23 @@
     var host = document.querySelector('[data-block-id="' + b.id + '"]');
     if (!host || host.querySelector('.la-noteform')) return true;
     var form = el('div', 'la-inline la-noteform');
-    var inp = el('input');
-    inp.value = mk.note || '';
-    inp.placeholder = 'note on \u201C' + clip(quote, 40) + '\u201D';
-    inp.setAttribute('aria-label', 'Note to Claude on this passage');
-    var ok = el('button', 'la-btn primary', 'Save note');
+    var committed = false;
     function commit() {
+      if (committed) return; committed = true;
       var v = inp.value.trim();
       if (v) mk.note = v; else delete mk.note;
       delete mk.noteDone;
       record({ op: 'note', block: b.id, quote: quote, text: v });
       render();
     }
+    function discard() { committed = true; dropEditorHooks(); form.remove(); render(); }
+    var inp = noteField(form, mk.note,
+      'note on \u201C' + clip(quote, 40) + '\u201D',
+      'Note to Claude on this passage', commit, discard);
+    var ok = el('button', 'la-btn primary', 'Save note');
     ok.onclick = function (e) { e.stopPropagation(); commit(); };
-    inp.onkeydown = function (e) {
-      e.stopPropagation();
-      if (e.key === 'Enter') { e.preventDefault(); commit(); }
-      if (e.key === 'Escape') { form.remove(); render(); }
-    };
     form.onclick = function (e) { e.stopPropagation(); };
-    form.appendChild(inp); form.appendChild(ok);
+    form.appendChild(ok);
     host.appendChild(form);
     inp.focus();
     return true;
@@ -2366,7 +2160,6 @@
         /* Filtering and folding are both views and they must not fight: asking
            to see something opens the document and leaves it open, so clearing
            the filter never hides what was just found. */
-        if (filter.length) setAllFolded(false);
         render();
         var open = document.getElementById('la-filtermenu');
         if (open) { closeFilterMenu(); toggleFilterMenu(); }  /* keeps the anchor */
@@ -2443,16 +2236,40 @@
   }
   function rCell(b, text, asRole, key) {
     var t = String(text == null ? '' : text).trim();
-    if (asRole) { var rc = roleCell(t); if (rc) return roleHtml(rc).replace(/la-tag la-role/g, 'pill role').replace(/--tag-h:/g, '--role-h:').replace(/la-rolelead/g, 'role-lead'); }
+    if (asRole) {
+      var rc = roleCell(t);
+      if (rc) {
+        var chips = roleHtml(rc).replace(/la-tag la-role/g, 'pill role')
+          .replace(/--tag-h:/g, '--role-h:').replace(/la-rolelead/g, 'role-lead');
+        /* A role cell renders as chips rather than as words, so the word-level
+           diff has nothing to wrap. Mark the whole cell instead: a rewritten
+           owner is exactly the change a reader scans this column for, and
+           returning the chips bare dropped it silently. */
+        return cellChanged(b, key) ? '<mark class="la-chg' + (chgOwner === 'viewer' ? ' mine' : '') + '">' + chips + '</mark>' : chips;
+      }
+    }
     var k = t.toLowerCase().replace(/\.$/, '');
-    if (R_PILL[k]) return '<span class="pill ' + R_PILL[k] + '">' + esc(t) + '</span>';
+    if (R_PILL[k]) {
+      var pill = '<span class="pill ' + R_PILL[k] + '">' + esc(t) + '</span>';
+      return cellChanged(b, key) ? '<mark class="la-chg' + (chgOwner === 'viewer' ? ' mine' : '') + '">' + pill + '</mark>' : pill;
+    }
     return rText(b, t, key);
+  }
+  /* Did this round change this cell? Reads the same touched spans the word-level
+     marker uses, for the cells whose content is drawn rather than written out. */
+  function cellChanged(b, key) {
+    if (!key) return false;
+    var t = b.touched;
+    if (!t || (!pageEdit && !model.publicMarks)) return false;
+    chgOwner = t.by;
+    if (!t.spans) return true;             /* the whole block was rewritten */
+    return t.spans.some(function (sp) { return sp && sp.cell === key; });
   }
   function rTableInner(b) {
     var head = b.head || [], rows = b.rows || [], rcols = roleColumns(head);
     var out = '<div class="tbl-wrap' + (b.variant === 'striped' ? ' striped' : '') + '"><table>';
     if (head.some(function (h) { return String(h).trim(); })) {
-      out += '<thead><tr>' + head.map(function (h) { return '<th>' + inline(h) + '</th>'; }).join('') + '</tr></thead>';
+      out += '<thead><tr>' + head.map(function (h, hi) { return '<th>' + inline(h) + thInfo(b, h, hi) + '</th>'; }).join('') + '</tr></thead>';
     }
     out += '<tbody>' + rows.map(function (r, ri) {
       return '<tr>' + r.map(function (c, ci) { return '<td>' + rCell(b, c, !!rcols[ci], 'r' + ri + 'c' + ci) + '</td>'; }).join('') + '</tr>';
@@ -2572,7 +2389,8 @@
   }
   function rSubHead(b) {
     var info = b.info ? '<p>' + inline(b.info) + '</p>' : '';
-    return wrapBlk(b, '<div class="sub-head" id="' + esc(b.id) + '"><h3>' + rText(b, b.text || '') + '</h3>' + info + '</div>');
+    var badge = b.badge ? '<span class="la-badge" title="This section comes from ' + esc(b.badge) + '">' + esc(b.badge) + '</span>' : '';
+    return wrapBlk(b, '<div class="sub-head" id="' + esc(b.id) + '"><h3>' + rText(b, b.text || '') + badge + '</h3>' + info + '</div>');
   }
   function rSectionBody(sec) {
     var eb = sec.eyebrow.toLowerCase(), blocks = sec.blocks, out = [], g;
@@ -2664,22 +2482,53 @@
     if (!body.some(function (x) { return x.trim(); }) && !sec.claim && !pageEdit) return '';
     var head = '';
     if (sec.eyebrow || sec.claim) {
+      /* The section's `info` is the template's own description of what the
+         section is for. It rendered in the outline and nowhere else, so moving
+         editing into the page quietly dropped every brief a template carries.
+         A sub-head and the desk layout already show it; this is the house. */
+      var sinfo = (sec.block && sec.block.info) ? '<p>' + inline(sec.block.info) + '</p>' : '';
+      /* `badge` says which sections a template demands, so a reader can tell
+         them from the ones this document added. Outline-only until now. */
+      var sbadge = (sec.block && sec.block.badge)
+        ? '<span class="la-badge" title="This section comes from ' + esc(sec.block.badge) + '">'
+          + esc(sec.block.badge) + '</span>' : '';
       var inner = '<div class="sec-head">' + (sec.eyebrow ? '<div class="eyebrow">' + esc(sec.eyebrow) + '</div>' : '')
-        + (sec.claim ? '<h2>' + (sec.block ? rText(sec.block, sec.claim) : inline(sec.claim)) + '</h2>' : '') + '</div>';
+        + (sec.claim ? '<h2>' + (sec.block ? rText(sec.block, sec.claim) : inline(sec.claim)) + sbadge + '</h2>' : '') + sinfo + '</div>';
       head = sec.block ? wrapBlk(sec.block, inner, 'la-sechead' + (sec.internal ? ' la-internal' : '')) : inner;
     }
     var bid = sec.bid ? '<span id="' + esc(sec.bid) + '"></span>' : '';
+    /* An empty section stays visible and says so. A template carries sections
+       this document has nothing for yet, and a missing one is forgotten while
+       an empty one is a decision somebody has to make. The outline showed this
+       as `<>`; the page has to as well, or dropping the outline drops it. */
+    var empty = '';
+    if (pageEdit && !body.some(function (x) { return x.trim(); }) && sec.block) {
+      empty = '<button type="button" class="la-empty" data-empty-after="' + esc(sec.block.id)
+        + '" title="Nothing here yet \u2014 click to start writing this section">\u003c\u003e</button>';
+    }
     return '<section id="' + esc(tabId + '-' + sec.id) + '"' + (sec.internal ? ' class="la-internal-sec"' : '') + '><div class="wrap">' + bid + head
-      + '<div class="blocks">' + body.join('\n') + '</div></div></section>';
+      + '<div class="blocks">' + body.join('\n') + empty + '</div></div></section>';
   }
-  function rTab(tab, first) {
+  /* `plain` drops the tab semantics: in the brief layout a band is not a tab
+     panel, nothing is hidden, and leaving role="tabpanel" on it made wireRead
+     hide every band but the first on load. */
+  function rTab(tab, first, plain) {
     var secs = tab.sections.filter(function (s) { return !s.internal || pageEdit; });
     var subnav = secs.filter(function (s) { return s.eyebrow || s.claim; }).map(function (s) {
       return '<a href="#' + esc(tab.id + '-' + s.id) + '">' + esc(s.eyebrow || s.claim) + '</a>';
     }).join('');
-    return '<div class="tabpanel" id="' + esc(tab.id) + '" role="tabpanel" aria-labelledby="tab-' + esc(tab.id) + '"' + (first ? '' : ' hidden') + '>'
+    var shell = plain
+      ? '<div class="tabpanel plain" id="' + esc(tab.id) + '">'
+      : '<div class="tabpanel" id="' + esc(tab.id) + '" role="tabpanel" aria-labelledby="tab-' + esc(tab.id) + '"' + (first ? '' : ' hidden') + '>';
+    var inner = tab.sections.map(function (s) { return rSection(s, tab.id); }).join('\n');
+    if (pageEdit && !inner.trim() && tab.block) {
+      inner = '<section><div class="wrap"><div class="blocks"><button type="button" class="la-empty"'
+        + ' data-empty-after="' + esc(tab.block.id) + '"'
+        + ' title="Nothing here yet \u2014 click to start writing this section">\u003c\u003e</button></div></div></section>';
+    }
+    return shell
       + '<span id="' + esc(tab.bid) + '"></span><div class="subnav"><div class="wrap">' + subnav + '</div></div>'
-      + tab.sections.map(function (s) { return rSection(s, tab.id); }).join('\n') + '</div>';
+      + inner + '</div>';
   }
   function rHero(hero) {
     var thesis = null, meta = null, needs = null, io = null;
@@ -2825,11 +2674,18 @@
     if (hd === 'in skill / code' || hd === 'in skill/code') return 'impl';
     return '';
   }
+  /* A column's definition rides on its header as an ⓘ, so a table needs no
+     legend paragraph. b.headInfo is keyed by column name, or by index. */
+  function thInfo(b, h, i) {
+    var m = b.headInfo || {}, t = m[String(h).trim()] != null ? m[String(h).trim()] : m[i];
+    if (!t || !String(t).trim()) return '';
+    return '<i class="th-i" tabindex="0" role="button" aria-label="What ' + esc(String(h)) + ' means">i<span class="th-pop">' + inline(String(t)) + '</span></i>';
+  }
   function dkGrid(b) {
     var head = b.head || [], rows = b.rows || [], rcols = roleColumns(head), n = head.length;
     var wide = n >= 6, tall = rows.length > 12;
     var out = '<div class="tablewrap' + (wide ? ' wide' : '') + (tall ? '' : ' short') + '"><table>';
-    if (head.some(function (h) { return String(h).trim(); })) out += '<thead><tr>' + head.map(function (h) { return '<th>' + inline(h) + '</th>'; }).join('') + '</tr></thead>';
+    if (head.some(function (h) { return String(h).trim(); })) out += '<thead><tr>' + head.map(function (h, hi) { return '<th>' + inline(h) + thInfo(b, h, hi) + '</th>'; }).join('') + '</tr></thead>';
     out += '<tbody>' + rows.map(function (r, ri) {
       var group = n >= 3 && String(r[0] || '').trim() && r.slice(1).every(function (c) { return !String(c || '').trim(); });
       if (group) return '<tr class="grouprow"><td colspan="' + n + '" data-cell="r' + ri + 'c0">' + rText(b, r[0], 'r' + ri + 'c0') + '</td></tr>';
@@ -2917,7 +2773,24 @@
     });
     var recLetter = (rec.match(/\(([a-z])\)/) || [])[1];
     var html = '<div class="decision' + (status === 'ok' ? ' decided' : '') + '"><div class="q">' + (id ? '<b>' + esc(id) + '</b>' : '') + '<span>' + rText(b, q) + '</span>' + (label ? '<span class="pill ' + status + '">' + label + '</span>' : '') + '</div>' + body;
-    if (opts && opts.length) html += '<div class="opts">' + opts.map(function (o) { return '<span class="opt' + (o[0] === recLetter ? ' rec' : '') + '"><b>' + esc(o[0]) + '</b>' + rText(b, o[1]) + '</span>'; }).join('') + '</div>';
+    /* The filled chip is the CHOICE once there is one, and the recommendation
+       falls back to a light outline. Before a choice is made the recommendation
+       is filled, which is what it meant all along. Reading the filled chip as
+       the recommendation after a decision went the other way is how D-01 and
+       D-03 of the Action Inventory came out wrong on the page. */
+    var chosen = b.decision;
+    if (opts && opts.length) {
+      html += '<div class="opts">' + opts.map(function (o) {
+        var isChosen = chosen === o[0], isRec = o[0] === recLetter;
+        var cls = 'opt' + (isChosen ? ' chosen' : '')
+          + (isRec ? (chosen ? ' rec-soft' : ' rec') : '');
+        if (!pageEdit) return '<span class="' + cls + '"><b>' + esc(o[0]) + '</b>' + rText(b, o[1]) + '</span>';
+        return '<button type="button" class="' + cls + '" data-opt="' + esc(o[0]) + '"'
+          + ' aria-pressed="' + (isChosen ? 'true' : 'false') + '"'
+          + ' title="' + (isChosen ? 'Chosen — click again to clear' : 'Choose this option') + '">'
+          + '<b>' + esc(o[0]) + '</b>' + rText(b, o[1]) + '</button>';
+      }).join('') + '</div>';
+    }
     if (rec) html += '<p class="recline"><b>Recommendation</b> ' + rText(b, rec) + '</p>';
     return html + '</div>';
   }
@@ -2959,6 +2832,7 @@
     }
     return '<section id="' + esc(tabId + '-' + sec.id) + '">' + (sec.bid ? '<span id="' + esc(sec.bid) + '"></span>' : '') + head + dkBody(sec).join('\n') + '</section>';
   }
+  function knownTemplates() { return Object.keys(TEMPLATES); }
   function readHtmlDesk() {
     var split = rSplit(model.blocks), tabs = split.tabs, hero = split.hero;
     var date = (model.updated || '').split('·').pop().trim() || prettyDate();
@@ -2987,14 +2861,56 @@
     }).join('\n');
     return top + '<div class="wrap">' + h + body + '</div>';
   }
+  /* ---------------------------------------------------------- brief ----
+     A third read-mode layout, selected by `template: "brief"`: the house look
+     with the tabs unfolded into one continuous page, for a one-pager or a
+     short memo that is read top to bottom rather than navigated. Each tab
+     becomes a titled band and its level-2 heading becomes editable in place,
+     as it is in desk-research and is not in the tabbed layout. Nothing else
+     differs, so a brief that grows into a spec becomes one by changing the
+     template and republishing. */
+  function readHtmlBrief() {
+    var split = rSplit(model.blocks), tabs = split.tabs;
+    var nav = tabs.map(function (t) {
+      return '<a href="#' + esc(t.id) + '">' + esc(t.label) + '</a>';
+    }).join('');
+    /* rTab already emits the tab's own anchor span, so the band head must not
+       emit it again — two nodes with one id breaks every link into it. */
+    var body = tabs.map(function (t) {
+      return '<div class="band">'
+        + '<div class="wrap">' + wrapBlk(t.block, '<div class="band-head">' + rText(t.block, t.label) + '</div>') + '</div>'
+        + rTab(t, true, true) + '</div>';
+    }).join('\n');
+    return rPubNote()
+      + '<div class="topbar"><div class="wrap"><div class="brand"><span class="dot"></span>Verbolia <span class="sep">/</span> <span class="doc">' + esc(model.component || 'Document') + '</span></div>'
+      + '<nav class="sections">' + nav + '</nav></div></div>'
+      + rHero(split.hero) + body + rFooter(tabs);
+  }
+
+  /* The read-mode layouts, by `model.template`. Adding one is an entry here
+     and a stylesheet: the dispatch, the body class and the validator all read
+     this object, so a template can never be half-registered. `cls` is the
+     modifier put on `.house`; the default layout carries none. */
+  var TEMPLATES = {
+    'house': { cls: '', render: null, note: 'the default: a tabbed spec or PRD' },
+    'desk-research': { cls: 'desk', render: function () { return readHtmlDesk(); }, note: 'one long page, sticky nav, stat tiles and charts' },
+    'brief': { cls: 'brief', render: function () { return readHtmlBrief(); }, note: 'a one-pager: the house look, tabs unfolded into one page' }
+  };
+  function template() { return TEMPLATES[model.template] || TEMPLATES.house; }
+  function templateCls() { var c = template().cls; return c ? ' ' + c : ''; }
+  function rPubNote() {
+    return model.publicMarks && model.publicMarksNote
+      ? '<div class="pubnote"><div class="wrap">' + inline(model.publicMarksNote) + '</div></div>' : '';
+  }
+
   function readHtml() {
-    if (model.template === 'desk-research') return readHtmlDesk();
+    var t = template();
+    if (t.render) return t.render();
     var split = rSplit(model.blocks), tabs = split.tabs;
     var tabBtns = tabs.map(function (t, i) {
       return '<button type="button" role="tab" id="tab-' + esc(t.id) + '" aria-controls="' + esc(t.id) + '" aria-selected="' + (i === 0 ? 'true' : 'false') + '"' + (i === 0 ? '' : ' tabindex="-1"') + '>' + esc(t.label) + '</button>';
     }).join('');
-    var pubnote = model.publicMarks && model.publicMarksNote ? '<div class="pubnote"><div class="wrap">' + inline(model.publicMarksNote) + '</div></div>' : '';
-    var html = pubnote + '<div class="topbar"><div class="wrap"><div class="brand"><span class="dot"></span>Verbolia <span class="sep">/</span> <span class="doc">' + esc(model.component || 'Document') + '</span></div>'
+    var html = rPubNote() + '<div class="topbar"><div class="wrap"><div class="brand"><span class="dot"></span>Verbolia <span class="sep">/</span> <span class="doc">' + esc(model.component || 'Document') + '</span></div>'
       + '<div class="tabs" role="tablist" aria-label="Document tabs">' + tabBtns + '</div></div></div>'
       + rHero(split.hero)
       + tabs.map(function (t, i) { return rTab(t, i === 0); }).join('\n')
@@ -3008,7 +2924,8 @@
 
   /* --- editing in the page --------------------------------------------- */
   function rBlkNode(id) { return document.querySelector('.la-blk[data-block-id="' + id + '"]'); }
-  /* the same chrome and the same editors as the outline, attached to the
+  /* the same chrome and the same editors the block list used to carry, now
+     attached to the
      rendered blocks after the fact */
   function dressBlocks(house) {
     var blks = [].slice.call(house.querySelectorAll('.la-blk'));
@@ -3067,6 +2984,21 @@
         node.title = '';
         node.addEventListener('click', function (e) {
           if (!e.target.closest) return;
+          /* A decision chip is an answer, not a way into the editor. Clicking
+             the chosen one again clears the choice: a recorded intent has to be
+             correctable, like every other gesture here. The choice and a note on
+             the same decision stay two operations, because they have different
+             lives — a note is answered and cleared, a choice stands. */
+          var chip = e.target.closest('.opts [data-opt]');
+          if (chip) {
+            e.preventDefault(); e.stopPropagation();
+            var pick = chip.getAttribute('data-opt');
+            var was = b.decision;
+            if (was === pick) delete b.decision; else b.decision = pick;
+            record({ op: 'decide', block: b.id, option: b.decision || null, was: was || null });
+            render();
+            return;
+          }
           if (e.target.closest('a, .la-cite, .la-cite-pop, .la-handle, .la-acts, .la-resize, .la-note, .la-cellpin, .la-cellnote, .la-cellnoteform, .la-meta, .la-addhouse, [role="tab"]')) return;
           if (placing) return;
           /* a click inside a nested block belongs to that block */
@@ -3095,15 +3027,19 @@
     pageEdit = !readOnly && mode === 'page';
     var scroll = window.scrollY;
     root.textContent = '';
-    var house = el('div', 'house' + (model.template === 'desk-research' ? ' desk' : '') + (pageEdit ? ' la-page' : ''));
+    var house = el('div', 'house' + templateCls() + (pageEdit ? ' la-page' : ''));
     house.innerHTML = readHtml();
+    /* The writing rules sit above the document, not inside it: they are
+       instructions about the page rather than part of it, and a reader of the
+       published page must never see them. */
+    if (pageEdit && rulesOpen) root.appendChild(renderContract());
     root.appendChild(house);
     if (pageEdit) dressBlocks(house);
     wireRead(house);
     var pill = document.getElementById('la-modepill'); if (pill) pill.remove();
     if (!readOnly) renderBar();
     else { var bar = document.getElementById('la-bar'); if (bar) bar.remove(); }
-    /* diagrams: drawn by the same loader the outline uses */
+    /* diagrams: drawn by the shared on-demand loader */
     [].forEach.call(house.querySelectorAll('pre.mermaid'), function (pre) {
       var code = pre.textContent;
       loadMermaid().then(function (mm) { return mm.render('la-rd-' + (++mermaidSeq), code); })
@@ -3115,6 +3051,13 @@
     }
   }
   function wireRead(house) {
+    [].forEach.call(house.querySelectorAll('.la-empty[data-empty-after]'), function (ph) {
+      ph.addEventListener('click', function (e) {
+        e.preventDefault(); e.stopPropagation();
+        var r = rangeOf(ph.getAttribute('data-empty-after'));
+        if (r) placeBlock('para', r[1]);
+      });
+    });
     var tabs = [].slice.call(house.querySelectorAll('[role="tab"]'));
     var panels = [].slice.call(house.querySelectorAll('[role="tabpanel"]'));
     /* `byUser` gates the hash. Writing a fragment while the page is still
@@ -3432,34 +3375,6 @@
     status('Export recorded (' + blocks.length + ' sections) — ask Claude to publish it.');
   }
 
-  function renderAddRow() {
-    var bar = el('div', 'la-editbar la-addrow');
-    bar.appendChild(el('span', null, 'add:'));
-    ['para', 'heading', 'list', 'callout', 'code', 'table', 'mermaid', 'figure', 'divider']
-      .forEach(function (t) {
-      var x = el('button', 'la-btn', t);
-      x.onclick = function () {
-        var b = { id: uid('b'), type: t, author: 'viewer', tags: [] };
-        if (t === 'heading') { b.text = 'New heading'; b.level = 2; }
-        if (t === 'heading') delete collapsed[b.id];
-        else if (t === 'list') b.items = ['New item'];
-        else if (t === 'table') { b.head = ['Column']; b.rows = [['value']]; }
-        else if (t === 'callout') { b.title = 'Note'; b.text = 'New callout'; }
-        else if (t === 'mermaid') b.text = 'flowchart LR\n  A[Start] --> B[Next]';
-        /* A figure with no picture is a legitimate thing to add: it is how the
-           reader asks for one, with the caption saying what it should show. */
-        else if (t === 'figure') { b.caption = 'What this figure should show'; b.labels = {}; }
-        else if (t !== 'divider') b.text = 'New ' + t;
-        var at = model.blocks.length;
-        model.blocks.push(b);
-        record({ op: 'insert', block: b.id, type: t, at: at });
-        editing = t === 'divider' ? null : b.id;
-        render();
-      };
-      bar.appendChild(x);
-    });
-    return bar;
-  }
 
   /* ------------------------------------------------------------------- bar */
   function renderBar() {
@@ -3516,57 +3431,27 @@
          the shallowest level that still has a closed section, Collapse closes the
          deepest level that still has an open one. Shift-click does everything at
          once. Folding stays a view: none of this reaches the model. */
-      var levels = {}, anyHead = false;
-      model.blocks.forEach(function (b) {
-        var l = headingLevel(b); if (!l) return;
-        anyHead = true;
-        var st = levels[l] || (levels[l] = { open: 0, closed: 0 });
-        if (collapsed[b.id]) st.closed++; else st.open++;
-      });
-      var lv = Object.keys(levels).map(Number).sort();
-      var nextOpen = lv.filter(function (l) { return levels[l].closed; })[0];
-      var nextClose = lv.filter(function (l) { return levels[l].open; }).slice(-1)[0];
-      var exp = null, col = null;
-      if (anyHead) {
-        exp = el('button', 'la-btn', 'Expand ▸');
-        exp.title = nextOpen ? 'Open the next level (level ' + nextOpen + '). Shift-click opens everything' : 'Everything is open';
-        exp.disabled = !nextOpen;
-        exp.onclick = function (e) {
-          if (e.shiftKey) setAllFolded(false);
-          else eachHeading(function (b) { if (headingLevel(b) === nextOpen) delete collapsed[b.id]; });
-          render();
-        };
-        col = el('button', 'la-btn', 'Collapse ▾');
-        col.title = nextClose ? 'Close the deepest open level (level ' + nextClose + '). Shift-click closes everything' : 'Everything is closed';
-        col.disabled = !nextClose;
-        col.onclick = function (e) {
-          if (e.shiftKey) setAllFolded(true);
-          else eachHeading(function (b) { if (headingLevel(b) === nextClose) collapsed[b.id] = true; });
-          render();
-        };
-      }
-      /* Three ways to look at the same model. Page is where editing happens,
-         in the published layout. Outline is the flat block list, for folding
-         and moving whole sections. Preview is the page with nothing on it. */
-      var view = el('button', 'la-btn', mode === 'outline' ? 'Page' : 'Outline');
-      view.title = mode === 'outline'
-        ? 'Edit in the published layout'
-        : 'The flat block list: fold sections, move blocks across the whole document';
-      view.onclick = function () { setMode(mode === 'outline' ? 'page' : 'outline'); };
-      var dlb = el('button', 'la-btn', '⤓');
+      var dlb = el('button', 'la-btn', '\u2913');
       dlb.title = 'Download the full editable document to your disk';
       dlb.setAttribute('aria-label', 'Download this document');
       dlb.onclick = function () { downloadDocument(); };
+      /* The writing rules used to live in the outline's header, which is the
+         only reason the outline outlived the move to editing in the page.
+         They are standing instructions for every regeneration, so they belong
+         where the document is written, not behind a view nobody opens. */
+      var nrules = (((model.style || {}).directives) || []).filter(function (x) { return x.active; }).length;
+      var rules = el('button', 'la-btn' + (rulesOpen ? ' on' : ''),
+        'Writing rules' + (nrules ? ' \u00b7 ' + nrules : ''));
+      rules.title = 'How this document should be written: standing instructions Claude applies on every rewrite';
+      rules.setAttribute('aria-pressed', rulesOpen ? 'true' : 'false');
+      rules.onclick = function (e) { e.stopPropagation(); rulesOpen = !rulesOpen; render(); };
       bar.appendChild(u); bar.appendChild(r); bar.appendChild(f);
-      if (exp && mode === 'outline') { bar.appendChild(exp); bar.appendChild(col); }
-      bar.appendChild(view);
-      if (mode !== 'outline') {
-        var add = el('button', 'la-btn', '+ Add');
-        add.title = 'Add a block: pick a type, then click where it goes';
-        add.onclick = function (e) { e.stopPropagation(); closeFilterMenu(); toggleAddMenu(add); };
-        bar.appendChild(add);
-        bar.appendChild(modeToggle());
-      }
+      var add = el('button', 'la-btn', '+ Add');
+      add.title = 'Add a block: pick a type, then click where it goes';
+      add.onclick = function (e) { e.stopPropagation(); closeFilterMenu(); toggleAddMenu(add); };
+      bar.appendChild(add);
+      bar.appendChild(rules);
+      bar.appendChild(modeToggle());
       bar.appendChild(dlb);
     }
   }
@@ -3787,7 +3672,6 @@
     /* Closed to start: the first thing on screen is the shape of the document,
        not its first paragraph. Opening one section at a time is the reading
        order this was asked for. */
-    setOutlineFolded();
     render();
     checkStash();
 
@@ -3852,7 +3736,7 @@
         readOnly = false;
         var stored = null;
         try { stored = localStorage.getItem(modeKey()); } catch (e) { /* private mode */ }
-        mode = stored === 'outline' ? 'outline' : 'page';
+        mode = stored === 'preview' ? 'preview' : 'page';
         render();
       } else {
         mode = 'read';
@@ -3865,6 +3749,11 @@
      selection cannot be exercised in jsdom, so the same code paths are
      reachable directly. Not part of the document's own behaviour. */
   window.__la = {
+    /* the live model and the operations queued since the last save — the test
+       harness reads these, because the embedded JSON is only rewritten on save
+       and reading it mid-round reports the state before the gesture */
+    model: function () { return model; },
+    ops: function () { return pending.slice(); },
     offerTag: function (id, q, targets) { return offerTag(id, q, targets); },
     moveTo: function (id, to) { var r = moveTo(id, to); render(); return r; },
     snapWidth: snapWidth,

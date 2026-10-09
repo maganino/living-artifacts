@@ -3,7 +3,7 @@ window.__laModel = {
  "docId": "how-it-works",
  "title": "How a living artefact is made",
  "thread": "living-artifacts",
- "rev": 0,
+ "rev": 3,
  "style": {
   "directives": [
    {
@@ -31,7 +31,21 @@ window.__laModel = {
    "id": "b-hands-lede",
    "type": "para",
    "eyebrow": "",
-   "text": "Nothing here is one program. The split is deliberate: authoring and building work without a session, publishing cannot, and editing works without either."
+   "text": "Nothing here is one program, and the split decides what you can do alone. Writing a document and building it need no Claude session: `build.mjs` is a plain command you can run yourself. Editing one needs no session either, because the editor is already inside the published page. Only two things need a session — giving a new document its URL the first time, and reading a round of your edits back as intent.",
+   "note": "clarify this",
+   "noteDone": "Said which of the three can act alone, and named the two things that still need a session. The old sentence asserted the split without saying what it costs you.",
+   "noteDoneRev": 3,
+   "touched": {
+    "rev": 3,
+    "by": "claude",
+    "spans": [
+     "program, and the",
+     "decides what you can do alone. Writing a document",
+     "it need no Claude session: `build.mjs` is",
+     "plain command you can run yourself. Editing one needs no session either, because the editor is already inside the published page. Only two things need a session — giving a new document its URL the first time,",
+     "reading a round of your edits back as intent."
+    ]
+   }
   },
   {
    "id": "b-hands-dia",
@@ -129,39 +143,78 @@ window.__laModel = {
     [
      "the model",
      "model.js inside the artefact",
-     "the whole document: blocks, tags, notes, marks, style directives, last 40 journal entries",
+     "the whole document: blocks, tags, notes, marks, style directives, last 40 journal entries. For this page: 25 blocks, one style directive, and the two notes you pinned today",
      "the runtime on every save; Claude on every round",
      "the artefact is deleted"
     ],
     [
      "the journal",
      "db: docs/<docId>/journal/r<rev>",
-     "one document per revision, holding that revision's typed ops",
+     "one document per revision, holding that revision's typed ops. Your note on this very table is `r2`: `{op: \"note\", block: \"b-saved-table\", cell: \"h2\", text: \"give examples…\"}`",
      "the runtime, never Claude",
      "the artefact is deleted — the db goes with it"
     ],
     [
      "the registry",
      "db: docs/<docId>",
-     "rev, title, block count, tag counts, open note count, active style directives",
+     "rev, title, block count, tag counts, open note count, active style directives. Right now: `rev 3`, `blockCount 25`, `openNotes 2` — what Claude reads first, before any block",
      "the runtime on every save",
      "the artefact is deleted"
     ],
     [
      "Claude's bookmark",
      "db: docs/<docId>/claude/state",
-     "lastReadRev — how far Claude has read",
+     "lastReadRev — how far Claude has read. After this round it says `3`, so your next note is the only thing read next time rather than the whole document again",
      "Claude only; the page never touches it",
      "the artefact is deleted"
     ],
     [
      "the seed",
      "docs/<name>/<name>.doc.json in the repo",
-     "the model as of the last pull",
+     "the model as of the last pull: `docs/how-it-works/how-it-works.doc.json` in this repo, which is what gets committed when you say the document is done",
      "Claude, on authoring and on pull",
      "never, it is in git"
     ]
-   ]
+   ],
+   "cellNotes": {
+    "h2": "give examples to understand practically"
+   },
+   "cellNotesDone": {
+    "h2": "Each cell in that column now carries a real example from this document rather than only the shape of what it holds."
+   },
+   "cellNotesDoneRev": {
+    "h2": 3
+   },
+   "touched": {
+    "rev": 3,
+    "by": "claude",
+    "spans": [
+     {
+      "cell": "r0c2",
+      "quote": "entries. For this page: 25 blocks, one style directive, and the two notes you pinned today"
+     },
+     {
+      "cell": "r1c2",
+      "quote": "ops. Your note on this very table is `r2`: `{op: \"note\", block: \"b-saved-table\", cell: \"h2\", text: \"give examples…\"}`"
+     },
+     {
+      "cell": "r2c2",
+      "quote": "directives. Right now: `rev 3`, `blockCount 25`, `openNotes 2` — what Claude reads first, before any block"
+     },
+     {
+      "cell": "r3c2",
+      "quote": "read. After this round it says `3`, so your next note is the only thing"
+     },
+     {
+      "cell": "r3c2",
+      "quote": "next time rather than the whole document again"
+     },
+     {
+      "cell": "r4c2",
+      "quote": "pull: `docs/how-it-works/how-it-works.doc.json` in this repo, which is what gets committed when you say the document is done"
+     }
+    ]
+   }
   },
   {
    "id": "b-saved-truth",
@@ -238,15 +291,27 @@ window.__laModel = {
    "type": "heading",
    "level": 2,
    "text": "What is settled and what is open",
-   "info": "As of 25 September 2026. Decisions taken in this session are marked as such."
+   "info": "What has been settled, and what has not. Dated, so a stale row is visible as one."
   },
   {
    "id": "b-open-decided",
    "type": "list",
    "items": [
-    "Decided 25 September 2026: when you ask for an artefact with no qualifier, Claude names in one line which form it would use and waits, rather than defaulting silently.",
-    "Decided 25 September 2026: one look for everything, the Verbolia theme. The variable is the template, chosen by the document's purpose, not the theme."
-   ]
+    "Settled: when you ask for an artefact with no qualifier, Claude names in one line which form it would use and waits.",
+    "Settled: one look for everything, the Verbolia theme. The variable is the template, and the document's purpose picks it.",
+    "Settled: `house` for a spec, `desk-research` for analysis, `brief` for a one-pager. There is no deck template, and a deck is not a living document.",
+    "Settled: a decision callout's chips are pressable, and the choice is a typed operation rather than a sentence Claude has to parse."
+   ],
+   "touched": {
+    "rev": 3,
+    "by": "claude",
+    "spans": [
+     "Settled: when you ask for an artefact with no qualifier, Claude names in one line which form it would use and waits.",
+     "Settled: one look for everything, the Verbolia theme. The variable is the template, and the document's purpose picks it.",
+     "Settled: `house` for a spec, `desk-research` for analysis, `brief` for a one-pager. There is no deck template, and a deck is not a living document.",
+     "Settled: a decision callout's chips are pressable, and the choice is a typed operation rather than a sentence Claude has to parse."
+    ]
+   }
   },
   {
    "id": "b-open-table",
@@ -258,41 +323,125 @@ window.__laModel = {
    ],
    "rows": [
     [
-     "templates by purpose",
-     "two read-mode layouts exist — house for a PRD, desk-research for analysis. Presentation and one-pager do not. No rule maps purpose to template.",
-     "runtime/house.css, runtime/desk.css"
-    ],
-    [
-     "drop the Outline",
-     "the flat block list predates editing in the page and is now redundant as a view. Removing it is a refactor, not a deletion: most of the 1,388-line smoke suite drives it.",
-     "runtime/la-runtime.js, runtime/smoke.mjs"
-    ],
-    [
-     "the skill contradicts itself",
-     "585 lines carrying both a superseded two-surface publishing procedure and the fused one. A reader following it top-down does the wrong thing.",
-     "skills/living-artifacts/SKILL.md"
-    ],
-    [
-     "nothing routes to here",
-     "no CLAUDE.md in this repo, and nothing in the global one says an artefact means a living artefact.",
-     "the repo root"
-    ],
-    [
      "images and sketches",
-     "v2: figures downscaled in-browser into db rather than embedded.",
+     "figures downscaled in the browser into `db` rather than embedded as data URIs, which the page pays for on every save.",
      "tray/v2-images-and-sketches.md"
     ],
     [
      "the cross-document index",
-     "v3: blocked on the same architectural fork as self-service authoring — per-document artefacts or one workbench. Cannot have both.",
+     "blocked on the same fork as self-service authoring: per-document artefacts give independent URLs and isolated stores, one workbench gives shared state. Cannot have both.",
      "tray/v3-index-and-export.md"
+    ],
+    [
+     "creating a document without a session",
+     "authoring and building already work alone; minting the URL does not, because no page can create a second artefact.",
+     "tray/independent-authoring-tool.md"
+    ],
+    [
+     "the Publish button",
+     "a static read-only copy, a version stamp, a diff against the last published model and a changelog at the top. The separate shareable artefact is the part that cannot come from the page.",
+     "not yet a thread"
     ]
-   ]
+   ],
+   "touched": {
+    "rev": 3,
+    "by": "claude",
+    "spans": [
+     {
+      "cell": "r0c1",
+      "quote": "in the browser"
+     },
+     {
+      "cell": "r0c1",
+      "quote": "`db`"
+     },
+     {
+      "cell": "r0c1",
+      "quote": "embedded as data URIs, which the page pays for on every save."
+     },
+     {
+      "cell": "r1c1",
+      "quote": "authoring:"
+     },
+     {
+      "cell": "r1c1",
+      "quote": "give independent URLs and isolated stores,"
+     },
+     {
+      "cell": "r1c1",
+      "quote": "workbench gives shared state."
+     },
+     {
+      "cell": "r2c0",
+      "quote": "creating a document without a session"
+     },
+     {
+      "cell": "r2c1",
+      "quote": "authoring and building already work alone; minting the URL does not, because no page can create a second artefact."
+     },
+     {
+      "cell": "r2c2",
+      "quote": "tray/independent-authoring-tool.md"
+     },
+     {
+      "cell": "r3c0",
+      "quote": "the Publish button"
+     },
+     {
+      "cell": "r3c1",
+      "quote": "a static read-only copy, a version stamp, a diff against the last published model and a changelog at the top. The separate shareable artefact is the part that cannot come from the page."
+     },
+     {
+      "cell": "r3c2",
+      "quote": "not yet a thread"
+     }
+    ]
+   }
   },
   {
    "id": "b-open-close",
    "type": "para",
-   "text": "The first four are the reason an artefact request does not land here by default. They are independent of each other and none of them is a change to the runtime."
+   "text": "What is left is four pieces of work, not four unknowns. Three of them wait on the same question — whether a document is its own artefact or a row in a shared one — and that question is worth answering once rather than three times.",
+   "touched": {
+    "rev": 3,
+    "by": "claude",
+    "spans": [
+     "What is left is",
+     "pieces",
+     "work, not four unknowns. Three",
+     "wait on the same question — whether a document",
+     "its own artefact or",
+     "row in a shared one — and that question is worth answering once rather than three times."
+    ]
+   }
+  }
+ ],
+ "updated": "revised by claude · 2026-10-09",
+ "journal": [
+  {
+   "rev": 1,
+   "at": "2026-10-09T12:42:04.710Z",
+   "by": "viewer",
+   "ops": [
+    {
+     "op": "note",
+     "block": "b-hands-lede",
+     "text": "clarify this"
+    }
+   ]
+  },
+  {
+   "rev": 2,
+   "at": "2026-10-09T12:49:37.421Z",
+   "by": "viewer",
+   "ops": [
+    {
+     "op": "note",
+     "block": "b-saved-table",
+     "cell": "h2",
+     "text": "give examples to understand practically"
+    }
+   ]
   }
  ]
 };
