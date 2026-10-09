@@ -170,6 +170,17 @@
 .house.desk .opt b { font-family: var(--mono); font-weight: 600; margin-right: 6px; color: var(--ink-4); }
 .house.desk .opt.rec { background: var(--ink); color: var(--ground); border-color: var(--ink); font-weight: 600; }
 .house.desk .opt.rec b { color: var(--ground); opacity: .7; }
+/* Once a choice exists it takes the fill, and the recommendation keeps only a
+   ring — so a decision that went against the recommendation reads correctly. */
+.house.desk .opt.chosen { background: var(--core-green); color: #fff; border-color: var(--core-green); font-weight: 600; }
+.house.desk .opt.chosen b { color: #fff; opacity: .75; }
+.house.desk .opt.rec-soft { border-color: var(--ink-3); border-style: dashed; color: var(--ink-2); background: transparent; font-weight: 500; }
+.house.desk .opt.rec-soft::after { content: 'recommended'; margin-left: 8px; font-size: 9px; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--ink-4); }
+/* a chip a writer can press is a button, so it must not inherit button chrome */
+.house.desk button.opt { font-family: inherit; cursor: pointer; }
+.house.desk button.opt:hover { border-color: var(--core-orange); }
+.house.desk button.opt:focus-visible { outline: 2px solid var(--core-orange); outline-offset: 2px; }
 .house.desk .decision .recline { margin-top: 12px; font-size: 13px; }
 .house.desk .decision .recline b { color: var(--ink); }
 .house.desk section > .la-blk + .la-blk > .decision, .house.desk section > .decision + .decision { margin-top: 0; }

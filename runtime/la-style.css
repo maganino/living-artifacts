@@ -364,7 +364,15 @@ table.la-grid td .la-cellnote, table.la-grid th .la-cellnote { margin: 0 9px 7px
   border-radius: 6px; padding: 10px 12px; resize: vertical; min-height: 84px;
 }
 .la-editbar { display: flex; gap: 8px; align-items: center; margin: 6px 0 12px; font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-muted); }
-.la-inline { display: flex; gap: 6px; margin: 4px 0 10px; }
+.la-inline { display: flex; gap: 6px; margin: 4px 0 10px; align-items: flex-start; }
+/* A note is usually a sentence or two, so the field is a textarea that grows
+   with what is typed into it rather than a one-line input showing its tail. */
+.la-noteinput { flex: 1 1 auto; min-width: 0; resize: none; overflow-y: auto;
+  font: inherit; line-height: 1.5; padding: 7px 10px; min-height: 36px; max-height: 320px;
+  border: 1px solid var(--la-border, #D1D1D1); border-radius: 8px;
+  background: var(--la-surface, #fff); color: inherit; }
+.la-noteinput:focus { outline: 2px solid var(--la-accent, #FC6E1C); outline-offset: -1px; }
+.la-inline .la-btn { flex: none; }
 .la-inline input {
   font-family: var(--font-mono); font-size: 13px; padding: 5px 9px; flex: 1; max-width: 340px;
   border: 1px solid var(--line-strong); border-radius: 5px; background: var(--surface); color: var(--ink);
@@ -905,3 +913,32 @@ body.la-placing { cursor: copy; }
 .la-note.done.recent, .la-cellnote.done.recent, .la-marknote.done.recent { color: var(--changed); border-left-color: var(--changed); background: var(--changed-tint); }
 .la-mark.has-note.done.recent { box-shadow: inset 0 -2px 0 var(--changed); }
 .la-mark.has-note.done.recent::after { color: var(--changed); }
+
+
+/* The writing rules, opened from the bar. They were the outline's header until
+   the outline was removed; as a panel they sit above the document because they
+   are instructions ABOUT the page, not part of it. */
+.la-contract { max-width: 820px; margin: 12px auto 0; padding: 14px 18px;
+  border: 1px solid var(--la-border, #D1D1D1); border-radius: 12px;
+  background: var(--la-surface, #fff); }
+.la-contract > summary { font-weight: 600; cursor: pointer; }
+.la-contract .la-contract-help { margin: 8px 0 10px; font-size: 0.86rem; opacity: .75; max-width: 70ch; }
+.la-contract ul { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 6px; }
+.la-contract li { display: flex; gap: 8px; align-items: baseline; }
+.la-contract li > span { flex: 1 1 auto; }
+.la-contract li.off > span { opacity: .45; text-decoration: line-through; }
+.la-contract input { flex: 1 1 auto; min-width: 0; font: inherit; padding: 7px 10px;
+  border: 1px solid var(--la-border, #D1D1D1); border-radius: 8px;
+  background: var(--la-surface, #fff); color: inherit; }
+
+/* An empty section says so, and starting it is one click. */
+.house.la-page .la-empty { font: inherit; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--muted, #6D6D6D); background: none; cursor: pointer;
+  border: 1px dashed var(--border, #D1D1D1); border-radius: 8px; padding: 10px 14px; }
+.house.la-page .la-empty:hover { color: var(--text, #454545); border-color: var(--muted, #6D6D6D); }
+
+/* Provenance: which sections the template demanded. Beside the title, quiet. */
+.house.la-page .la-badge, .house .la-badge { display: inline-block; margin-left: 10px;
+  font-size: 0.64rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  vertical-align: middle; padding: 2px 8px; border-radius: 999px;
+  border: 1px solid var(--border, #D1D1D1); color: var(--muted, #6D6D6D); }

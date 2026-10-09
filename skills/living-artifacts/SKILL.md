@@ -120,7 +120,7 @@ shared copy any more and no exporter to run.
 The writer edits in the published layout itself: hover a block for its chrome
 (`tag`, `note`, delete), click to edit in place, drag to move, add at the end
 of a section. `Edit | Preview` in the bar is one toggle; switching keeps the
-scroll position. `Outline` is the flat block list for restructuring. A reader
+scroll position. A reader
 with the link gets the page and nothing else. Give the reader the same URL as
 the writer: there is one.
 
@@ -203,6 +203,12 @@ On a republish notification, or on "check my edits" / "apply my feedback":
    - An `undo` / `redo` op means they reversed an edit from an earlier
      revision. The original op stays in its own revision — read the pair, and
      do not act on the edit that was undone.
+   - A `decide` op is the reader answering a decision by clicking its chip.
+     `option` is the letter they chose, or `null` if they cleared it. Treat it
+     as the answer and stop arguing the case: if it went against your
+     recommendation, carry the choice into the document and say once, in the
+     reply, what it costs. A note on the same decision is a separate op and
+     says something the chip could not.
    - A `note` op is a request pinned to a block — the structured replacement
      for a comment. It is not document content; act on it, then clear it.
    - A `move` op is an argument about order. Ask what the new order is meant to
@@ -245,13 +251,15 @@ reader correcting a number is often right for a reason they haven't stated.
 Headings are structure, not decoration. A heading owns every block until the
 next heading of the same or higher level, and the runtime uses that three ways.
 
-**The document opens as an outline.** Sections holding sub-sections are open,
-leaf sections are closed, and each closed one reports what it holds — block
-count, how many changed since the last round, how many are tagged, how many
-carry a note. A reader sees the shape of the whole document first and opens one
-section at a time. Nothing is hidden silently: a pinned note is announced by the
-section that holds it. Folding is a view, like the filter — it never reaches the
-model or the journal, and a filter always wins over a fold.
+**There is one view of the document.** `Edit` and `Preview` are two states of
+the published page, and that is all. The flat block list — the Outline — was
+removed on 9 October 2026: editing happens in the page, so a second rendering
+of the same model was a place for things to diverge. Folding went with it.
+
+**The writing rules are on the bar.** `Writing rules` opens the standing
+instructions panel above the document, with a count of the active ones. They
+used to live in the outline's header, which is the only reason that view
+outlived the move to editing in the page.
 
 **Give every heading an `info`.** It is what the section is *for*, shown as an ⓘ
 beside the title. When the document follows a template — a Jira spec, a PRD
@@ -418,6 +426,28 @@ deleting it because they may want it back. When a directive conflicts with
 something you would otherwise write, the directive wins; say so once rather
 than quietly ignoring it.
 
+## A heading states content, never the round
+
+**Never write the round into a heading, an eyebrow or a section note.** Not
+"Four calls, three carried from v2 unreviewed", not "Added in v3", not "new in
+this round". The change marks already show what is new, and they clear
+themselves; a heading that says it is new is still saying so three rounds
+later, to a reader who was not there for any of them.
+
+The same goes for provenance inside the reading flow. "v3 narrows it to
+three" breaks the sentence it sits in for every reader who did not see v2.
+Where that history matters, it goes in the ⓘ — `info` on a heading, `headInfo`
+on a table column — or in an expandable section, never in the body text.
+
+This applies to the desk-research template's eyebrows and section notes as
+much as to the house layout's, and it holds for a document you are writing for
+the first time: there is no round to describe yet, and there will not be one
+worth describing later.
+
+What a heading does instead is state something the reader could disagree with.
+The eyebrow says where they are, the heading makes the claim, and what changed
+is carried by the amber and purple marks beside it.
+
 ## Marking what changed
 
 The runtime handles this: an edited block carries `touched`, rendered as an
@@ -583,7 +613,8 @@ How the model maps onto it:
   row; a callout titled "The needs …" is the open-items box.
 - **Level-2 headings** are groups: a labelled rule on the page and one nav
   entry. **Level-3 headings** are sections, `eyebrow` over the claim, `info`
-  as the section note. A run of two or more **level-4 headings** in a section
+  as the section note. Neither the eyebrow nor the note ever describes the
+  round — see *A heading states content, never the round*. A run of two or more **level-4 headings** in a section
   becomes a card grid.
 - **Table variants** (still edited as a grid): `stats` → tiles from
   `[value, label, tone]`; `bars` → bar rows from `[label, value, note, tone]`;

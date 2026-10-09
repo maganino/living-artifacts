@@ -44,6 +44,11 @@ later round. Never renumber, never reuse a dead id.
   "noteDone": "Rechecked; the June figure stands.", // Claude's answer, set when it acts
   "cellNotes": { "r3c1": "weeks of what?" },        // TABLES only: a note on ONE cell
   "cellNotesDone": { "r3c1": "said calendar weeks" },
+  "decision": "b",         // DECISION CALLOUTS only: the option the reader chose
+                           // by clicking its chip. Recorded as a `decide` op;
+                           // clicking the chosen chip again clears it. The
+                           // chosen chip is the filled one, and the
+                           // recommendation falls back to a ring.
   "touched": { "rev": 7, "by": "viewer" }          // amber until Claude's next rebuild
   // or, when Claude answered a note:
   // "touched": { "rev": 8, "by": "claude", "spans": ["calendar weeks"] }
@@ -80,16 +85,11 @@ them.
 heading of the same or higher level. The model stays flat — nesting the blocks
 would break drag-to-reorder, which walks one list.
 
-**Sections fold, and folding is a view.** It never reaches the model or the
-journal, exactly like the filter. A document opens as an **outline**: a section
-holding sub-sections is open (it has nothing of its own to hide), every leaf
-section is closed. So the first screen is every section name with what it is
-holding — `7 blocks · 3 changed · 1 tagged · 1 note`, or `empty`. A closed
-section never hides a pinned note or a tag silently; the summary says they are
-there. `Collapse ▾` closes the deepest open level, one level per click, until only
-the top-level headings remain, and `Expand ▸` opens the shallowest closed level;
-shift-click on either does everything at once, and applying a filter opens the document and leaves it open —
-asking to see something must never hide what was found.
+**There is one view of the document.** `Edit` and `Preview` are two states of
+the published page. The Outline — a second, flat rendering of the same model —
+and the folding that went with it were removed on 9 October 2026. A heading
+still delimits its section, which is what moving a heading moves and what the
+`<>` placeholder belongs to; it just no longer closes.
 
 **`info` is what the section is FOR.** Optional, plain text, shown as an ⓘ
 beside the heading: hover for the wording, click to open it inline. Put the
@@ -245,7 +245,8 @@ One entry per revision, holding every op in it.
 | `move` | `block`, `from`, `to` | an argument about order |
 | `highlight` / `unhighlight` | `block`, `quote`, `tag?` | they singled out a passage — signal even with no tag on it |
 | `tag` / `untag` | `block`, `tag`, `quote?`, `withBlocks?` | an intent — for the block, for a passage (`quote`), or for each of several blocks at once (`withBlocks`) |
-| `note` | `block`, `text` | a request pinned to a block |
+| `note` | `block`, `text`, `cell?`, `quote?` | a request pinned to a block, a table cell or a passage |
+| `decide` | `block`, `option`, `was` | they answered a decision by clicking its chip. `option` is `null` when they cleared it, and a note on the same decision stays its own op |
 | `style` | `action`, `text` | a standing instruction for the whole document |
 | `undo` / `redo` | `undid` | they reversed an op from an EARLIER revision — the original edit stays in its own revision, so the history stays true |
 
@@ -389,8 +390,7 @@ change marks and the internal sections are shown to the writer in that layout.
 Two other ways to look at the same model sit in the bar. `Edit | Preview` is
 one toggle, two buttons of the same style: `Preview` is the reader's page with
 nothing on it, and the bar shrinks to the toggle so the writer can flip back.
-`Outline` is the flat block list with folding, for moving blocks across the
-whole document. Switching keeps the scroll position, so the effect of an edit
+Switching keeps the scroll position, so the effect of an edit
 is visible where the writer is looking. The choice is remembered per document
 in `localStorage`.
 Anyone without write rights only ever gets the reader's page, with no bar and no
@@ -524,7 +524,7 @@ a NEW artifact with `capabilities: {}`.
 
 **Cell pins in the page.** A house table cell is positioned and keeps 36px at
 its right for the pin, so the `+` shows on hover in the page as it does in the
-outline grid.
+page.
 
 **Two colours, both word level.** A block Claude changed carries a purple
 gutter and purple word marks; a block the reader changed since carries an

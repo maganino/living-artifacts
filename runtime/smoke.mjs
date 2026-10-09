@@ -22,7 +22,8 @@ const fixture = () => ({
     { id: 'b-two', type: 'para', text: 'Body text with **bold** and `code`.', tags: ['for:sales'], author: 'claude' },
     { id: 'b-three', type: 'list', items: ['alpha', 'beta'], tags: [], author: 'claude' },
     { id: 'b-four', type: 'table', head: ['A', 'B'], rows: [['1', '2']], tags: [], author: 'claude' },
-    { id: 'b-five', type: 'para', text: 'Doomed block.', tags: [], author: 'claude' }
+    { id: 'b-five', type: 'para', text: 'Doomed block.', tags: [], author: 'claude' },
+    { id: 'b-six', type: 'para', text: 'A block to tag.', tags: [], author: 'claude' }
   ]
 });
 
@@ -65,6 +66,8 @@ function boot(html, opts = {}) {
   });
   return {
     dom, w: dom.window, get d() { return dom.window.document; },
+    model: () => dom.window.__la.model(),
+    ops: () => dom.window.__la.ops(),
     published, forms, dbWrites, release
   };
 }
@@ -72,13 +75,24 @@ const settle = () => new Promise((r) => setTimeout(r, 30));
 const btn = (root, text) =>
   [...root.querySelectorAll('button')].find((b) => b.textContent.trim() === text);
 const blockEl = (d, id) => d.querySelector(`[data-block-id="${id}"]`);
+/* The outline wrapped a block's content in `.la-body`; the page renders the
+   house markup directly, and the wrapper itself does not open the editor —
+   only something inside it does. One helper so a test says "click the block"
+   without knowing which element that is. */
+const bodyOf = (n) => n.querySelector('.la-body')
+  || n.querySelector('p, h2, h3, h4, ul, ol, table, pre, figure, .decision, .blind, .notebox')
+  || n;
+const clickBody = (n) => bodyOf(n).click();
 const pop = (d) => d.querySelector('#la-tagpop');
 const pickTag = (env, name) => {
   pop(env.d).querySelector('.la-taginput').value = name;
   pop(env.d).querySelector('.la-taginput')
     .dispatchEvent(new env.w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
 };
-const order = (d) => [...d.querySelectorAll('.la-block')].map((b) => b.dataset.blockId);
+/* Document order from the model, not the DOM: a tab heading has no wrapper in
+   the page, and a block inside a card is nested, so DOM order stopped being a
+   straight answer to "where is this block". The move tests mean model order. */
+const order = (d) => d.defaultView.__la.model().blocks.map((b) => b.id);
 /* no Apply button any more: leaving the box is what keeps the edit */
 const commitEdit = (env, id, text) => {
   const ta = blockEl(env.d, id).querySelector('textarea');
@@ -109,7 +123,9 @@ ok('inline markdown renders', !!d.querySelector('.house strong') && !!d.querySel
 ok('table renders rows', d.querySelectorAll('.house tbody tr').length === 1);
 env.release();
 await settle();
-eq('the editor renders every block once artifact resolves', d.querySelectorAll('.la-block').length, 5);
+/* `.la-block` was the outline's wrapper; the page wraps in `.la-blk`, and a
+   level-2 heading is a tab there rather than an editable block. */
+eq('the editor renders every editable block once artifact resolves', d.querySelectorAll('.la-blk').length, 5);
 ok('editing lights up once artifact resolves', !!d.querySelector('.la-handle'));
 ok('every block gets its own chrome', d.querySelectorAll('.la-acts').length === 5);
 ok('undo starts disabled', btn(d.body, '↶ Undo').disabled === true);
@@ -117,7 +133,7 @@ ok('no Save button until there is something to save', !btn(d.body, 'Save now'));
 ok('the status line says how to drive it', /click a block to edit/i.test(d.getElementById('la-status').textContent));
 
 console.log('\nC-3: click the box to edit, no selection step');
-blockEl(d, 'b-two').querySelector('.la-body').click();
+clickBody(blockEl(d, 'b-two'));
 const ta = blockEl(d, 'b-two').querySelector('textarea');
 ok('a click on the body opens the editor', !!ta && ta.value.includes('**bold**'));
 commitEdit(env, 'b-two', 'Rewritten by the human.');
@@ -132,19 +148,20 @@ ok('a "Save now" flush appears while unsaved', !!btn(d.body, 'Save now'));
   eq('Save now sits at the left end of the bar', kids[0].textContent, 'Save now');
   ok('the status line follows it', kids[1].id === 'la-status');
   ok('the rest of the controls stay to its right',
-    kids.slice(2).map((n) => n.textContent.trim().split(' ').pop()).join(',') === 'Undo,Redo,Filter,▸,▾,Page,⤓',
+    kids.slice(2).map((n) => n.textContent.trim()).join('|')
+      === '↶ Undo|↷ Redo|Filter|+ Add|Writing rules · 1|EditPreview|⤓',
     kids.slice(2).map((n) => n.textContent).join('|'));
 }
 
 console.log('\nC-1: tag a whole block, and tag a highlighted passage');
-btn(blockEl(d, 'b-one'), 'tag').click();
-ok('the tag picker opens as a popover, not inside the block', !!pop(d) && !blockEl(d, 'b-one').querySelector('.la-taginput'));
+btn(blockEl(d, 'b-six'), 'tag').click();
+ok('the tag picker opens as a popover, not inside the block', !!pop(d) && !blockEl(d, 'b-six').querySelector('.la-taginput'));
 ok('a whole-block picker shows no quote', !/\u201C/.test(pop(d).querySelector('.la-tagpop-head').textContent));
 pickTag(env, '#expand');
 ok('whole-block tag lands, # stripped',
-  [...blockEl(d, 'b-one').querySelectorAll('.la-tag')].some((c) => c.textContent === '#expand'));
+  [...blockEl(d, 'b-six').querySelectorAll('.la-tag')].some((c) => c.textContent === '#expand'));
 ok('the popover closes after choosing', !pop(d));
-ok('intent tags are styled apart from audience tags', !!blockEl(d, 'b-one').querySelector('.la-tag.intent'));
+ok('intent tags are styled apart from audience tags', !!blockEl(d, 'b-six').querySelector('.la-tag.intent'));
 
 /* native text selection has no geometry in jsdom; the same path the selection
    chip calls is reachable directly */
@@ -180,15 +197,21 @@ ok('✕ deletes the block', !blockEl(d, 'b-five'));
 console.log('\nnote + C-5: the writing rules panel explains itself');
 btn(blockEl(d, 'b-two'), 'note').click();
 {
-  blockEl(d, 'b-two').querySelector('.la-noteform input').value = 'contradicts the completeness artifact';
+  blockEl(d, 'b-two').querySelector('.la-noteform textarea').value = 'contradicts the completeness artifact';
   btn(blockEl(d, 'b-two'), 'Save note').click();
 }
 ok('note renders anchored to its block', /contradicts/.test(blockEl(d, 'b-two').querySelector('.la-note').textContent));
 {
+  /* the rules moved out of the outline's header and onto the bar */
+  ok('the rules are not shown until asked for', !d.querySelector('.la-contract'));
+  btn(d.getElementById('la-bar'), 'Writing rules \u00b7 1').click();
   const c = d.querySelector('.la-contract');
+  ok('the bar button opens the panel', !!c);
   ok('the panel is no longer labelled "Style contract"', !/style contract/i.test(c.querySelector('summary').textContent));
   ok('the panel says what it is for', !!c.querySelector('.la-contract-help'));
   ok('the panel is open by default', c.open === true);
+  ok('it sits above the document, never inside it',
+    c.compareDocumentPosition(d.querySelector('.house')) & 4);
   c.querySelector('input').value = 'lead with the number, not the caveat';
   btn(c, 'Add rule').click();
 }
@@ -199,7 +222,7 @@ await env.w.__la.flush();
 await settle();
 eq('published exactly once', env.published.length, 1);
 eq('saved through the files form, so the view is not reloaded', env.forms[0], 'files');
-eq('the round is cleared after a files-form save', d.querySelectorAll('.la-block').length, 4);
+eq('the round is cleared after a files-form save', d.querySelectorAll('.la-blk').length, 4);
 ok('status reports the saved revision', /saved · rev 4/i.test(d.getElementById('la-status').textContent));
 ok('published html is a full document', env.published[0].startsWith('<!doctype html>'));
 const journalWrite = env.dbWrites.find((w) => /\/journal\/r4$/.test(w.path));
@@ -227,7 +250,7 @@ console.log('\nround-trip: the page republishes ITSELF');
 const out = env.published[0];
 const m2 = extractModel(out);
 eq('revision incremented', m2.rev, 4);
-eq('block removed from the model', m2.blocks.length, 4);
+eq('block removed from the model', m2.blocks.length, 5);
 eq('edited text landed in the model', m2.blocks.find((b) => b.id === 'b-two').text, 'Rewritten by the human.');
 ok('passage tags survive as anchored quotes',
   m2.blocks.find((b) => b.id === 'b-three').marks[0].quote === 'beta');
@@ -236,17 +259,17 @@ ok('journal embedded as a fallback to db', (m2.journal || []).some((e) => e.rev 
 
 const env2 = boot(out);
 await settle();
-eq('self-published document boots again', env2.d.querySelectorAll('.la-block').length, 4);
+eq('self-published document boots again', env2.d.querySelectorAll('.la-blk').length, 4);
 ok('runtime survived re-emission intact', !!env2.d.querySelector('.la-handle'));
 ok('the highlight survives re-emission', !!env2.d.querySelector('mark.la-mark'));
 {
-  blockEl(env2.d, 'b-one').querySelector('.la-body').click();
-  commitEdit(env2, 'b-one', 'Second generation edit');
+  clickBody(blockEl(env2.d, 'b-six'));
+  commitEdit(env2, 'b-six', 'Second generation edit');
   await env2.w.__la.flush();
   await settle();
   const m3 = extractModel(env2.published[0]);
   eq('a second self-publish still round-trips', m3.rev, 5);
-  ok('generation-2 edit landed', m3.blocks.find((b) => b.id === 'b-one').text === 'Second generation edit');
+  ok('generation-2 edit landed', m3.blocks.find((b) => b.id === 'b-six').text === 'Second generation edit');
   ok('generation-1 marks survive the second save (amber stays until a rebuild)', m3.blocks.filter((b) => b.touched && b.touched.by === 'viewer').length >= 2);
 }
 
@@ -255,8 +278,8 @@ console.log('\nC-6: autosave + undo / redo');
   const e6 = boot(wrap(buildBody(fixture()), 'x'));
   await settle();
   e6.w.__la.debounce(20);
-  blockEl(e6.d, 'b-one').querySelector('.la-body').click();
-  commitEdit(e6, 'b-one', 'Autosaved heading');
+  clickBody(blockEl(e6.d, 'b-six'));
+  commitEdit(e6, 'b-six', 'Autosaved heading');
   eq('nothing published on the edit itself', e6.published.length, 0);
   await new Promise((r) => setTimeout(r, 120));
   eq('autosave fires after the debounce with no button press', e6.published.length, 1);
@@ -266,7 +289,7 @@ console.log('\nC-6: autosave + undo / redo');
   /* undo AFTER a save cannot just drop the op — it records a reversal */
   e6.w.__la.undo();
   eq('undo restores the previous text',
-    blockEl(e6.d, 'b-one').textContent.includes('Autosaved heading'), false);
+    blockEl(e6.d, 'b-six').textContent.includes('Autosaved heading'), false);
   await new Promise((r) => setTimeout(r, 120));
   const m = extractModel(e6.published[e6.published.length - 1]);
   eq('undo did not rewind the revision counter', m.rev, 5);
@@ -274,7 +297,7 @@ console.log('\nC-6: autosave + undo / redo');
     (m.journal[m.journal.length - 1].ops || []).some((o) => o.op === 'undo'));
 
   e6.w.__la.redo();
-  ok('redo puts it back', blockEl(e6.d, 'b-one').textContent.includes('Autosaved heading'));
+  ok('redo puts it back', blockEl(e6.d, 'b-six').textContent.includes('Autosaved heading'));
 }
 {
   /* an undo BEFORE the round is saved should leave no trace in the journal */
@@ -308,18 +331,18 @@ console.log('\nC-7 / C-8: tagging scopes, colours, filtering, export');
      highlighter button redundant, so it has to keep working */
   const realSel = e9.w.getSelection.bind(e9.w);
   e9.w.getSelection = () => ({ toString: () => 'some selected words', isCollapsed: false });
-  blockEl(e9.d, 'b-two').querySelector('.la-body').click();
+  clickBody(blockEl(e9.d, 'b-two'));
   ok('a click that ended a selection does NOT open the editor',
     !blockEl(e9.d, 'b-two').querySelector('textarea'));
   e9.w.getSelection = realSel;
-  blockEl(e9.d, 'b-two').querySelector('.la-body').click();
+  clickBody(blockEl(e9.d, 'b-two'));
   ok('a plain click still opens the editor', !!blockEl(e9.d, 'b-two').querySelector('textarea'));
   blockEl(e9.d, 'b-two').querySelector('textarea').dispatchEvent(new e9.w.FocusEvent('blur'));
   ok('the highlighter button is gone', !btn(e9.d.body, '✎ Highlight'));
 
   /* C-8b: the picker offers tags already used, plus the standard intents */
   env.w; // (unused)
-  btn(blockEl(e9.d, 'b-one'), 'tag').click();
+  btn(blockEl(e9.d, 'b-six'), 'tag').click();
   const items = [...pop(e9.d).querySelectorAll('.la-tagmenu-item')].map((n) => n.textContent);
   ok('the picker lists tags already used in the document', items.includes('#for:sales'), items.join(','));
   ok('and suggests the standard intents', items.includes('#seed-next'), items.join(','));
@@ -329,7 +352,7 @@ console.log('\nC-7 / C-8: tagging scopes, colours, filtering, export');
   ok('typing narrows the list', filtered.length === 1 && filtered[0] === '#seed-next', filtered.join(','));
   [...pop(e9.d).querySelectorAll('.la-tagmenu-item')][0].click();
   ok('picking from the list applies it',
-    [...blockEl(e9.d, 'b-one').querySelectorAll('.la-tag')].some((c) => c.textContent === '#seed-next'));
+    [...blockEl(e9.d, 'b-six').querySelectorAll('.la-tag')].some((c) => c.textContent === '#seed-next'));
   /* highlights arrive mid-word from a real drag; they must not be stored that way */
   const snap = (t, q) => e9.w.__la.snapToWords(t, q);
   eq('a mid-word start grows to the whole word',
@@ -346,16 +369,16 @@ console.log('\nC-7 / C-8: tagging scopes, colours, filtering, export');
   const eA = boot(wrap(buildBody(fixture()), 'x'));
   await settle();
   /* C-7a: tag several blocks from one selection */
-  eA.w.__la.offerTag('b-one', null, ['b-one', 'b-two', 'b-three']);
+  eA.w.__la.offerTag('b-six', null, ['b-six', 'b-two', 'b-three']);
   ok('the picker says how many blocks it will tag',
     /3 blocks/.test(pop(eA.d).querySelector('.la-tagpop-head').textContent));
   pickTag(eA, 'seed-next');
   ok('every selected block got the tag',
-    ['b-one', 'b-two', 'b-three'].every((id) =>
+    ['b-six', 'b-two', 'b-three'].every((id) =>
       [...blockEl(eA.d, id).querySelectorAll('.la-tag')].some((c) => c.textContent === '#seed-next')));
   eA.w.__la.undo();
   ok('one undo reverses the whole multi-block tag',
-    ['b-one', 'b-two', 'b-three'].every((id) =>
+    ['b-six', 'b-two', 'b-three'].every((id) =>
       ![...blockEl(eA.d, id).querySelectorAll('.la-tag')].some((c) => c.textContent === '#seed-next')));
   eA.w.__la.redo();
 
@@ -386,7 +409,7 @@ console.log('\nC-7 / C-8: tagging scopes, colours, filtering, export');
   const row = [...menu.querySelectorAll('.la-filterrow')].find((r) => /for:sales/.test(r.textContent));
   row.querySelector('input').checked = true;
   row.querySelector('input').dispatchEvent(new eA.w.Event('change'));
-  const visible = [...eA.d.querySelectorAll('.la-block')].filter((b) => !b.hidden)
+  const visible = [...eA.d.querySelectorAll('.la-blk')].filter((b) => !b.hidden)
     .map((b) => b.dataset.blockId).sort();
   ok('ticking a label filters the page', visible.join(',') === 'b-four,b-two', visible.join(','));
 
@@ -505,8 +528,10 @@ console.log('\nU-1: raw blocks carry finished markup the runtime did not generat
   const e = boot(wrap(buildBody(m), 'Raw Doc'));
   await settle();
   const raw = blockEl(e.d, 'b-raw');
-  const host = raw.querySelector('.la-raw');
-  ok('the raw block renders', !!host);
+  /* the outline wrapped raw markup in `.la-raw`; the page drops it in directly,
+     under the block's own wrapper */
+  const host = raw.querySelector('.la-raw') || raw;
+  ok('the raw block renders', !!host && !!host.querySelector('table'));
   eq('the markup is rendered, not escaped', host.querySelectorAll('table').length, 1);
   ok('inline styles survive verbatim',
     /width:680px/.test(host.querySelector('table').getAttribute('style')));
@@ -516,7 +541,7 @@ console.log('\nU-1: raw blocks carry finished markup the runtime did not generat
   host.click();
   await settle();
   ok('clicking a raw block does not open an editor', !raw.querySelector('textarea'));
-  ok('it is not offered as a title on the body', raw.querySelector('.la-body').title !== 'Click to edit');
+  ok('it is not offered as a title on the body', bodyOf(raw).title !== 'Click to edit');
 
   ok('it still gets the hover chrome', !!raw.querySelector('.la-handle') && !!raw.querySelector('.la-acts'));
   ok('the drag handle names it rather than reading out the markup',
@@ -572,7 +597,7 @@ console.log('\nwhat Claude changed: word-level marks, in the reader\'s colour fo
     && /Rewritten in plain words/.test(b('b-note').querySelector('.la-note-a').textContent));
 
   /* the reader edits elsewhere: their own stale mark goes, Claude's stays put */
-  b('b-mine').querySelector('.la-body').click();
+  clickBody(b('b-mine'));
   await settle();
   const ta = b('b-mine').querySelector('textarea');
   ta.value = 'Changed again.';
@@ -607,7 +632,7 @@ console.log('\nnotes on one cell: the request sits in the cell it is about');
 
   cellAt(0, 0).querySelector('.la-cellpin').click();
   await settle();
-  const inp = cellAt(0, 0).querySelector('.la-cellnoteform input');
+  const inp = cellAt(0, 0).querySelector('.la-cellnoteform textarea');
   inp.value = 'name the provider version';
   inp.dispatchEvent(new e.w.Event('input'));
   btn(cellAt(0, 0), 'Save note').click();
@@ -617,7 +642,7 @@ console.log('\nnotes on one cell: the request sits in the cell it is about');
   ok('the pin never opens the grid editor instead', !cell().querySelector('table.la-grid'));
 
   /* removing a row has to carry the notes below it, or they point at strangers */
-  cell().querySelector('.la-body').click();
+clickBody(cell());
   await settle();
   cell().querySelectorAll('tbody .la-cellx')[0].click();
   await settle();
@@ -835,13 +860,11 @@ console.log('\nread mode: the published look, in the same page, from the same mo
   ok('Edit returns to editing in the page', !!w.d.querySelector('.house.la-page') && !!blockEl(w.d, 'b-p1'));
   ok('and lights the other side', w.d.querySelector('.la-seg .la-btn.on').textContent === 'Edit');
 
-  /* outline: the flat list, still there for restructuring */
-  btn(w.d.getElementById('la-bar'), 'Outline').click();
-  await settle();
-  ok('the outline is the flat block list', !!w.d.querySelector('.la-block') && !w.d.querySelector('.house'));
-  btn(w.d.getElementById('la-bar'), 'Page').click();
-  await settle();
-  ok('and Page brings the layout back', !!w.d.querySelector('.house.la-page'));
+  /* the outline is gone: there is one view of the document, and Edit and
+     Preview are two states of it */
+  ok('there is no Outline control left', !btn(w.d.getElementById('la-bar'), 'Outline'));
+  ok('and no flat block list to fall back to', !w.d.querySelector('.la-block'));
+  ok('the page is the only layout', !!w.d.querySelector('.house.la-page'));
 
   await w.w.__la.flush();
   await settle();
@@ -862,7 +885,7 @@ console.log('\nshared runtime: the model is its own file and the save touches on
   const e = boot(html);
   await settle();
   ok('the runtime boots from window.__laModel', !!blockEl(e.d, 'b-two'));
-  blockEl(e.d, 'b-two').querySelector('.la-body').click();
+  clickBody(blockEl(e.d, 'b-two'));
   await settle();
   commitEdit(e, 'b-two', 'Edited body.');
   await settle();
@@ -923,22 +946,24 @@ console.log('\nrole chips: an owner column is a function, not a person');
   await settle();
   const cellAt = (r, c) => blockEl(e.d, 'b-t')
     .querySelectorAll('tbody tr')[r].querySelectorAll('td')[c];
-  eq('a cell that is one role becomes one chip',
-    cellAt(0, 1).querySelectorAll('.la-role').length, 1);
-  eq('and reads as the role', cellAt(0, 1).querySelector('.la-role').textContent, 'Sales');
+  /* The page renders the same chips under the house's own class names
+     (`pill role` / `role-lead`, hue on `--role-h`); the outline used `la-role`.
+     The test accepts either, because what is being asserted is the parsing. */
+    const roles = (c) => c.querySelectorAll('.la-role, .pill.role');
+  const lead = (c) => c.querySelector('.la-rolelead, .role-lead');
+  eq('a cell that is one role becomes one chip', roles(cellAt(0, 1)).length, 1);
+  eq('and reads as the role', roles(cellAt(0, 1))[0].textContent, 'Sales');
   ok('each role gets its own fixed hue',
-    /--tag-h:\s*96/.test(cellAt(0, 1).querySelector('.la-role').getAttribute('style')));
-  eq('a status word in front survives as words',
-    cellAt(1, 1).querySelector('.la-rolelead').textContent, 'Not yet.');
-  eq('and the roles behind it are three chips',
-    cellAt(1, 1).querySelectorAll('.la-role').length, 3);
+    /--(tag|role)-h:\s*96/.test(roles(cellAt(0, 1))[0].getAttribute('style')));
+  eq('a status word in front survives as words', lead(cellAt(1, 1)).textContent, 'Not yet.');
+  eq('and the roles behind it are three chips', roles(cellAt(1, 1)).length, 3);
   ok('a sentence that merely mentions a role stays a sentence',
-    !cellAt(2, 0).querySelector('.la-role')
+    !cellAt(2, 0).querySelector('.la-role, .pill.role')
     && cellAt(2, 0).textContent.includes('Design owns the empty state'));
   ok('an unrecognised owner is left alone', !cellAt(2, 1).querySelector('.la-role'));
   ok('an empty cell makes no chip', !cellAt(3, 1).querySelector('.la-role'));
   ok('a rewritten owner cell is still marked as changed',
-    !!cellAt(0, 1).querySelector('mark.la-chg .la-role'));
+    !!cellAt(0, 1).querySelector('mark.la-chg .la-role, mark.la-chg .pill.role'));
   ok('and a cell-scoped span marks only that cell',
     !blockEl(e.d, 'b-t').querySelectorAll('tbody tr')[1].querySelector('mark.la-chg'));
   ok('a Who column in a flow table is left as words',
@@ -956,7 +981,7 @@ console.log('\nthe grid editor: a table is edited as cells, not as tabs');
   const e = boot(wrap(buildBody(m), 'Grid Doc'));
   await settle();
   const cell = () => blockEl(e.d, 'b-t');
-  cell().querySelector('.la-body').click();
+clickBody(cell());
   await settle();
   const grid = () => cell().querySelector('table.la-grid');
   ok('clicking a table opens a grid, not one textarea for the whole table',
@@ -1016,7 +1041,7 @@ console.log('\nthe grid editor: rows, columns and the text fallback');
   const e = boot(wrap(buildBody(m), 'Grid Doc 2'));
   await settle();
   const cell = () => blockEl(e.d, 'b-t');
-  cell().querySelector('.la-body').click();
+clickBody(cell());
   await settle();
   cell().querySelectorAll('tbody .la-cellx')[0].click();
   await settle();
@@ -1043,11 +1068,15 @@ console.log('\nmermaid: the diagram is a view of the text behind it');
   const e = boot(wrap(buildBody(m), 'Mermaid Doc'));
   await settle();
   const mb = () => blockEl(e.d, 'b-m');
-  ok('the block renders a diagram host', !!mb().querySelector('.la-mermaid'));
+  /* the page emits `pre.mermaid` for the viewer's own renderer; the outline
+     wrapped it in `.la-mermaid` and drew it itself. Either way the SOURCE is
+     what is on the page when nothing draws it, which is the promise here. */
+  ok('the block renders a diagram host',
+    !!mb().querySelector('.la-mermaid, pre.mermaid, .diagram-wrap'));
   ok('with no network it degrades to the source, never to a blank',
-    mb().querySelector('.la-mermaid-src').textContent.includes('Email typed'));
+    (mb().querySelector('.la-mermaid-src') || mb().querySelector('pre.mermaid')).textContent.includes('Email typed'));
 
-  mb().querySelector('.la-body').click();
+clickBody(mb());
   await settle();
   const ta = mb().querySelector('textarea');
   ok('clicking the diagram opens the text behind it', !!ta && ta.value === src);
@@ -1055,7 +1084,7 @@ console.log('\nmermaid: the diagram is a view of the text behind it');
   ta.dispatchEvent(new e.w.FocusEvent('blur'));
   await settle();
   ok('editing the source is an ordinary edit',
-    mb().querySelector('.la-mermaid-src').textContent.includes('Password'));
+    (mb().querySelector('.la-mermaid-src') || mb().querySelector('pre.mermaid')).textContent.includes('Password'));
   ok('the block is marked touched', mb().dataset.touched === 'viewer');
 
   const stat = e.w.__la.buildStatic();
@@ -1073,8 +1102,11 @@ console.log('\nmermaid: the diagram is a view of the text behind it');
   const bm = back.blocks.find((b) => b.id === 'b-m');
   ok('the model stores the source only, never the drawn svg',
     bm.text.includes('Password') && !JSON.stringify(bm).includes('<svg'));
-  ok('mermaid is offered in the add row',
-    [...e.d.querySelectorAll('.la-addrow .la-btn')].some((b) => b.textContent.trim() === 'mermaid'));
+  /* the outline's add row became the bar's `+ Add` menu */
+  btn(e.d.getElementById('la-bar'), '+ Add').click();
+  ok('mermaid is offered when adding a block',
+    [...e.d.querySelectorAll('#la-addmenu .la-btn, .la-addmenu .la-btn')]
+      .some((b) => b.textContent.trim() === 'mermaid'));
 }
 
 console.log('\nfigures: the picture is Claude’s, the words on it are the reader’s');
@@ -1091,9 +1123,9 @@ console.log('\nfigures: the picture is Claude’s, the words on it are the reade
   ok('the image renders', !!fb().querySelector('figure img'));
   ok('the caption renders', /What the customers run/.test(fb().querySelector('figcaption').textContent));
   ok('the labels are not printed under the picture',
-    !/y axis/.test(fb().querySelector('.la-body').textContent));
+    !/y axis/.test(bodyOf(fb()).textContent));
 
-  fb().querySelector('.la-body').click();
+clickBody(fb());
   await settle();
   ok('clicking opens a form, not a textarea',
     !!fb().querySelector('.la-figure-edit') && !fb().querySelector('textarea'));
@@ -1123,123 +1155,30 @@ console.log('\nfigures: the picture is Claude’s, the words on it are the reade
     op.block === 'b-f' && /y axis: Identities, per domain/.test(op.after));
 }
 
-console.log('\nfolding: the document opens as an outline, one section at a time');
-{
-  const m = fixture();
-  m.blocks = [
-    { id: 'h-a', type: 'heading', level: 2, text: 'Problem', tags: [], author: 'claude',
-      info: 'What is the purpose of this feature? What do you want to achieve?' },
-    { id: 'p-a1', type: 'para', text: 'First body block.', tags: [], author: 'claude' },
-    { id: 'h-a2', type: 'heading', level: 3, text: 'Goal', tags: [], author: 'claude' },
-    { id: 'p-a2', type: 'para', text: 'Nested under the h3.', tags: ['expand'], author: 'claude' },
-    { id: 'h-a3', type: 'heading', level: 3, tags: [], author: 'claude',
-      eyebrow: 'Context', text: 'A claim long enough that it would make a poor pill' },
-    { id: 'p-a3', type: 'para', text: 'More body.', tags: [], author: 'claude' },
-    { id: 'h-b', type: 'heading', level: 2, text: 'Solution', tags: [], author: 'claude' },
-    { id: 'p-b1', type: 'para', text: 'Second section body.', tags: [], author: 'claude', note: 'check this' },
-    { id: 'h-c', type: 'heading', level: 2, text: 'Final design', tags: [], author: 'claude',
-      info: 'Link to mockups or attach files to the jira ticket.' }
-  ];
-  const e = boot(wrap(buildBody(m), 'Fold Doc'));
-  await settle();
-  const vis = (id) => { const n = blockEl(e.d, id); return !!n && !n.hidden; };
-
-  ok('every top-level heading is visible at the start', vis('h-a') && vis('h-b') && vis('h-c'));
-  ok('a section holding sub-sections opens, so every section NAME is on screen', vis('h-a2'));
-  ok('but no leaf section shows its content', !vis('p-a2') && !vis('p-b1'));
-  ok('content sitting directly under an opened container still shows', vis('p-a1'));
-  const sum = (id) => blockEl(e.d, id).querySelector('.la-foldsum').textContent;
-  ok('a closed section reports what it is holding', /1 block/.test(sum('h-a2')));
-  ok('and flags the tagged block inside it', /1 tagged/.test(sum('h-a2')));
-  ok('a pinned note is never hidden silently', /1 note/.test(sum('h-b')));
-  ok('an open container shows no summary — nothing is hidden',
-    !blockEl(e.d, 'h-a').querySelector('.la-foldsum'));
-  ok('an empty section says empty rather than 0 blocks', /empty/.test(sum('h-c')));
-
-  blockEl(e.d, 'h-a').querySelector('.la-caret').click();
-  await settle();
-  ok('closing a container hides its sub-sections too', !vis('h-a2') && !vis('p-a1'));
-  blockEl(e.d, 'h-a').querySelector('.la-caret').click();
-  await settle();
-  ok('and opening it brings them back, still closed', vis('h-a2') && !vis('p-a2'));
-  ok('the neighbouring section is untouched throughout', !vis('p-b1'));
-  blockEl(e.d, 'h-a2').querySelector('.la-caret').click();
-  await settle();
-  ok('opening the sub-section shows its own blocks', vis('p-a2'));
-
-  ok('folding never reaches the model or the journal',
-    e.dbWrites.length === 0 && !JSON.stringify(m).includes('collapsed'));
-
-  /* Expand and Collapse walk the hierarchy one level per click; shift-click does everything. */
-  ok('"Collapse" is offered while anything is open', !!btn(e.d.body, 'Collapse ▾') && !btn(e.d.body, 'Collapse ▾').disabled);
-  btn(e.d.body, 'Collapse ▾').click();
-  await settle();
-  ok('one click closes only the deepest open level', !vis('p-a2') && vis('h-a2'));
-  btn(e.d.body, 'Collapse ▾').click();
-  await settle();
-  ok('the next click closes the level above, so everything is closed', !vis('p-a1') && !vis('p-b1') && !vis('h-a2'));
-  ok('and Collapse is then disabled', btn(e.d.body, 'Collapse ▾').disabled);
-  btn(e.d.body, 'Expand ▸').click();
-  await settle();
-  ok('Expand opens the top level first, sub-sections stay closed', vis('p-a1') && vis('h-a2') && !vis('p-a2'));
-  btn(e.d.body, 'Expand ▸').dispatchEvent(new e.w.MouseEvent('click', { bubbles: true, shiftKey: true }));
-  await settle();
-  ok('shift-click opens everything', vis('p-a2'));
-  ok('and Expand is then disabled', btn(e.d.body, 'Expand ▸').disabled);
-
-  const stat = e.w.__la.buildStatic();
-  ok('a static export carries every block, folded or not',
-    /First body block/.test(stat) && /Second section body/.test(stat) && /Nested under the h3/.test(stat));
-  ok('and lays it out as tabs, one per top-level section',
-    (stat.match(/role="tab"/g) || []).length === 2 && /role="tablist"/.test(stat));
-  /* the stylesheet names these selectors too, so count in the markup only */
-  const markup = stat.slice(stat.indexOf('</style>'));
-  ok('exactly one tab is open', (markup.match(/aria-selected="true"/g) || []).length === 1);
-  eq('and every other panel is hidden',
-    (markup.match(/role="tabpanel"[^>]*hidden/g) || []).length, 1);
-  ok('the export carries its own switching script, and no editor',
-    /ArrowRight/.test(stat) && !/la-runtime/.test(stat) && !/la-model/.test(stat));
-  ok('a sub-heading does not start a tab of its own', !/id="t-h-a2"/.test(stat));
-  ok('sub-sections are carded in the export', /class="la-card/.test(stat));
-  ok('a short section may share a row', /class="la-card half"/.test(stat));
-  ok('the editable document is not carded', !e.d.querySelector('.la-card'));
-  ok('a deep link resolves the tab id correctly', /location\.hash\.slice\(1\)/.test(stat));
-  ok('each tab opens with jump links to its sections', /class="la-subnav"/.test(stat));
-  ok('a link is named by the section label where it has one',
-    /<a href="#h-a3">Context<\/a>/.test(stat));
-  ok('and by the heading where it does not', /<a href="#h-a2">Goal<\/a>/.test(stat));
-  ok('the export marks the section the reader is in', /classList\.add\("here"\)/.test(stat));
-  ok('and scrolls smoothly rather than jumping', /scroll-behavior: smooth/.test(stat));
-}
+/* Folding was the outline's: a flat list needed a way to close a section to
+   get past it. The page has sections and tabs of its own, so the fold, the
+   Expand and Collapse controls and their tests went with the outline. */
 
 console.log('\nthe section ⓘ: what the section is for, in the template’s words');
 {
   const m = fixture();
+  /* a level-2 heading is a tab in the page and has no chrome of its own, so
+     the section under test is a level-3 heading inside one */
   m.blocks = [
-    { id: 'h-a', type: 'heading', level: 2, text: 'Adoption', tags: [], author: 'claude',
+    { id: 'h-tab', type: 'heading', level: 2, text: 'Section', tags: [], author: 'claude' },
+    { id: 'h-a', type: 'heading', level: 3, text: 'Adoption', tags: [], author: 'claude',
       info: 'How can we facilitate adoption?' },
     { id: 'p-a', type: 'para', text: 'Body.', tags: [], author: 'claude' }
   ];
   const e = boot(wrap(buildBody(m), 'Info Doc'));
   await settle();
   const h = () => blockEl(e.d, 'h-a');
-  const info = h().querySelector('.la-info');
-  ok('a heading with guidance shows an ⓘ', !!info);
-  eq('and carries it as a hover title', info.title, 'How can we facilitate adoption?');
-  ok('a heading with no badge shows none', !h().querySelector('.la-badge'));
-  ok('a heading with no label shows no eyebrow', !h().querySelector('.la-eyebrow-sec'));
-  ok('a heading without guidance shows none',
-    !blockEl(e.d, 'b-one') || !blockEl(e.d, 'b-one').querySelector('.la-info'));
+  ok('a section carries the template\u2019s guidance on the page',
+    /facilitate adoption/.test(h().textContent));
+  ok('a block with no guidance shows none',
+    !/facilitate adoption/.test(blockEl(e.d, 'p-a').textContent));
 
-  info.click();
-  await settle();
-  ok('clicking it opens the guidance inline',
-    !!h().querySelector('.la-infobox') && /facilitate adoption/.test(h().textContent));
-  info.click();
-  await settle();
-  ok('clicking again closes it', !e.d.querySelector('.la-infobox'));
-
-  h().querySelector('.la-headbody').click();
+  clickBody(h());
   await settle();
   const ta = h().querySelector('textarea');
   eq('the guidance is NOT in the edit box: it is the template’s, not the document’s',
@@ -1253,8 +1192,8 @@ console.log('\nthe section ⓘ: what the section is for, in the template’s wor
   await settle();
   eq('editing the heading changes the heading',
     blockEl(e.d, 'h-a').querySelector('h2').textContent, 'Adoption, revised');
-  eq('and leaves the guidance untouched', blockEl(e.d, 'h-a').querySelector('.la-info').title,
-    'How can we facilitate adoption?');
+  ok('and leaves the guidance untouched',
+    /facilitate adoption/.test(blockEl(e.d, 'h-a').textContent));
 
   await e.w.__la.flush();
   await settle();
@@ -1274,23 +1213,21 @@ console.log('\nempty sections: the title stays, and says it is empty on purpose'
   ];
   const e = boot(wrap(buildBody(m), 'Empty Doc'));
   await settle();
-  btn(e.d.body, 'Expand ▸').dispatchEvent(new e.w.MouseEvent('click', { bubbles: true, shiftKey: true }));
-  await settle();
-  const ph = () => blockEl(e.d, 'h-a').querySelector('.la-empty');
+  const ph = () => e.d.querySelector('.la-empty[data-empty-after="h-a"]');
   ok('an empty section shows the <> placeholder', !!ph() && ph().textContent === '<>');
   ok('a section with content does not',
-    !blockEl(e.d, 'h-b').querySelector('.la-empty'));
+    !e.d.querySelector('.la-empty[data-empty-after="h-b"]'));
 
   ph().click();
   await settle();
   ok('clicking it starts a block there, ready to type',
-    !!e.d.querySelector('.la-block textarea'));
-  const ta = e.d.querySelector('.la-block textarea');
+    !!e.d.querySelector('.la-blk textarea'));
+  const ta = e.d.querySelector('.la-blk textarea');
   ta.value = 'Filled in by the reader.';
   ta.dispatchEvent(new e.w.FocusEvent('blur'));
   await settle();
   ok('the section now has content', /Filled in by the reader/.test(e.d.body.textContent));
-  ok('and the placeholder is gone', !blockEl(e.d, 'h-a').querySelector('.la-empty'));
+  ok('and the placeholder is gone', !e.d.querySelector('.la-empty[data-empty-after="h-a"]'));
 }
 
 console.log('\nprovenance badge and nesting depth');
@@ -1311,11 +1248,11 @@ console.log('\nprovenance badge and nesting depth');
   ok('a section this document invented is not',
     !blockEl(e.d, 'h-c').querySelector('.la-badge'));
 
-  eq('a top-level heading sits at depth 0', blockEl(e.d, 'h-a').dataset.depth, '0');
-  eq('a sub-heading one level in', blockEl(e.d, 'h-b').dataset.depth, '1');
-  eq('and its body one level further', blockEl(e.d, 'p-b').dataset.depth, '2');
+  /* `data-depth` was the outline's indent: a flat list had to say how deep a
+     block sat. The page nests sections and tabs, so the structure IS the
+     answer and there is nothing to assert in its place. */
 
-  blockEl(e.d, 'h-b').querySelector('.la-headbody').click();
+  clickBody(blockEl(e.d, 'h-b'));
   await settle();
   const ta = blockEl(e.d, 'h-b').querySelector('textarea');
   ta.value = 'Goal\n\nRewritten guidance.';
@@ -1344,14 +1281,16 @@ console.log('\nsection labels: where you are, over what is being claimed');
   const e = boot(wrap(buildBody(m), 'Eyebrow Doc'));
   await settle();
   const h = () => blockEl(e.d, 'h-b');
-  eq('the label renders above the heading',
-    h().querySelector('.la-eyebrow-sec').textContent, 'Problem description');
+  /* the page renders a section head as `.sec-head`: `.eyebrow` over an `h2` */
+  const eyebrow = (n) => n.querySelector('.la-eyebrow-sec, .sec-head .eyebrow');
+  const claim = (n) => n.querySelector('h2, h3');
+  eq('the label renders above the heading', eyebrow(h()).textContent, 'Problem description');
   eq('and the heading carries the claim',
-    h().querySelector('h3').textContent, 'A customer switching a person off changes nothing at Verbolia');
+    claim(h()).textContent, 'A customer switching a person off changes nothing at Verbolia');
   ok('the label names the section for a screen reader on the handle',
     /Problem description: A customer/.test(h().querySelector('.la-handle').getAttribute('aria-label')));
 
-  h().querySelector('.la-headbody').click();
+  h().click();
   await settle();
   const ta = h().querySelector('textarea');
   eq('it edits as label then heading, with no guidance in the box', ta.value,
@@ -1359,32 +1298,33 @@ console.log('\nsection labels: where you are, over what is being claimed');
   ta.value = 'Problem\nStill a claim';
   ta.dispatchEvent(new e.w.FocusEvent('blur'));
   await settle();
-  eq('a rewritten label lands', blockEl(e.d, 'h-b').querySelector('.la-eyebrow-sec').textContent, 'Problem');
+  eq('a rewritten label lands', eyebrow(blockEl(e.d, 'h-b')).textContent, 'Problem');
 
-  blockEl(e.d, 'h-b').querySelector('.la-headbody').click();
+  blockEl(e.d, 'h-b').click();
   await settle();
   const t3 = blockEl(e.d, 'h-b').querySelector('textarea');
   t3.value = 'Context\nA short claim\nCurrently sign-in uses a password.\n\nAnd a second paragraph.';
   t3.dispatchEvent(new e.w.FocusEvent('blur'));
   await settle();
   eq('prose typed past the heading does not stay in the heading',
-    blockEl(e.d, 'h-b').querySelector('h3').textContent, 'A short claim');
-  const spill = [...e.d.querySelectorAll('.la-block')]
+    claim(blockEl(e.d, 'h-b')).textContent, 'A short claim');
+  const spill = [...e.d.querySelectorAll('.la-blk')]
     .find((n) => /Currently sign-in uses a password/.test(n.textContent));
   ok('it becomes a paragraph instead', !!spill && spill.dataset.type === 'para');
+  /* the page puts a section head and its blocks in different containers, so
+     "directly under" is a fact about the model, not about DOM siblings */
   ok('directly under the heading it was typed into',
-    spill.previousElementSibling.dataset.blockId === 'h-b');
+    order(e.d).indexOf(spill.dataset.blockId) === order(e.d).indexOf('h-b') + 1);
   ok('and the whole tail survives, not only its first line',
     /And a second paragraph/.test(spill.textContent));
 
-  blockEl(e.d, 'h-b').querySelector('.la-headbody').click();
+  blockEl(e.d, 'h-b').click();
   await settle();
   const t4 = blockEl(e.d, 'h-b').querySelector('textarea');
   t4.value = 'Just a heading now';
   t4.dispatchEvent(new e.w.FocusEvent('blur'));
   await settle();
-  ok('dropping the first line drops the label',
-    !blockEl(e.d, 'h-b').querySelector('.la-eyebrow-sec'));
+  ok('dropping the first line drops the label', !eyebrow(blockEl(e.d, 'h-b')));
 
   await e.w.__la.flush();
   await settle();
@@ -1393,6 +1333,76 @@ console.log('\nsection labels: where you are, over what is being claimed');
   ok('and the model has no orphan eyebrow left behind', hb2.eyebrow === undefined);
   ok('the guidance is still there after two edits that never showed it',
     /What problem does it solve/.test(hb2.info));
+}
+
+
+/* ------------------------------------------------------------------------- */
+console.log('\ndecisions: the chip is the answer, and the filled one is the choice');
+{
+  const m = {
+    v: 1, docId: 'dec', title: 'Decisions', template: 'desk-research', rev: 0,
+    blocks: [
+      { id: 'b-h', type: 'heading', level: 2, text: 'Decisions', tags: [] },
+      { id: 'b-d1', type: 'callout', variant: 'decision', tags: [],
+        title: 'D-01 · Which scope. Open.',
+        text: 'Context.\n\n**Options:** (a) keep it narrow; (b) bring creation in\n\n**Recommendation:** (a) keep it narrow' }
+    ]
+  };
+  const w = boot(wrap(buildBody(m), 'Decisions'), { page: true });
+  await settle();
+  const chips = () => [...w.d.querySelectorAll('.opts [data-opt]')];
+  eq('both options render as pressable chips', chips().length, 2);
+  eq('and they are buttons, not spans', chips()[0].tagName, 'BUTTON');
+  eq('before a choice, the recommendation is filled', w.d.querySelector('.opt.rec').dataset.opt, 'a');
+
+  chips().find((c) => c.dataset.opt === 'b').click();
+  await settle();
+  eq('clicking (b) makes it the chosen chip', w.d.querySelector('.opt.chosen').dataset.opt, 'b');
+  ok('the recommendation keeps only a ring', !!w.d.querySelector('.opt.rec-soft') && !w.d.querySelector('.opt.rec'));
+  eq('the model carries the choice', w.model().blocks[1].decision, 'b');
+  const op = w.ops().filter((o) => o.op === 'decide').pop();
+  eq('and it is a typed operation', op && op.option, 'b');
+
+  w.d.querySelector('.opt.chosen').click();
+  await settle();
+  ok('clicking the chosen chip again clears it', w.model().blocks[1].decision === undefined);
+  ok('and the recommendation is filled again', !!w.d.querySelector('.opt.rec'));
+  eq('clearing is recorded too', w.ops().filter((o) => o.op === 'decide').pop().option, null);
+
+  /* a reader never gets a control, only the state */
+  const r = boot(wrap(buildBody({ ...m, blocks: [m.blocks[0], { ...m.blocks[1], decision: 'b' }] }), 'Decisions'), { use: async () => null });
+  await settle();
+  ok('a reader sees the choice', !!r.d.querySelector('.opt.chosen'));
+  ok('but cannot press it', !r.d.querySelector('.opts button'));
+}
+
+/* ------------------------------------------------------------------------- */
+console.log('\nnotes: a note is a paragraph, not a line');
+{
+  const m = {
+    v: 1, docId: 'notes', title: 'Notes', rev: 0,
+    blocks: [
+      { id: 'b-t', type: 'heading', level: 2, text: 'Section', tags: [] },
+      { id: 'b-p', type: 'para', text: 'A paragraph to note on.', tags: [] }
+    ]
+  };
+  const w = boot(wrap(buildBody(m), 'Notes'), { page: true });
+  await settle();
+  [...blockEl(w.d, 'b-p').querySelectorAll('button')].find((b) => b.textContent.trim() === 'note').click();
+  await settle();
+  const field = w.d.querySelector('.la-noteform textarea');
+  ok('the note field is a textarea', !!field);
+  field.value = 'first line\nsecond line';
+  field.dispatchEvent(new w.w.Event('input', { bubbles: true }));
+
+  /* Enter alone must not submit: it is how a second line is written */
+  field.dispatchEvent(new w.w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  await settle();
+  ok('Enter does not submit', !!w.d.querySelector('.la-noteform textarea'));
+
+  field.dispatchEvent(new w.w.KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true }));
+  await settle();
+  eq('Cmd+Enter commits, newline intact', w.model().blocks[1].note, 'first line\nsecond line');
 }
 
 console.log(failed ? `\n${failed} failing\n` : '\nall green\n');
