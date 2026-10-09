@@ -1,0 +1,298 @@
+window.__laModel = {
+ "v": 1,
+ "docId": "how-it-works",
+ "title": "How a living artefact is made",
+ "thread": "living-artifacts",
+ "rev": 0,
+ "style": {
+  "directives": [
+   {
+    "id": "s-mech",
+    "text": "Say what actually runs. Where a step is done by a person, a model or a file, name which.",
+    "rev": 1,
+    "active": true
+   }
+  ]
+ },
+ "blocks": [
+  {
+   "id": "b-lede",
+   "type": "para",
+   "text": "A living artefact is made by three different things, and most confusion about it comes from not knowing which one is acting. A Claude session writes and reads the document model. A node CLI turns that model into a publishable folder. A runtime inside the published page does everything the reader does. This page maps those three hands onto one round, then says where every byte is kept and what each of the three version counters means."
+  },
+  {
+   "id": "b-h-hands",
+   "type": "heading",
+   "level": 2,
+   "text": "The three hands",
+   "info": "Who does what. Read this before the round diagram, which assumes it."
+  },
+  {
+   "id": "b-hands-lede",
+   "type": "para",
+   "eyebrow": "",
+   "text": "Nothing here is one program. The split is deliberate: authoring and building work without a session, publishing cannot, and editing works without either."
+  },
+  {
+   "id": "b-hands-dia",
+   "type": "mermaid",
+   "text": "flowchart TB\n  subgraph C[\"Claude, in a session\"]\n    C1[\"writes the model<br/>name.doc.json\"]\n    C2[\"reads the journal back<br/>as intent, not as a diff\"]\n    C3[\"publishes and republishes<br/>via the Artifact tool\"]\n  end\n  subgraph N[\"node, on your machine\"]\n    N1[\"build.mjs shell<br/>model to index.html + model.js\"]\n    N2[\"mark-changes.mjs<br/>diff to word-level touched spans\"]\n    N3[\"preflight.mjs and smoke.mjs<br/>drive the page headlessly\"]\n  end\n  subgraph P[\"la-runtime.js, inside the published page\"]\n    P1[\"renders the model\"]\n    P2[\"turns every gesture<br/>into one typed op\"]\n    P3[\"writes the journal to db\"]\n    P4[\"republishes the page to itself\"]\n  end\n  C1 --> N1 --> C3 --> P1\n  P1 --> P2 --> P4\n  P2 --> P3 --> C2 --> C1\n  C1 --> N2 --> C3\n  N1 --> N3"
+  },
+  {
+   "id": "b-hands-table",
+   "type": "table",
+   "head": [
+    "Hand",
+    "What it is",
+    "Needs a Claude session",
+    "What it can never do"
+   ],
+   "rows": [
+    [
+     "Claude",
+     "a session with the living-artifacts skill loaded",
+     "yes, it is one",
+     "edit the built HTML by hand"
+    ],
+    [
+     "node CLI",
+     "runtime/build.mjs, mark-changes.mjs, preflight.mjs, smoke.mjs",
+     "no",
+     "mint an artefact URL"
+    ],
+    [
+     "the runtime",
+     "runtime/la-runtime.js, shipped inside the page",
+     "no",
+     "create a second artefact, or read another artefact's db"
+    ]
+   ]
+  },
+  {
+   "id": "b-hands-why",
+   "type": "callout",
+   "title": "Why publishing is the bottleneck",
+   "text": "A published page can only republish itself. No page can mint a new artefact, and the Artifact tool that can is only reachable from a Claude session. So authoring a new document alone is already possible; getting a URL for it alone is not. That is the open thread in tray/independent-authoring-tool.md."
+  },
+  {
+   "id": "b-h-round",
+   "type": "heading",
+   "level": 2,
+   "text": "One round, end to end",
+   "info": "What happens between you asking for a document and you getting the next version of it."
+  },
+  {
+   "id": "b-round-lede",
+   "type": "para",
+   "text": "A round is not a request and a reply. It is a loop with a deliberate stop in the middle: Claude reads your edits back as a list before acting on any of them, and waits."
+  },
+  {
+   "id": "b-round-dia",
+   "type": "mermaid",
+   "text": "sequenceDiagram\n  actor M as You\n  participant CL as Claude\n  participant B as build.mjs\n  participant A as the artefact\n  participant DB as its db store\n  M->>CL: write me X\n  CL-->>M: proposes the sections and figures in chat\n  M->>CL: go\n  CL->>B: shell doc.json outdir\n  B-->>CL: index.html + model.js\n  CL->>A: publish with artifact, db, downloads\n  A-->>M: one URL: the editor and the page are the same page\n  M->>A: edit a block, tag a passage, pin a note\n  A->>A: rev + 1, republish itself\n  A->>DB: journal/r(rev) = the typed ops\n  A-->>CL: republish notification\n  CL->>DB: read the registry and the ops past lastReadRev\n  CL->>A: read model.js, extract it over the doc.json\n  CL-->>M: read-back: one row per op, then stops\n  M->>CL: confirms or corrects\n  CL->>B: mark-changes, rebuild the shell\n  CL->>A: republish model.js to the same URL"
+  },
+  {
+   "id": "b-round-stop",
+   "type": "callout",
+   "variant": "warning",
+   "title": "The stop is the feature",
+   "text": "The read-back gate is where a round is won or lost. Ops are evidence of intent, not instructions: a move is an argument about order, a delete may have taken a load-bearing caveat with it, and a highlight with no tag still means something. Claude states what it believes each one asks for and waits."
+  },
+  {
+   "id": "b-round-boundary",
+   "type": "para",
+   "text": "Two rules keep the loop cheap. Agree the edit boundary before each round, as a revision or a section rather than \"I'm done\", and publish the round before you resume editing. Republishing while you have unsaved edits makes your save reject with a conflict and reloads your view to Claude's; the runtime stashes your work in sessionStorage and hands it back, but re-applying it is yours to do."
+  },
+  {
+   "id": "b-h-saved",
+   "type": "heading",
+   "level": 2,
+   "text": "Where everything is saved",
+   "info": "Five surfaces. Only one of them is the truth at any moment, and which one it is changes over the document's life."
+  },
+  {
+   "id": "b-saved-lede",
+   "type": "para",
+   "text": "The truth of a living document is the JSON model. The page's DOM is a rendering of it and is never read back: no innerHTML scraping, no contenteditable soup. That is precisely what makes an edit legible as intent rather than as a text diff."
+  },
+  {
+   "id": "b-saved-table",
+   "type": "table",
+   "head": [
+    "Surface",
+    "Path",
+    "Holds",
+    "Written by",
+    "Dies when"
+   ],
+   "rows": [
+    [
+     "the model",
+     "model.js inside the artefact",
+     "the whole document: blocks, tags, notes, marks, style directives, last 40 journal entries",
+     "the runtime on every save; Claude on every round",
+     "the artefact is deleted"
+    ],
+    [
+     "the journal",
+     "db: docs/<docId>/journal/r<rev>",
+     "one document per revision, holding that revision's typed ops",
+     "the runtime, never Claude",
+     "the artefact is deleted — the db goes with it"
+    ],
+    [
+     "the registry",
+     "db: docs/<docId>",
+     "rev, title, block count, tag counts, open note count, active style directives",
+     "the runtime on every save",
+     "the artefact is deleted"
+    ],
+    [
+     "Claude's bookmark",
+     "db: docs/<docId>/claude/state",
+     "lastReadRev — how far Claude has read",
+     "Claude only; the page never touches it",
+     "the artefact is deleted"
+    ],
+    [
+     "the seed",
+     "docs/<name>/<name>.doc.json in the repo",
+     "the model as of the last pull",
+     "Claude, on authoring and on pull",
+     "never, it is in git"
+    ]
+   ]
+  },
+  {
+   "id": "b-saved-truth",
+   "type": "callout",
+   "title": "Which one is the truth",
+   "text": "While a document is under review, the published artefact is the only truth: every save mints an immutable version, so an uncommitted document is not an unbacked one. The repo seed goes stale the moment you save. Rebuilding from a stale seed silently reverts your work, which is why every round pulls the live model down first. When the document is done, the pull becomes permanent: extract over the seed, commit, mark the tray record done."
+  },
+  {
+   "id": "b-saved-risk",
+   "type": "callout",
+   "variant": "warning",
+   "title": "The one thing that is not recoverable",
+   "text": "Delete an artefact and its db is erased with it. The content survives in any pulled copy or in the ⤓ full download; the edit history does not. Pull before deleting anything."
+  },
+  {
+   "id": "b-saved-limits",
+   "type": "list",
+   "items": [
+    "A db artefact is organization-internal and cannot be shared publicly. Anything for a customer is a separate static export, published with no capabilities at all.",
+    "The db caps an artefact at 5,000 documents, which is why the journal is one document per revision and not one per op.",
+    "The rendered page must stay under 16 MB, model included. The model rides inside the page on every save, so a heavy embedded image is paid for on every write.",
+    "One store per artefact. No page can read another artefact's db, so a view across documents is the tray records, not a query."
+   ]
+  },
+  {
+   "id": "b-h-ver",
+   "type": "heading",
+   "level": 2,
+   "text": "Three counters, none of them the same thing",
+   "info": "Versioning. The usual mistake is to treat rev and the artefact version picker as one number."
+  },
+  {
+   "id": "b-ver-table",
+   "type": "table",
+   "head": [
+    "Counter",
+    "What it counts",
+    "Who increments it",
+    "What it is for"
+   ],
+   "rows": [
+    [
+     "model.rev",
+     "rounds of change to the model, by either side",
+     "the runtime on save; Claude on republish",
+     "addressing the journal, and deciding what Claude has not yet read"
+    ],
+    [
+     "claude.ai artefact versions",
+     "every publish to the URL, by either side",
+     "the platform",
+     "the version picker, and rollback"
+    ],
+    [
+     "the journal",
+     "one entry per rev, holding that rev's ops",
+     "the runtime",
+     "reading intent back — the whole point of the repo"
+    ]
+   ]
+  },
+  {
+   "id": "b-ver-dia",
+   "type": "mermaid",
+   "text": "flowchart LR\n  E[\"you edit a block\"] --> Q[\"op queued\"]\n  Q --> D{\"debounce settles\"}\n  D --> R[\"rev = rev + 1\"]\n  R --> J[\"db: journal/r(rev) = ops\"]\n  R --> S[\"db: registry updated\"]\n  R --> ST[\"sessionStorage stash\"]\n  R --> P{\"publish model.js\"}\n  P -->|ok| CLR[\"clear the stash, status: Saved rev n\"]\n  P -->|conflict| RB[\"rev rolls back, view reloads to theirs,<br/>your ops come back from the stash\"]\n  P -->|rate limited| SL[\"debounce doubles, retries, nothing lost\"]"
+  },
+  {
+   "id": "b-ver-marks",
+   "type": "para",
+   "text": "Change marks are their own small protocol and they are not versioning. Amber is everything you changed since Claude's last round; purple is what Claude changed in that round. Saving never clears either — only a rebuild does, through mark-changes.mjs, which diffs the copy you last reviewed against the new model and writes word-level spans. The file it diffs against is the one you last read, not necessarily the one you last saved from."
+  },
+  {
+   "id": "b-h-open",
+   "type": "heading",
+   "level": 2,
+   "text": "What is settled and what is open",
+   "info": "As of 25 September 2026. Decisions taken in this session are marked as such."
+  },
+  {
+   "id": "b-open-decided",
+   "type": "list",
+   "items": [
+    "Decided 25 September 2026: when you ask for an artefact with no qualifier, Claude names in one line which form it would use and waits, rather than defaulting silently.",
+    "Decided 25 September 2026: one look for everything, the Verbolia theme. The variable is the template, chosen by the document's purpose, not the theme."
+   ]
+  },
+  {
+   "id": "b-open-table",
+   "type": "table",
+   "head": [
+    "Open",
+    "What it is",
+    "Where it lives"
+   ],
+   "rows": [
+    [
+     "templates by purpose",
+     "two read-mode layouts exist — house for a PRD, desk-research for analysis. Presentation and one-pager do not. No rule maps purpose to template.",
+     "runtime/house.css, runtime/desk.css"
+    ],
+    [
+     "drop the Outline",
+     "the flat block list predates editing in the page and is now redundant as a view. Removing it is a refactor, not a deletion: most of the 1,388-line smoke suite drives it.",
+     "runtime/la-runtime.js, runtime/smoke.mjs"
+    ],
+    [
+     "the skill contradicts itself",
+     "585 lines carrying both a superseded two-surface publishing procedure and the fused one. A reader following it top-down does the wrong thing.",
+     "skills/living-artifacts/SKILL.md"
+    ],
+    [
+     "nothing routes to here",
+     "no CLAUDE.md in this repo, and nothing in the global one says an artefact means a living artefact.",
+     "the repo root"
+    ],
+    [
+     "images and sketches",
+     "v2: figures downscaled in-browser into db rather than embedded.",
+     "tray/v2-images-and-sketches.md"
+    ],
+    [
+     "the cross-document index",
+     "v3: blocked on the same architectural fork as self-service authoring — per-document artefacts or one workbench. Cannot have both.",
+     "tray/v3-index-and-export.md"
+    ]
+   ]
+  },
+  {
+   "id": "b-open-close",
+   "type": "para",
+   "text": "The first four are the reason an artefact request does not land here by default. They are independent of each other and none of them is a change to the runtime."
+  }
+ ]
+};

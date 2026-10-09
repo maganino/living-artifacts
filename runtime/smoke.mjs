@@ -671,6 +671,17 @@ console.log('\nread mode: the published look, in the same page, from the same mo
   const shown = () => r.d.getElementById('la-root').textContent;
   ok('no note reaches the reader', !r.d.querySelector('.la-note') && !shown().includes('tighten this'));
   ok('no change mark or highlight reaches the reader', !r.d.querySelector('.la-chg, .la-mark, mark'));
+  {
+    /* a shared copy can show its readers what changed, and nothing else */
+    const pm = JSON.parse(JSON.stringify(m)); pm.publicMarks = true; pm.publicMarksNote = 'Purple is new since 21 September.';
+    pm.blocks.push({ id: 'b-newblk', type: 'para', text: 'A whole new paragraph.', tags: [], author: 'claude', touched: { rev: 3, by: 'claude' } });
+    const rp = boot(wrap(buildBody(pm), 'Read Doc'), { use: async () => null });
+    await settle();
+    ok('a reader of a marked copy sees the changed words', !!rp.d.querySelector('mark.la-chg') && /paragraph/.test(rp.d.querySelector('mark.la-chg').textContent));
+    ok('and a rail on a new block', !!rp.d.querySelector('.chg-new'));
+    ok('and the note under the top bar', /Purple is new/.test(rp.d.querySelector('.pubnote').textContent));
+    ok('but never a note or a tag', !rp.d.querySelector('.la-mark, .la-note, .la-handle'));
+  }
   ok('no editor chrome reaches the reader', !r.d.querySelector('.la-handle, .la-acts, #la-bar, .la-modepill'));
   ok('an internal section is left out', !shown().includes('Epics nobody outside sees'));
   eq('a callout carries its variant', r.d.querySelector('.house .deferred').getAttribute('data-variant'), 'warning');

@@ -511,6 +511,15 @@ is repeated for `.blocks > .la-blk > p` (and lists). Without it every
 paragraph ran the full width in edit mode and the page looked to have lost its
 margins.
 
+**A shared copy can show its readers what changed.** `model.publicMarks:
+true` makes read mode render Claude's `touched` spans for readers too
+(`mark.la-chg`), put a purple rail on a block marked whole (`.chg-new`) and
+show `model.publicMarksNote` under the top bar (`.pubnote`). Notes, tags and
+the reader's own marks never reach a reader. Build such a copy from the source
+of the last copy sent plus the confirmed changes, run `mark-changes.mjs`
+against that source, set the flag, give it its own `docId`, and publish it as
+a NEW artifact with `capabilities: {}`.
+
 **Cell pins in the page.** A house table cell is positioned and keeps 36px at
 its right for the pin, so the `+` shows on hover in the page as it does in the
 outline grid.
@@ -536,6 +545,19 @@ within a row leaves every other card's width alone. Narrowing a card by its edge
 never widens its neighbours: the space stays empty, which is the point of
 narrowing. The section grid does not fit rows: there a half-width block leaves
 the rest of its row empty and the next block starts a new row.
+
+**A handled note is green, a freshly handled one purple.** `noteDone` renders
+in the handled colour (`--handled`, green) once it is older than Claude's
+latest round; a note answered in that round (`noteDoneRev` at or above the
+highest claude `touched.rev`) keeps the round's purple so it reads as news.
+`mark-changes.mjs` stamps `noteDoneRev`, `cellNotesDoneRev[cell]` and
+`marks[].noteDoneRev` when an answer is new against the previous model.
+
+**Lists and rows are aligned by content, not position.** A new first item in
+a list, or a new first row in a table, shifts every index after it; marking
+by index then painted the whole list. `mark-changes.mjs` treats an item or a
+row that existed before, wherever it sat, as unchanged, a row with the same
+first cell as an old one as that row edited, and anything else as new.
 
 **Marks are word level, by diff.** After each round `mark-changes.mjs` compares
 the model the reader last saw with the one about to be published and writes

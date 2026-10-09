@@ -75,7 +75,8 @@ export function shellHtml(model) {
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div id="la-root"></div>
+<!-- model rev ${model.rev || 0} -->
+<div id="la-root" data-rev="${model.rev || 0}"></div>
 ${S} src="model.js">${E}
 ${S} src="runtime.js">${E}
 </body>

@@ -82,19 +82,63 @@ function surfaces(b) {
   return out;
 }
 
+/* A list item or a table row inserted at the top shifts every index after
+   it, so surfaces are aligned by content, not by position: an item or row
+   that existed before, wherever it sat, is unchanged; a row that shares its
+   first cell with an old one is that row edited; anything else is new. */
+function alignedSurfaces(was, b) {
+  if (b.type === 'list') {
+    const old = new Set(was.items ?? []);
+    return (b.items ?? []).map((it, i) => ['i' + i, it, old.has(it) ? it : null]);
+  }
+  if (b.type === 'table') {
+    const out = [];
+    (b.head ?? []).forEach((h, ci) => out.push(['h' + ci, h, (was.head ?? [])[ci]]));
+    const oldRows = (was.rows ?? []).map((r) => r.map((c) => String(c ?? '')));
+    const oldJoined = new Set(oldRows.map((r) => r.join('\u0001')));
+    (b.rows ?? []).forEach((r, ri) => {
+      const cells = r.map((c) => String(c ?? ''));
+      let match = null;
+      if (oldJoined.has(cells.join('\u0001'))) match = cells;
+      else {
+        const byFirst = oldRows.find((o) => o[0] && o[0] === cells[0]);
+        match = byFirst ?? (oldRows[ri] && oldRows[ri][0] === cells[0] ? oldRows[ri] : null);
+      }
+      cells.forEach((c, ci) => out.push(['r' + ri + 'c' + ci, c, match ? (match[ci] ?? '') : null]));
+    });
+    return out;
+  }
+  const before = new Map(surfaces(was));
+  return surfaces(b).map(([k, t]) => [k, t, before.get(k)]);
+}
+/* A note answered since the previous model gets the round stamped on it, so
+   the page can tell a fresh answer (purple) from a settled one (green). */
+function stampAnswers(was, b) {
+  if (b.noteDone && b.noteDone !== (was && was.noteDone)) b.noteDoneRev = rev;
+  if (b.cellNotesDone) {
+    for (const k of Object.keys(b.cellNotesDone)) {
+      if (b.cellNotesDone[k] !== ((was && was.cellNotesDone) || {})[k]) { b.cellNotesDoneRev = b.cellNotesDoneRev || {}; b.cellNotesDoneRev[k] = rev; }
+    }
+  }
+  const oldMarks = (was && was.marks) || [];
+  (b.marks ?? []).forEach((mk) => {
+    if (!mk.noteDone) return;
+    const o = oldMarks.find((x) => x.quote === mk.quote && x.note === mk.note);
+    if (!o || o.noteDone !== mk.noteDone) mk.noteDoneRev = rev;
+  });
+}
 let marked = 0, whole = 0, cleared = 0, viewerCleared = 0;
 for (const b of next.blocks) {
   if (!keepViewer && b.touched && b.touched.by !== by) { delete b.touched; viewerCleared++; }
   const was = prevById.get(b.id);
+  stampAnswers(was, b);
   if (!was) { b.touched = { rev, by }; whole++; continue; }
-  const before = new Map(surfaces(was));
   const spans = [];
   let diagramChanged = false;
-  for (const [key, text] of surfaces(b)) {
-    const old = before.get(key);
+  for (const [key, text, old] of alignedSurfaces(was, b)) {
     if ((old ?? '') === (text ?? '')) continue;
     if (b.type === 'mermaid') { diagramChanged = true; continue; }
-    const runs = changedRuns(old, text);
+    const runs = old == null ? [String(text ?? '').trim()].filter((x) => x) : changedRuns(old, text);
     for (const q of runs) spans.push(b.type === 'table' ? { cell: key, quote: q } : q);
   }
   if (diagramChanged) { b.touched = { rev, by }; whole++; continue; }

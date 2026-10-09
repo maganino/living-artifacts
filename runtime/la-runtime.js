@@ -148,7 +148,7 @@
         if (m && m.chg) return '<mark class="la-chg' + (chgOwner === 'viewer' ? ' mine' : '') + '">';
         /* a passage with a note on it says so where it stands, and says whether
            the note has been acted on */
-        var noted = m && m.note ? ' has-note' + (m.noteDone ? ' done' : '') : '';
+        var noted = m && m.note ? ' has-note' + (m.noteDone ? doneCls(m.noteDoneRev) : '') : '';
         var title = m && m.note ? ' title="' + esc(m.note + (m.noteDone ? ' \u2192 ' + m.noteDone : '')) + '"' : '';
         return m && m.tag
           ? '<mark class="la-mark' + noted + '" style="--tag-h:' + tagHue(m.tag) + '"' + title + '>'
@@ -165,6 +165,14 @@
      rather than stacked: seeing their highlight give way to Claude's is how
      they know the note was acted on. */
   var chgOwner = null;   /* who owns the change spans being rendered: claude | viewer */
+  /* Claude's latest round is the highest rev it marked; a note answered in
+     that round is recent (purple), an older answer is settled (green). */
+  function latestClaudeRev() {
+    var r = 0;
+    model.blocks.forEach(function (b) { if (b.touched && b.touched.by === 'claude' && b.touched.rev > r) r = b.touched.rev; });
+    return r;
+  }
+  function doneCls(rev) { return ' done' + (rev != null && rev >= latestClaudeRev() ? ' recent' : ''); }
   function changeSpans(b) {
     var t = b.touched;
     chgOwner = t ? t.by : null;
@@ -813,7 +821,7 @@
     if (forStatic) return;
     var note = (b.cellNotes || {})[key], done = (b.cellNotesDone || {})[key];
     if (note) {
-      var n = el('div', 'la-cellnote' + (done ? ' done' : ''));
+      var n = el('div', 'la-cellnote' + (done ? doneCls(((b.cellNotesDoneRev || {})[key])) : ''));
       n.appendChild(el('b', null, done ? 'note handled' : 'note'));
       n.appendChild(document.createTextNode(note));
       if (done) n.appendChild(el('div', 'la-cellnote-a', done));
@@ -932,7 +940,7 @@
     if (b.note) {
       /* A note that has been acted on keeps its text and says so, so the round
          reads as a conversation rather than as a list that emptied itself. */
-      var n = el('div', 'la-note' + (b.noteDone ? ' done' : ''));
+      var n = el('div', 'la-note' + (b.noteDone ? doneCls(b.noteDoneRev) : ''));
       n.appendChild(el('b', null, b.noteDone ? 'note handled' : 'note to claude'));
       n.appendChild(document.createTextNode(b.note));
       if (b.noteDone) n.appendChild(el('div', 'la-note-a', b.noteDone));
@@ -1118,7 +1126,7 @@
       m.appendChild(chip);
       if (mk.note) {
         /* the note on a passage, next to the passage's chip, answered or not */
-        var n = el('span', 'la-marknote' + (mk.noteDone ? ' done' : ''));
+        var n = el('span', 'la-marknote' + (mk.noteDone ? doneCls(mk.noteDoneRev) : ''));
         n.appendChild(el('b', null, mk.noteDone ? 'handled' : 'note'));
         n.appendChild(document.createTextNode(mk.note));
         if (mk.noteDone) n.appendChild(el('i', null, mk.noteDone));
@@ -2413,17 +2421,21 @@
 
   /* Text with the writer's working state on it, or clean for a reader. */
   function rText(b, t, cellKey) {
-    if (!pageEdit) return inline(t);
+    /* a shared copy may carry Claude's change marks for its readers
+       (`model.publicMarks`): the words, never the notes or tags */
+    if (!pageEdit && !model.publicMarks) return inline(t);
     var chg = changeSpans(b);
     if (cellKey) chg = spansFor(chg, cellKey);
-    return withMarks(t, b.marks, chg);
+    return withMarks(t, pageEdit ? b.marks : null, chg);
   }
   /* Every block a writer can act on is wrapped and addressable. A reader's
      page carries no wrappers at all. */
   function wrapBlk(b, html, extra) {
     if (!pageEdit || noWrap || !html) {
       var w0 = b.layout && b.layout.w;
-      return (w0 && html && !noWrap) ? '<div class="blk w-' + esc(w0) + '">' + html + '</div>' : html;
+      var cls0 = (w0 ? 'blk w-' + esc(w0) : '') + (model.publicMarks && changedWhole(b) ? ' chg-new' : '');
+      cls0 = cls0.trim();
+      return (cls0 && html && !noWrap) ? '<div class="' + cls0 + '">' + html + '</div>' : html;
     }
     var w = b.layout && b.layout.w;
     var cls = 'la-blk' + (w ? ' blk w-' + esc(w) : '') + (extra ? ' ' + extra : '');
@@ -2440,7 +2452,7 @@
     var head = b.head || [], rows = b.rows || [], rcols = roleColumns(head);
     var out = '<div class="tbl-wrap' + (b.variant === 'striped' ? ' striped' : '') + '"><table>';
     if (head.some(function (h) { return String(h).trim(); })) {
-      out += '<thead><tr>' + head.map(function (h) { return '<th>' + inline(h) + '</th>'; }).join('') + '</tr></thead>';
+      out += '<thead><tr>' + head.map(function (h, hi) { return '<th>' + inline(h) + thInfo(b, h, hi) + '</th>'; }).join('') + '</tr></thead>';
     }
     out += '<tbody>' + rows.map(function (r, ri) {
       return '<tr>' + r.map(function (c, ci) { return '<td>' + rCell(b, c, !!rcols[ci], 'r' + ri + 'c' + ci) + '</td>'; }).join('') + '</tr>';
@@ -2813,11 +2825,18 @@
     if (hd === 'in skill / code' || hd === 'in skill/code') return 'impl';
     return '';
   }
+  /* A column's definition rides on its header as an ⓘ, so a table needs no
+     legend paragraph. b.headInfo is keyed by column name, or by index. */
+  function thInfo(b, h, i) {
+    var m = b.headInfo || {}, t = m[String(h).trim()] != null ? m[String(h).trim()] : m[i];
+    if (!t || !String(t).trim()) return '';
+    return '<i class="th-i" tabindex="0" role="button" aria-label="What ' + esc(String(h)) + ' means">i<span class="th-pop">' + inline(String(t)) + '</span></i>';
+  }
   function dkGrid(b) {
     var head = b.head || [], rows = b.rows || [], rcols = roleColumns(head), n = head.length;
     var wide = n >= 6, tall = rows.length > 12;
     var out = '<div class="tablewrap' + (wide ? ' wide' : '') + (tall ? '' : ' short') + '"><table>';
-    if (head.some(function (h) { return String(h).trim(); })) out += '<thead><tr>' + head.map(function (h) { return '<th>' + inline(h) + '</th>'; }).join('') + '</tr></thead>';
+    if (head.some(function (h) { return String(h).trim(); })) out += '<thead><tr>' + head.map(function (h, hi) { return '<th>' + inline(h) + thInfo(b, h, hi) + '</th>'; }).join('') + '</tr></thead>';
     out += '<tbody>' + rows.map(function (r, ri) {
       var group = n >= 3 && String(r[0] || '').trim() && r.slice(1).every(function (c) { return !String(c || '').trim(); });
       if (group) return '<tr class="grouprow"><td colspan="' + n + '" data-cell="r' + ri + 'c0">' + rText(b, r[0], 'r' + ri + 'c0') + '</td></tr>';
@@ -2837,7 +2856,14 @@
      describes instead of in a second table. Axis labels come from b.axis. */
   var GT_STATE = { ok: 'ok', done: 'ok', plan: 'plan', scheduled: 'plan', wait: 'wait', blocked: 'wait', est: 'est', open: 'est' };
   function gtState(s) { return GT_STATE[String(s || '').trim().toLowerCase()] || 'plan'; }
+  var GT_GRP = {};
+  function gtGrp(name) {
+    var k = String(name || '').trim().toLowerCase();
+    if (!GT_GRP[k]) GT_GRP[k] = 'g' + ((Object.keys(GT_GRP).length % 4) + 1);
+    return GT_GRP[k];
+  }
   function dkGantt(b) {
+    GT_GRP = {};
     var rows = b.rows || [], ax = b.axis || {}, labels = ax.labels || [];
     var w0 = dkNum(ax.start || 0), n = labels.length || 1;
     function pc(w) { return Math.max(0, Math.min(100, (dkNum(w) - w0) / n * 100)); }
@@ -2853,11 +2879,13 @@
         if (String(r[0] || '').trim() !== L) return;
         var st = gtState(r[5]), open = !String(r[4] || '').trim();
         var a = pc(r[3]), z = open ? 100 : pc(r[4]), wd = Math.max(1.2, z - a);
-        var note = String(r[7] || '').trim();
+        var note = String(r[8] || '').trim(), grp = String(r[7] || '').trim();
         rs += '<div class="gt-row" data-cell="r' + ri + 'c1">'
           + '<div class="gt-lab"><b>' + rText(b, r[1] || '', 'r' + ri + 'c1')
-          + (note ? '<i class="gt-i" tabindex="0" role="button" aria-label="More about ' + esc(r[1] || '') + '">i<span class="gt-pop">' + rText(b, note, 'r' + ri + 'c7') + '</span></i>' : '')
-          + '</b><span>' + rText(b, r[2] || '', 'r' + ri + 'c2') + '</span></div>'
+          + (note ? '<i class="gt-i" tabindex="0" role="button" aria-label="More about ' + esc(r[1] || '') + '">i<span class="gt-pop">' + rText(b, note, 'r' + ri + 'c8') + '</span></i>' : '')
+          + '</b><span>'
+          + (grp ? '<em class="gt-grp ' + gtGrp(grp) + '">' + rText(b, grp, 'r' + ri + 'c7') + '</em>' : '')
+          + rText(b, r[2] || '', 'r' + ri + 'c2') + '</span></div>'
           + '<div class="gt-track">'
           + '<div class="gt-bar ' + st + (open ? ' open' : '') + '" style="left:' + a.toFixed(2) + '%;width:' + wd.toFixed(2) + '%"></div>'
           + '<span class="gt-st ' + st + '" style="left:' + (open ? a + 1.4 : z).toFixed(2) + '%">' + rText(b, r[6] || '', 'r' + ri + 'c6') + '</span>'
@@ -2972,7 +3000,8 @@
     var tabBtns = tabs.map(function (t, i) {
       return '<button type="button" role="tab" id="tab-' + esc(t.id) + '" aria-controls="' + esc(t.id) + '" aria-selected="' + (i === 0 ? 'true' : 'false') + '"' + (i === 0 ? '' : ' tabindex="-1"') + '>' + esc(t.label) + '</button>';
     }).join('');
-    var html = '<div class="topbar"><div class="wrap"><div class="brand"><span class="dot"></span>Verbolia <span class="sep">/</span> <span class="doc">' + esc(model.component || 'Document') + '</span></div>'
+    var pubnote = model.publicMarks && model.publicMarksNote ? '<div class="pubnote"><div class="wrap">' + inline(model.publicMarksNote) + '</div></div>' : '';
+    var html = pubnote + '<div class="topbar"><div class="wrap"><div class="brand"><span class="dot"></span>Verbolia <span class="sep">/</span> <span class="doc">' + esc(model.component || 'Document') + '</span></div>'
       + '<div class="tabs" role="tablist" aria-label="Document tabs">' + tabBtns + '</div></div></div>'
       + rHero(split.hero)
       + tabs.map(function (t, i) { return rTab(t, i === 0); }).join('\n')
@@ -2996,7 +3025,7 @@
       if (changedWhole(b)) node.dataset.changed = 'all';
       node.insertBefore(renderChrome(b), node.firstChild);
       if (b.note) {
-        var n = el('div', 'la-note' + (b.noteDone ? ' done' : ''));
+        var n = el('div', 'la-note' + (b.noteDone ? doneCls(b.noteDoneRev) : ''));
         n.appendChild(el('b', null, b.noteDone ? 'note handled' : 'note to claude'));
         n.appendChild(document.createTextNode(b.note));
         if (b.noteDone) n.appendChild(el('div', 'la-note-a', b.noteDone));
