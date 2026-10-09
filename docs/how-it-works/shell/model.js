@@ -2,6 +2,7 @@ window.__laModel = {
  "v": 1,
  "docId": "how-it-works",
  "title": "How a living artefact is made",
+ "url": "https://claude.ai/artifact/8dd3fQAxRDHxRP1HenzKL8",
  "thread": "living-artifacts",
  "rev": 3,
  "style": {

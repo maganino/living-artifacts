@@ -2,16 +2,24 @@
   "v": 1,
   "docId": "where-we-stand",
   "title": "Where the factory stands",
-  "url": "https://claude.ai/artifact/4nHzUmmks44wPGKYoPFEYb",
   "thread": "living-artifacts",
   "component": "Status",
   "template": "brief",
-  "rev": 0,
+  "rev": 7,
   "blocks": [
     {
       "id": "b-lede",
       "type": "para",
-      "text": "Six workstreams are open and only one of them is finished. This page is also the example you asked for: it is a living artefact, built from a 10-block model through the repo's own CLI, and it uses the brief template that landed on the branch. Edit any block, pin a note on any row, and the gestures come back to me as typed operations."
+      "text": "Seven workstreams, six of them finished. This page is also the example you asked for: a living artefact built from a 10-block model through the repo's own CLI, in the brief template. Edit any block, pin a note on any row, and the gestures come back to me as typed operations.",
+      "touched": {
+        "rev": 7,
+        "by": "claude",
+        "spans": [
+          "Seven workstreams, six",
+          "artefact",
+          "template."
+        ]
+      }
     },
     {
       "id": "b-h-now",
@@ -31,35 +39,110 @@
       "rows": [
         [
           "Routing, one publishing procedure, template per purpose",
-          "on branch `artefact-factory`, tests green",
-          "test, then merge"
+          "merged on `main`, tests green",
+          "nothing"
         ],
         [
           "Drop the Outline",
-          "blocked, not started",
-          "Q2"
+          "done. Folding, Expand and Collapse went with it",
+          "nothing"
         ],
         [
           "Clickable decision chips, and the chosen option recorded",
-          "not started",
-          "Q3 before it can be built"
+          "done. A click is a `decide` op; the filled chip is the choice",
+          "nothing"
         ],
         [
           "Multiline notes",
-          "not started",
-          "nothing, it is specified"
+          "done. A growing textarea for block, cell and passage alike",
+          "nothing"
         ],
         [
           "No round status in headings or section notes",
-          "not started",
-          "nothing, it is an authoring rule"
+          "done, as an authoring rule in the skill",
+          "nothing"
         ],
         [
           "Public marks, gantt groups, note recency, aligned marking",
-          "uncommitted in the main working tree",
-          "Q4"
+          "committed and merged",
+          "nothing"
+        ],
+        [
+          "The Publish button",
+          "specified, not built: a static copy, a version stamp, a diff and a changelog",
+          "Q3"
         ]
-      ]
+      ],
+      "touched": {
+        "rev": 7,
+        "by": "claude",
+        "spans": [
+          {
+            "cell": "r0c1",
+            "quote": "merged"
+          },
+          {
+            "cell": "r0c1",
+            "quote": "`main`,"
+          },
+          {
+            "cell": "r0c2",
+            "quote": "nothing"
+          },
+          {
+            "cell": "r1c1",
+            "quote": "done. Folding, Expand and Collapse went with it"
+          },
+          {
+            "cell": "r1c2",
+            "quote": "nothing"
+          },
+          {
+            "cell": "r2c1",
+            "quote": "done. A click is a `decide` op; the filled chip is the choice"
+          },
+          {
+            "cell": "r2c2",
+            "quote": "nothing"
+          },
+          {
+            "cell": "r3c1",
+            "quote": "done. A growing textarea for block, cell and passage alike"
+          },
+          {
+            "cell": "r3c2",
+            "quote": "nothing"
+          },
+          {
+            "cell": "r4c1",
+            "quote": "done, as an authoring rule in the skill"
+          },
+          {
+            "cell": "r4c2",
+            "quote": "nothing"
+          },
+          {
+            "cell": "r5c1",
+            "quote": "committed and merged"
+          },
+          {
+            "cell": "r5c2",
+            "quote": "nothing"
+          },
+          {
+            "cell": "r6c0",
+            "quote": "The Publish button"
+          },
+          {
+            "cell": "r6c1",
+            "quote": "specified, not built: a static copy, a version stamp, a diff and a changelog"
+          },
+          {
+            "cell": "r6c2",
+            "quote": "Q3"
+          }
+        ]
+      }
     },
     {
       "id": "b-h-repo",
@@ -180,7 +263,7 @@
       "type": "heading",
       "level": 2,
       "text": "Open questions",
-      "info": "Pin a note on a row to answer it. Q1 is the one that changes the most."
+      "info": "Three left. Q1 is the one that changes the most."
     },
     {
       "id": "b-q-table",
@@ -194,28 +277,181 @@
         [
           "Q1",
           "Now that Claude Docs exists, what is this runtime still for?",
-          "decides whether to keep building it out, or narrow it to the journal and the Verbolia templates and let Docs take the rest"
+          "open. It decides what gets built after the Publish button"
         ],
         [
           "Q2",
-          "When the Outline goes, where does \"How this document should be written\" live?",
-          "it is the only way to add, mute or delete a style directive, and it exists only in the Outline header"
+          "Retire `verbolia-prd`, or point it at this runtime?",
+          "open, and the likeliest way to end up with two vessels for one document again"
         ],
         [
           "Q3",
-          "Can a recorded decision be changed or cleared, and is a choice plus a note one operation or two?",
-          "your own open question; it sets the shape of the journal entry, which is hard to change later"
-        ],
-        [
-          "Q4",
-          "Commit the in-flight runtime work in the main tree before the branch merges, or after?",
-          "the branch carries a copy of it, so there are two sources of the same change until one is resolved"
-        ],
-        [
-          "Q5",
-          "Do the four October requests go on this branch, or a new one?",
-          "affects what you are testing when you test the branch"
+          "Does the Publish button's changelog live in the model, or only in the page?",
+          "open. In the model you can edit it and I can read it back; in the page it is free and survives nothing"
         ]
+      ],
+      "cellNotes": {
+        "r1c2": "so i would keep the style directives as the new tab, so keep only this, not an outline. because the editing now happens in edit view",
+        "r2c2": "this q is not clear to me",
+        "r3c2": "please resolve",
+        "r4c2": "i think for now it is a mess, please merge everything, on the main, advance the other tasks, tell me if conflicts i need to clarify before working, then show me again a sample artefact. may be an artefact having the different examples of artefacts i can create, the relation of the living artefact to the other skills i have and if they conflict and how they compound together"
+      },
+      "cellNotesDone": {
+        "r1c2": "Done. The Outline is gone and the writing rules are a bar button with a count, opening a panel above the document. Three other things lived only in the outline — a section's guidance, its provenance badge, and the empty-section placeholder — and all three moved into the page rather than going with it.",
+        "r2c2": "Restated and then decided: a choice can be changed or cleared, and a choice and a note stay two operations. Both are in the model schema now.",
+        "r3c2": "Resolved. The in-flight runtime work was committed on `main`, then the branch merged on top of it. Three conflicts, all from the branch carrying a 25 September copy of work that `main` continued; the only judgement call kept guidance that would otherwise have been deleted.",
+        "r4c2": "Done: everything merged on `main`, the four October requests built, and the catalogue you asked for is at https://claude.ai/artifact/NZeK437rdhsLmBbRrrPCxz."
+      },
+      "cellNotesDoneRev": {
+        "r1c2": 7,
+        "r2c2": 7,
+        "r3c2": 7,
+        "r4c2": 7
+      },
+      "touched": {
+        "rev": 7,
+        "by": "claude",
+        "spans": [
+          {
+            "cell": "r0c2",
+            "quote": "open. It"
+          },
+          {
+            "cell": "r0c2",
+            "quote": "what gets built after"
+          },
+          {
+            "cell": "r0c2",
+            "quote": "Publish button"
+          },
+          {
+            "cell": "r1c1",
+            "quote": "Retire `verbolia-prd`, or point it at"
+          },
+          {
+            "cell": "r1c1",
+            "quote": "runtime?"
+          },
+          {
+            "cell": "r1c2",
+            "quote": "open, and"
+          },
+          {
+            "cell": "r1c2",
+            "quote": "likeliest"
+          },
+          {
+            "cell": "r1c2",
+            "quote": "end up with two vessels for one document again"
+          },
+          {
+            "cell": "r2c1",
+            "quote": "Does the Publish button's changelog live in the model,"
+          },
+          {
+            "cell": "r2c1",
+            "quote": "only in the page?"
+          },
+          {
+            "cell": "r2c2",
+            "quote": "open. In"
+          },
+          {
+            "cell": "r2c2",
+            "quote": "model you can edit it and I can read it back; in"
+          },
+          {
+            "cell": "r2c2",
+            "quote": "page it"
+          },
+          {
+            "cell": "r2c2",
+            "quote": "free and survives nothing"
+          }
+        ]
+      }
+    }
+  ],
+  "updated": "revised by claude · 2026-10-09",
+  "journal": [
+    {
+      "rev": 1,
+      "at": "2026-10-09T10:11:33.223Z",
+      "by": "viewer",
+      "ops": [
+        {
+          "op": "move",
+          "block": "b-h-q",
+          "from": 8,
+          "to": 9,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "rev": 2,
+      "at": "2026-10-09T10:11:48.973Z",
+      "by": "viewer",
+      "ops": [
+        {
+          "op": "move",
+          "block": "b-q-table",
+          "from": 8,
+          "to": 9,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "rev": 3,
+      "at": "2026-10-09T10:13:07.006Z",
+      "by": "viewer",
+      "ops": [
+        {
+          "op": "note",
+          "block": "b-q-table",
+          "cell": "r1c2",
+          "text": "so i would keep the style directives as the new tab, so keep only this, not an outline. because the editing now happens in edit view"
+        }
+      ]
+    },
+    {
+      "rev": 4,
+      "at": "2026-10-09T10:14:12.135Z",
+      "by": "viewer",
+      "ops": [
+        {
+          "op": "note",
+          "block": "b-q-table",
+          "cell": "r2c2",
+          "text": "this q is not clear to me"
+        }
+      ]
+    },
+    {
+      "rev": 5,
+      "at": "2026-10-09T10:14:41.360Z",
+      "by": "viewer",
+      "ops": [
+        {
+          "op": "note",
+          "block": "b-q-table",
+          "cell": "r3c2",
+          "text": "please resolve"
+        }
+      ]
+    },
+    {
+      "rev": 6,
+      "at": "2026-10-09T10:16:46.025Z",
+      "by": "viewer",
+      "ops": [
+        {
+          "op": "note",
+          "block": "b-q-table",
+          "cell": "r4c2",
+          "text": "i think for now it is a mess, please merge everything, on the main, advance the other tasks, tell me if conflicts i need to clarify before working, then show me again a sample artefact. may be an artefact having the different examples of artefacts i can create, the relation of the living artefact to the other skills i have and if they conflict and how they compound together"
+        }
       ]
     }
   ]

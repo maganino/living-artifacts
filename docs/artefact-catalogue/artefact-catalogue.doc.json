@@ -2,11 +2,10 @@
   "v": 1,
   "docId": "artefact-catalogue",
   "title": "What to make, and what it meets",
-  "url": "https://claude.ai/artifact/NZeK437rdhsLmBbRrrPCxz",
   "thread": "living-artifacts",
   "component": "Catalogue",
   "template": "brief",
-  "rev": 4,
+  "rev": 6,
   "blocks": [
     {
       "id": "b-lede",
@@ -17,11 +16,7 @@
       "id": "b-words",
       "type": "callout",
       "title": "Three words used on this page",
-      "text": "The **model** is the document's content as data: a list of blocks with stable ids. It is the truth.\nThe **page** is what you are reading: a rendering of the model. Editing the page edits the model; the page is never read back.\nA **template** is one of three read-mode layouts the model can be drawn in. `house` is the default, a tabbed spec. `desk-research` is one long page for analysis. `brief` is a one-pager, which is what this page uses.",
-      "touched": {
-        "rev": 4,
-        "by": "claude"
-      }
+      "text": "The **model** is the document's content as data: a list of blocks with stable ids. It is the truth.\nThe **page** is what you are reading: a rendering of the model. Editing the page edits the model; the page is never read back.\nA **template** is one of three read-mode layouts the model can be drawn in. `house` is the default, a tabbed spec. `desk-research` is one long page for analysis. `brief` is a one-pager, which is what this page uses."
     },
     {
       "id": "b-h-make",
@@ -187,13 +182,13 @@
       "rows": [
         [
           "`verbolia-prd` against the `house` template",
-          "two ways to publish a Verbolia PRD, both tabbed, both editable, both on brand. Whichever I pick, the other one rots",
-          "use this repo. `verbolia-prd` predates the fused form. D-1 settles it"
+          "two ways to publish a Verbolia PRD, both tabbed, both editable, both on brand. Whichever is picked, the other rots",
+          "**Settled: use this runtime.** A PRD is a living artefact in the `house` template, because only that one reads your edits back as intent"
         ],
         [
           "Claude Docs against a living artefact",
           "both are \"a living document\". Docs wins on co-editing and comment threads; this wins on the typed journal and the templates",
-          "a living artefact when it is you and me over rounds, a Doc when more than one person writes. D-2"
+          "a living artefact when it is you and me over rounds, a Doc when more than one person writes. D-2 asks whether that line holds"
         ],
         [
           "`verbolia-design-system` against \"never style a page\"",
@@ -210,18 +205,40 @@
           "looks like a contradiction: one artefact per component, but one increment per turn",
           "no conflict. One component per artefact, one section per turn, inside the same artefact"
         ]
-      ]
+      ],
+      "touched": {
+        "rev": 6,
+        "by": "claude",
+        "spans": [
+          {
+            "cell": "r0c1",
+            "quote": "is picked,"
+          },
+          {
+            "cell": "r0c2",
+            "quote": "**Settled:"
+          },
+          {
+            "cell": "r0c2",
+            "quote": "runtime.** A PRD is a living artefact in"
+          },
+          {
+            "cell": "r0c2",
+            "quote": "`house` template, because only that one reads your edits back as intent"
+          },
+          {
+            "cell": "r1c2",
+            "quote": "asks whether that line holds"
+          }
+        ]
+      }
     },
     {
       "id": "b-h-prd",
       "type": "heading",
       "level": 2,
       "text": "The two ways to publish a PRD",
-      "info": "D-1 in full: what the two actually are, and why only one of them can be read back.",
-      "touched": {
-        "rev": 4,
-        "by": "claude"
-      }
+      "info": "D-1 in full: what the two actually are, and why only one of them can be read back."
     },
     {
       "id": "b-prd-table",
@@ -267,39 +284,27 @@
           "itself, forked per document",
           "the runtime, so a fix reaches every document on its next build"
         ]
-      ],
-      "touched": {
-        "rev": 4,
-        "by": "claude"
-      }
+      ]
     },
     {
       "id": "b-visual",
       "type": "callout",
       "title": "The visual you are asking for already exists",
-      "text": "'How a living artefact is made' draws the whole flow: who does what between me, the node CLI and the runtime in the page, one round end to end as a sequence, where all five surfaces are saved, and what each version counter means.\nhttps://claude.ai/artifact/8dd3fQAxRDHxRP1HenzKL8\nIf it does not answer the question, say which step is unclear and I will extend that page rather than start a second one.",
-      "touched": {
-        "rev": 4,
-        "by": "claude"
-      }
+      "text": "'How a living artefact is made' draws the whole flow: who does what between me, the node CLI and the runtime in the page, one round end to end as a sequence, where all five surfaces are saved, and what each version counter means.\nhttps://claude.ai/artifact/8dd3fQAxRDHxRP1HenzKL8\nIf it does not answer the question, say which step is unclear and I will extend that page rather than start a second one."
     },
     {
       "id": "b-pub",
       "type": "callout",
       "variant": "warning",
       "title": "The Publish button: two of your three outputs work",
-      "text": "**A static read-only HTML, the same as Preview.** Possible today, two ways. `build.mjs export` already writes one into the document's folder from the model. The button itself can hand you the file through the download prompt, but it cannot choose the folder: a page cannot write to your disk, only offer a file.\n\n**Its own Claude artefact holding that static copy.** Not possible from the button. A page can republish itself and nothing else; the capability has no target other than the artefact it belongs to. What works instead: the button writes the static HTML into this document's own store, and I publish or update the companion artefact from there in a session. One click from you, one step from me, and the static artefact keeps its URL across updates.\n\n**Updating this artefact.** Already happens on every save: a new immutable version, same URL, version picker.",
-      "touched": {
-        "rev": 4,
-        "by": "claude"
-      }
+      "text": "**A static read-only HTML, the same as Preview.** Possible today, two ways. `build.mjs export` already writes one into the document's folder from the model. The button itself can hand you the file through the download prompt, but it cannot choose the folder: a page cannot write to your disk, only offer a file.\n\n**Its own Claude artefact holding that static copy.** Not possible from the button. A page can republish itself and nothing else; the capability has no target other than the artefact it belongs to. What works instead: the button writes the static HTML into this document's own store, and I publish or update the companion artefact from there in a session. One click from you, one step from me, and the static artefact keeps its URL across updates.\n\n**Updating this artefact.** Already happens on every save: a new immutable version, same URL, version picker."
     },
     {
       "id": "b-h-dec",
       "type": "heading",
       "level": 2,
       "text": "What is still open",
-      "info": "Three decisions. D-1 is the one that prevents the next mess."
+      "info": "D-1 is settled. Two left, and neither blocks the Publish button."
     },
     {
       "id": "b-dec-table",
@@ -312,86 +317,94 @@
       "rows": [
         [
           "D-1",
-          "Retire `verbolia-prd`, or keep it and point it at this runtime?",
-          "The table above is the case: the two publish the same kind of page, but only one of them can read your edits back as intent. Retiring it is one edit to its description. Keeping both means every PRD starts with a coin toss"
+          "Retire `verbolia-prd`, or keep it and point it at this runtime? **Decided: this runtime.**",
+          "You chose the one that keeps your edits. A PRD is now a living artefact in the `house` template. What is left is the mechanics of retiring the other skill, below"
         ],
         [
           "D-2",
-          "Where does the static read-only copy live: a download, a file in the document's folder, or its own Claude artefact?",
-          "You asked for all three. Two are already possible and one is not, which is the row below this one. The answer decides what the Publish button does"
+          "Now that Claude Docs exists, what is this runtime still for?",
+          "Open. It decides what gets built after the Publish button. Not urgent, but it is the question under every other one"
         ],
         [
           "D-3",
-          "Does the changelog live in the model, or only in the page?",
-          "In the model you can edit it and I can read it back, and it costs a block. In the page it is free and disappears on the next build. Not urgent; decide when the button is built"
+          "Does the Publish button's changelog live in the model, or only in the page?",
+          "Open. In the model you can edit it and I can read it back, and it costs a block. In the page it is free and disappears on the next build"
         ]
       ],
       "cellNotes": {
-        "r0c2": "could you show what are exactly the 2, the differences and why you suggest to retire one or the other?, i donno what is this house?",
+        "r0c2": "so indeed i want the one who keeps my edits, if i understood you well",
         "r1c2": "i think you can neglect this question. regarding the publish button, i see it important in updating the static read only versions, 1 html that is startic read only equivalent to what we see in preview, and save in same folder. i hoped the publish button is capable also to create or update a claude artefact that holds the static version",
         "r2c2": "i do not understand and i realise you need to explain to me the full flow visually and what is the model what is the page .. etc."
       },
       "cellNotesDone": {
-        "r0c2": "Added the section above: what each one is, and the one difference that decides it.",
         "r1c2": "Dropped the Docs question as you asked, and rewrote this row as your static-copy question. The callout below says which parts are possible.",
-        "r2c2": "You already have that visual: 'How a living artefact is made'. Link in the callout below. Next increment extends it rather than starting a second one."
+        "r2c2": "You already have that visual: 'How a living artefact is made'. Link in the callout below. Next increment extends it rather than starting a second one.",
+        "r0c2": "Understood correctly: the one that keeps your edits is this runtime. A PRD is now a living artefact in the house template, and `verbolia-prd` is the one to retire. Two things I have not done, because they are outside this repo: that skill is installed from the anthropic-skills plugin, so retiring it is a change to its description there or removing it from your plugin set, and any PRD already published by it stays where it is. Say which and I will do it."
       },
       "cellNotesDoneRev": {
-        "r0c2": 4,
+        "r0c2": 6,
         "r1c2": 4,
         "r2c2": 4
       },
       "touched": {
-        "rev": 4,
+        "rev": 6,
         "by": "claude",
         "spans": [
           {
-            "cell": "r0c2",
-            "quote": "The table above is the case: the"
+            "cell": "r0c1",
+            "quote": "**Decided: this runtime.**"
           },
           {
             "cell": "r0c2",
-            "quote": "publish"
+            "quote": "You chose"
           },
           {
             "cell": "r0c2",
-            "quote": "kind of page, but only one of them can read your edits back as intent."
+            "quote": "that keeps"
           },
           {
             "cell": "r0c2",
-            "quote": "description. Keeping both means every PRD starts with a coin toss"
+            "quote": "edits. A"
+          },
+          {
+            "cell": "r0c2",
+            "quote": "is now"
+          },
+          {
+            "cell": "r0c2",
+            "quote": "living artefact in the `house` template. What is left is the mechanics of retiring the other skill, below"
           },
           {
             "cell": "r1c1",
-            "quote": "Where does the static read-only copy live: a download, a file in the document's folder, or its own"
+            "quote": "Now that"
           },
           {
             "cell": "r1c1",
-            "quote": "artefact?"
+            "quote": "Docs exists, what is this runtime still for?"
           },
           {
             "cell": "r1c2",
-            "quote": "You asked for all three. Two are already possible and one is not, which is"
+            "quote": "Open. It"
           },
           {
             "cell": "r1c2",
-            "quote": "row below this one. The answer"
+            "quote": "gets built after"
           },
           {
             "cell": "r1c2",
-            "quote": "does"
+            "quote": "button. Not urgent, but it is the question under every other one"
+          },
+          {
+            "cell": "r2c1",
+            "quote": "Publish button's"
           },
           {
             "cell": "r2c2",
-            "quote": "it back, and it costs a block. In"
+            "quote": "Open."
           },
           {
             "cell": "r2c2",
-            "quote": "free"
-          },
-          {
-            "cell": "r2c2",
-            "quote": "disappears on the next build. Not urgent; decide when the button is built"
+            "quote": "build"
           }
         ]
       }
@@ -435,6 +448,19 @@
           "block": "b-dec-table",
           "cell": "r2c2",
           "text": "i do not understand and i realise you need to explain to me the full flow visually and what is the model what is the page .. etc."
+        }
+      ]
+    },
+    {
+      "rev": 5,
+      "at": "2026-10-09T12:39:05.298Z",
+      "by": "viewer",
+      "ops": [
+        {
+          "op": "note",
+          "block": "b-dec-table",
+          "cell": "r0c2",
+          "text": "so indeed i want the one who keeps my edits, if i understood you well"
         }
       ]
     }
