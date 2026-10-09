@@ -1,0 +1,53 @@
+/* ---- brief template -------------------------------------------------------
+   The one-pager: the house look with the tabs unfolded into a single page that
+   is read top to bottom. Scoped under .house.brief so the tabbed layout is
+   untouched. Only three things differ from the house — a narrower measure, a
+   band rule per former tab, and a sub-nav that no longer needs to be sticky
+   because nothing is hidden behind it. Everything else is inherited on
+   purpose: a brief that grows into a spec should become one by changing the
+   template, not by being redrawn. */
+
+.house.brief .wrap { max-width: 820px; }
+
+/* The band is what a tab becomes: a labelled rule, not a card. A one-pager
+   that boxes each section reads as a stack of unrelated notes. */
+.house.brief .band { border-top: 1px solid var(--border); margin-top: 40px; padding-top: 4px; }
+.house.brief .band:first-of-type { border-top: 0; margin-top: 24px; }
+.house.brief .band-head {
+  font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--orange-text); padding: 10px 0 2px;
+}
+
+/* The tab panel loses its panel-ness: no hiding, no tab semantics, and the
+   sub-nav becomes a quiet row of jump links rather than a sticky bar. */
+.house.brief .tabpanel { display: block; }
+.house.brief .subnav {
+  position: static; background: none; border: 0; box-shadow: none;
+  padding: 0; margin: 0 0 8px;
+}
+.house.brief .subnav .wrap { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 0; }
+.house.brief .subnav a { font-size: 0.78rem; color: var(--muted); text-decoration: none; }
+.house.brief .subnav a:hover { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
+/* A band with a single section repeats its own name in the sub-nav; the band
+   head already said it. */
+.house.brief .band .subnav .wrap:has(a:only-child) { display: none; }
+
+/* The top bar carries jump links instead of tab buttons, so it needs the
+   same room the tabs had and none of their state. */
+.house.brief .topbar .sections { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center; }
+.house.brief .topbar .sections a {
+  font-size: 0.78rem; font-weight: 500; color: var(--muted); text-decoration: none;
+  padding: 4px 0; white-space: nowrap;
+}
+.house.brief .topbar .sections a:hover { color: var(--text); }
+
+/* A one-pager is printed and pasted more often than a spec is, so the bands
+   must not break across a page. */
+@media print {
+  .house.brief .topbar { display: none; }
+  .house.brief .band { break-inside: avoid; }
+}
+
+@media (max-width: 760px) {
+  .house.brief .topbar .sections { display: none; }
+}

@@ -43,11 +43,27 @@ const line = (label, value, ok) => {
 };
 
 const model = extractModel(body);
-line('blocks rendered', `${d.querySelectorAll('.la-block').length} / ${model.blocks.length}`,
-  d.querySelectorAll('.la-block').length === model.blocks.length);
+/* Addressability is checked by data-block-id, which every layout emits, and
+   never by a layout's own class: the page wraps blocks in `.la-blk` and the
+   outline in `.la-block`, so asserting either one made a document that was
+   perfectly fine report two failures.
+
+   The tabbed house layout renders a level-2 heading as a tab BUTTON, so it is
+   the one block a writer cannot open in place. That is a property of that
+   layout, not a fault in the document, so it is reported and not failed. Any
+   other block missing its wrapper is a real fault: nothing can tag it, note
+   it or edit it. */
+const seen = new Set([...d.querySelectorAll('[data-block-id]')].map((n) => n.dataset.blockId));
+const missing = model.blocks.filter((b) => !seen.has(b.id));
+const tabHeads = missing.filter((b) => b.type === 'heading' && (b.level ?? 2) === 2);
+const lost = missing.filter((b) => !tabHeads.includes(b));
+line('blocks addressable', `${seen.size} / ${model.blocks.length}`
+  + (tabHeads.length ? ` (${tabHeads.length} level-2 heading${tabHeads.length > 1 ? 's' : ''} render as tabs)` : ''),
+  lost.length === 0);
+if (lost.length) line('  unreachable blocks', lost.map((b) => `${b.id}:${b.type}`).join(', '), false);
 line('editor lit up', String(!!d.querySelector('.la-handle')), !!d.querySelector('.la-handle'));
-line('hover chrome on every block', `${d.querySelectorAll('.la-acts').length}`,
-  d.querySelectorAll('.la-acts').length === model.blocks.length);
+line('hover chrome', `${d.querySelectorAll('.la-acts').length} of ${seen.size} addressable`,
+  d.querySelectorAll('.la-acts').length === seen.size);
 line('no js errors', jsErrors.length ? jsErrors.join('; ') : 'none', jsErrors.length === 0);
 line('every block has an id', String(model.blocks.every((b) => b.id)), model.blocks.every((b) => b.id));
 

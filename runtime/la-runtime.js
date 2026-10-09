@@ -2672,12 +2672,18 @@
     return '<section id="' + esc(tabId + '-' + sec.id) + '"' + (sec.internal ? ' class="la-internal-sec"' : '') + '><div class="wrap">' + bid + head
       + '<div class="blocks">' + body.join('\n') + '</div></div></section>';
   }
-  function rTab(tab, first) {
+  /* `plain` drops the tab semantics: in the brief layout a band is not a tab
+     panel, nothing is hidden, and leaving role="tabpanel" on it made wireRead
+     hide every band but the first on load. */
+  function rTab(tab, first, plain) {
     var secs = tab.sections.filter(function (s) { return !s.internal || pageEdit; });
     var subnav = secs.filter(function (s) { return s.eyebrow || s.claim; }).map(function (s) {
       return '<a href="#' + esc(tab.id + '-' + s.id) + '">' + esc(s.eyebrow || s.claim) + '</a>';
     }).join('');
-    return '<div class="tabpanel" id="' + esc(tab.id) + '" role="tabpanel" aria-labelledby="tab-' + esc(tab.id) + '"' + (first ? '' : ' hidden') + '>'
+    var shell = plain
+      ? '<div class="tabpanel plain" id="' + esc(tab.id) + '">'
+      : '<div class="tabpanel" id="' + esc(tab.id) + '" role="tabpanel" aria-labelledby="tab-' + esc(tab.id) + '"' + (first ? '' : ' hidden') + '>';
+    return shell
       + '<span id="' + esc(tab.bid) + '"></span><div class="subnav"><div class="wrap">' + subnav + '</div></div>'
       + tab.sections.map(function (s) { return rSection(s, tab.id); }).join('\n') + '</div>';
   }
@@ -2966,6 +2972,7 @@
     }
     return '<section id="' + esc(tabId + '-' + sec.id) + '">' + (sec.bid ? '<span id="' + esc(sec.bid) + '"></span>' : '') + head + dkBody(sec).join('\n') + '</section>';
   }
+  function knownTemplates() { return Object.keys(TEMPLATES); }
   function readHtmlDesk() {
     var split = rSplit(model.blocks), tabs = split.tabs, hero = split.hero;
     var date = (model.updated || '').split('·').pop().trim() || prettyDate();
@@ -2994,14 +3001,56 @@
     }).join('\n');
     return top + '<div class="wrap">' + h + body + '</div>';
   }
+  /* ---------------------------------------------------------- brief ----
+     A third read-mode layout, selected by `template: "brief"`: the house look
+     with the tabs unfolded into one continuous page, for a one-pager or a
+     short memo that is read top to bottom rather than navigated. Each tab
+     becomes a titled band and its level-2 heading becomes editable in place,
+     as it is in desk-research and is not in the tabbed layout. Nothing else
+     differs, so a brief that grows into a spec becomes one by changing the
+     template and republishing. */
+  function readHtmlBrief() {
+    var split = rSplit(model.blocks), tabs = split.tabs;
+    var nav = tabs.map(function (t) {
+      return '<a href="#' + esc(t.id) + '">' + esc(t.label) + '</a>';
+    }).join('');
+    /* rTab already emits the tab's own anchor span, so the band head must not
+       emit it again — two nodes with one id breaks every link into it. */
+    var body = tabs.map(function (t) {
+      return '<div class="band">'
+        + '<div class="wrap">' + wrapBlk(t.block, '<div class="band-head">' + rText(t.block, t.label) + '</div>') + '</div>'
+        + rTab(t, true, true) + '</div>';
+    }).join('\n');
+    return rPubNote()
+      + '<div class="topbar"><div class="wrap"><div class="brand"><span class="dot"></span>Verbolia <span class="sep">/</span> <span class="doc">' + esc(model.component || 'Document') + '</span></div>'
+      + '<nav class="sections">' + nav + '</nav></div></div>'
+      + rHero(split.hero) + body + rFooter(tabs);
+  }
+
+  /* The read-mode layouts, by `model.template`. Adding one is an entry here
+     and a stylesheet: the dispatch, the body class and the validator all read
+     this object, so a template can never be half-registered. `cls` is the
+     modifier put on `.house`; the default layout carries none. */
+  var TEMPLATES = {
+    'house': { cls: '', render: null, note: 'the default: a tabbed spec or PRD' },
+    'desk-research': { cls: 'desk', render: function () { return readHtmlDesk(); }, note: 'one long page, sticky nav, stat tiles and charts' },
+    'brief': { cls: 'brief', render: function () { return readHtmlBrief(); }, note: 'a one-pager: the house look, tabs unfolded into one page' }
+  };
+  function template() { return TEMPLATES[model.template] || TEMPLATES.house; }
+  function templateCls() { var c = template().cls; return c ? ' ' + c : ''; }
+  function rPubNote() {
+    return model.publicMarks && model.publicMarksNote
+      ? '<div class="pubnote"><div class="wrap">' + inline(model.publicMarksNote) + '</div></div>' : '';
+  }
+
   function readHtml() {
-    if (model.template === 'desk-research') return readHtmlDesk();
+    var t = template();
+    if (t.render) return t.render();
     var split = rSplit(model.blocks), tabs = split.tabs;
     var tabBtns = tabs.map(function (t, i) {
       return '<button type="button" role="tab" id="tab-' + esc(t.id) + '" aria-controls="' + esc(t.id) + '" aria-selected="' + (i === 0 ? 'true' : 'false') + '"' + (i === 0 ? '' : ' tabindex="-1"') + '>' + esc(t.label) + '</button>';
     }).join('');
-    var pubnote = model.publicMarks && model.publicMarksNote ? '<div class="pubnote"><div class="wrap">' + inline(model.publicMarksNote) + '</div></div>' : '';
-    var html = pubnote + '<div class="topbar"><div class="wrap"><div class="brand"><span class="dot"></span>Verbolia <span class="sep">/</span> <span class="doc">' + esc(model.component || 'Document') + '</span></div>'
+    var html = rPubNote() + '<div class="topbar"><div class="wrap"><div class="brand"><span class="dot"></span>Verbolia <span class="sep">/</span> <span class="doc">' + esc(model.component || 'Document') + '</span></div>'
       + '<div class="tabs" role="tablist" aria-label="Document tabs">' + tabBtns + '</div></div></div>'
       + rHero(split.hero)
       + tabs.map(function (t, i) { return rTab(t, i === 0); }).join('\n')
@@ -3102,7 +3151,7 @@
     pageEdit = !readOnly && mode === 'page';
     var scroll = window.scrollY;
     root.textContent = '';
-    var house = el('div', 'house' + (model.template === 'desk-research' ? ' desk' : '') + (pageEdit ? ' la-page' : ''));
+    var house = el('div', 'house' + templateCls() + (pageEdit ? ' la-page' : ''));
     house.innerHTML = readHtml();
     root.appendChild(house);
     if (pageEdit) dressBlocks(house);
