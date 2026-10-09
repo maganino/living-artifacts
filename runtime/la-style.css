@@ -942,3 +942,17 @@ body.la-placing { cursor: copy; }
   font-size: 0.64rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
   vertical-align: middle; padding: 2px 8px; border-radius: 999px;
   border: 1px solid var(--border, #D1D1D1); color: var(--muted, #6D6D6D); }
+
+/* The changelog on a published copy: what changed, each line a link to it.
+   Derived from the change marks at build time, so it can never go stale. */
+.la-changelog { background: var(--changed-tint, #F0EDFB); border-bottom: 1px solid var(--border, #D1D1D1);
+  padding: 14px 0; }
+.la-changelog .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+.la-changelog-h { margin: 0 0 8px; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--changed, #6E56CF); }
+.la-changelog ol { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-size: 0.86rem; }
+.la-changelog li { color: var(--text, #454545); }
+.la-changelog a { color: inherit; text-decoration: underline; text-underline-offset: 2px;
+  text-decoration-color: var(--changed, #6E56CF); }
+.la-changelog .who { margin-left: 8px; font-size: 0.72rem; color: var(--muted, #6D6D6D); }
+@media print { .la-changelog { break-inside: avoid; } }

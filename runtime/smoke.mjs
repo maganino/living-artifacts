@@ -149,7 +149,7 @@ ok('a "Save now" flush appears while unsaved', !!btn(d.body, 'Save now'));
   ok('the status line follows it', kids[1].id === 'la-status');
   ok('the rest of the controls stay to its right',
     kids.slice(2).map((n) => n.textContent.trim()).join('|')
-      === '↶ Undo|↷ Redo|Filter|+ Add|Writing rules · 1|EditPreview|⤓',
+      === '↶ Undo|↷ Redo|Filter|+ Add|Writing rules · 1|Publish|EditPreview|⤓',
     kids.slice(2).map((n) => n.textContent).join('|'));
 }
 
@@ -1444,6 +1444,57 @@ console.log('\ndownload: a whole document, and never a file the browser refuses'
   ok('and never as a .js file, which downloads refuse', !/\.js$/.test(saves[0].filename));
   ok('the model comes back as json', /\.model\.json$/.test(saves[0].filename)
     && JSON.parse(saves[0].data).blocks.length === m.blocks.length);
+}
+
+
+/* ------------------------------------------------------------------------- */
+console.log('\npublish: a read-only copy of this version, with what changed on top');
+{
+  const m = fixture();
+  m.blocks[1].touched = { rev: 3, by: 'claude', spans: ['bold'] };
+  m.blocks[4].touched = { rev: 3, by: 'viewer' };
+  const saves = [];
+  const caps = async (n) => n === 'artifact'
+    ? Object.freeze({ publish: async () => ({ version: 'v2' }) })
+    : n === 'db' ? Object.freeze({ doc: () => ({ set: async () => {} }) })
+    : n === 'downloads' ? Object.freeze({ save: async (f) => { saves.push(f); } })
+    : null;
+  const e = boot(wrap(buildBody(m), 'Publish Doc'), { use: caps });
+  await settle();
+
+  eq('the changelog lists exactly the changed blocks', e.w.__la.changeList().length, 2);
+  await e.w.__la.publishCopy();
+  await settle();
+
+  ok('a copy is handed over', saves.length === 1, JSON.stringify((saves[0] || {}).filename));
+  ok('named for the revision it was cut from', /-rev\d+\.published\.html$/.test(saves[0].filename));
+  const out = saves[0].data;
+  ok('it is a standalone document', out.startsWith('<!doctype html>'));
+  ok('with the stylesheet inlined', /<style>/.test(out) && /\.house/.test(out));
+
+  /* read-only: the point of a copy is that it cannot be edited back.
+     Checked on the MARKUP, not the file: the inlined stylesheet naturally
+     mentions every editor class it styles. */
+  const body = out.slice(out.indexOf('</style>'));
+  ok('no editor reaches it', !/la-handle|la-acts|id="la-bar"|la-runtime/.test(body));
+  ok('and no note or tag of the working state', !/la-note|la-tagpop|la-blk/.test(body));
+
+  /* the changes, and a way to reach each one */
+  ok('the changelog is above the document',
+    body.indexOf('la-changelog') > -1 && body.indexOf('la-changelog') < body.indexOf('chg-b-two'));
+  ok('it says how many changed', /2 changes in this version/.test(out));
+  ok('each entry links to its block', /href="#chg-b-two"/.test(out) && /href="#chg-b-five"/.test(out));
+  ok('and the block carries that anchor', /id="chg-b-two"/.test(out) && /id="chg-b-five"/.test(out));
+  ok('it names who changed each one', /Claude<\/span>/.test(out) && /you<\/span>/.test(out));
+  ok('the changed words are marked for the reader', /la-chg/.test(out));
+
+  /* publishing is a typed op like every other gesture */
+  const op = e.w.__la.ops().filter((o) => o.op === 'publish').pop();
+  ok('publishing is recorded in the journal', !!op && op.changed.length === 2, JSON.stringify(op));
+
+  /* nothing was written into the model: the changelog is derived */
+  ok('the changelog is not stored on the model',
+    !('changelog' in e.w.__la.model()) && !e.w.__la.model().publicMarks);
 }
 
 console.log(failed ? `\n${failed} failing\n` : '\nall green\n');

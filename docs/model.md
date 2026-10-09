@@ -248,6 +248,7 @@ One entry per revision, holding every op in it.
 | `note` | `block`, `text`, `cell?`, `quote?` | a request pinned to a block, a table cell or a passage |
 | `decide` | `block`, `option`, `was` | they answered a decision by clicking its chip. `option` is `null` when they cleared it, and a note on the same decision stays its own op |
 | `style` | `action`, `text` | a standing instruction for the whole document |
+| `publish` | `rev`, `changed[]` | they cut a read-only copy of that revision. The block ids are what the copy's changelog listed |
 | `undo` / `redo` | `undid` | they reversed an op from an EARLIER revision — the original edit stays in its own revision, so the history stays true |
 
 ## Storage layout

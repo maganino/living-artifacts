@@ -426,6 +426,29 @@ deleting it because they may want it back. When a directive conflicts with
 something you would otherwise write, the directive wins; say so once rather
 than quietly ignoring it.
 
+## Publishing a read-only copy
+
+`Publish` in the bar cuts a copy of the current revision: the read-mode page
+with no editor, the change marks turned on for its readers, and a changelog at
+the top listing every changed block as a link to it. It saves to the reader's
+disk and records a `publish` op carrying the revision and the block ids.
+
+**The changelog is derived, never stored.** It is read off the same `touched`
+marks the page already paints, at the moment the copy is built. A stored
+changelog is a second source of truth that has to be cleared every round, and
+a stale changelog is worse than none.
+
+**The copy is a file, not an artefact.** A page can only republish itself, so
+it cannot mint the companion artefact that holds the copy. When the reader
+wants that copy published, rebuild it from the model with the same revision and
+publish it as its own artefact with `capabilities: {}` — it is deterministic,
+so nothing has to be carried across from the page. Record it in the artefact
+record's *Shared versions* table.
+
+**`Publish` never replaces `⤓`.** The download hands back the whole editable
+document, which is the answer to "what if I lose access". Publish hands over a
+copy that cannot be edited back. Two different promises.
+
 ## A heading states content, never the round
 
 **Never write the round into a heading, an eyebrow or a section note.** Not
