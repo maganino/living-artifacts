@@ -1,0 +1,222 @@
+{
+  "v": 1,
+  "docId": "where-we-stand",
+  "title": "Where the factory stands",
+  "url": "https://claude.ai/artifact/4nHzUmmks44wPGKYoPFEYb",
+  "thread": "living-artifacts",
+  "component": "Status",
+  "template": "brief",
+  "rev": 0,
+  "blocks": [
+    {
+      "id": "b-lede",
+      "type": "para",
+      "text": "Six workstreams are open and only one of them is finished. This page is also the example you asked for: it is a living artefact, built from a 10-block model through the repo's own CLI, and it uses the brief template that landed on the branch. Edit any block, pin a note on any row, and the gestures come back to me as typed operations."
+    },
+    {
+      "id": "b-h-now",
+      "type": "heading",
+      "level": 2,
+      "text": "Where we are",
+      "info": "Your four requests of 7 October, my branch work, and the uncommitted runtime changes sitting in the main tree."
+    },
+    {
+      "id": "b-now-table",
+      "type": "table",
+      "head": [
+        "Workstream",
+        "Where it stands",
+        "What it needs from you"
+      ],
+      "rows": [
+        [
+          "Routing, one publishing procedure, template per purpose",
+          "on branch `artefact-factory`, tests green",
+          "test, then merge"
+        ],
+        [
+          "Drop the Outline",
+          "blocked, not started",
+          "Q2"
+        ],
+        [
+          "Clickable decision chips, and the chosen option recorded",
+          "not started",
+          "Q3 before it can be built"
+        ],
+        [
+          "Multiline notes",
+          "not started",
+          "nothing, it is specified"
+        ],
+        [
+          "No round status in headings or section notes",
+          "not started",
+          "nothing, it is an authoring rule"
+        ],
+        [
+          "Public marks, gantt groups, note recency, aligned marking",
+          "uncommitted in the main working tree",
+          "Q4"
+        ]
+      ]
+    },
+    {
+      "id": "b-h-repo",
+      "type": "heading",
+      "level": 2,
+      "text": "What is in the repo",
+      "info": "Only the runtime and the skill live here. A document lives in the project it belongs to."
+    },
+    {
+      "id": "b-repo-table",
+      "type": "table",
+      "head": [
+        "Path",
+        "What it is"
+      ],
+      "rows": [
+        [
+          "`runtime/la-runtime.js`",
+          "about 3,900 lines: the editor, the three read layouts, the journal, the save and the self-republish"
+        ],
+        [
+          "`runtime/house.css` · `desk.css` · `brief.css`",
+          "the three read-mode layouts: tabbed spec, long research page, one-pager"
+        ],
+        [
+          "`runtime/build.mjs`",
+          "model to publishable folder, and the model back out of a saved page"
+        ],
+        [
+          "`runtime/mark-changes.mjs`",
+          "diffs two models and writes word-level change marks"
+        ],
+        [
+          "`runtime/preflight.mjs` · `smoke.mjs`",
+          "drive one document, and drive the whole runtime headlessly"
+        ],
+        [
+          "`docs/model.md`",
+          "the schema, canonical"
+        ],
+        [
+          "`docs/direction.md`",
+          "what was rejected, and why"
+        ],
+        [
+          "`docs/<name>/`",
+          "one folder per document: the `.doc.json` seed and its built shell"
+        ],
+        [
+          "`skills/living-artifacts/`",
+          "symlinked into `~/.claude/skills`, so it loads from any repo"
+        ],
+        [
+          "`tray/`",
+          "threads, and one artefact record per document"
+        ],
+        [
+          "`CLAUDE.md`",
+          "on the branch: the rule that routes an artefact request here"
+        ]
+      ]
+    },
+    {
+      "id": "b-h-neigh",
+      "type": "heading",
+      "level": 2,
+      "text": "Docs, Slides and this",
+      "info": "Six Artifact types exist now, two of which overlap with this runtime. What each one is for."
+    },
+    {
+      "id": "b-neigh-para",
+      "type": "para",
+      "text": "Claude Docs covers the case this repo was built for in September: a document a person and Claude revise together. It is better at the parts this runtime is weak at, namely several people writing at once and comment threads. It does not carry the two things this runtime exists for: a typed journal that tells me what a gesture meant, and the Verbolia templates. That overlap is Q1, and it is a real question rather than a rhetorical one."
+    },
+    {
+      "id": "b-neigh-table",
+      "type": "table",
+      "head": [
+        "When you need",
+        "Reach for",
+        "Because"
+      ],
+      "rows": [
+        [
+          "a document you and I revise over rounds",
+          "a living artefact",
+          "your edits arrive as typed operations, so a round starts from what you meant, not from a diff"
+        ],
+        [
+          "several people writing in one document at once",
+          "Claude Docs",
+          "real-time co-editing and comment threads; this runtime has one writer and refuses a save that collides"
+        ],
+        [
+          "a deck to present or send",
+          "Slides",
+          "16:9, downloads as pptx or pdf; a deck has no prose blocks a reader edits, so it is not a living document"
+        ],
+        [
+          "anything going outside Verbolia",
+          "a static export",
+          "declaring `db` makes an artefact organization-internal, with no exception"
+        ],
+        [
+          "a page of live numbers",
+          "Dashboard",
+          "this runtime stores a figure and its words, never a query"
+        ],
+        [
+          "a Verbolia PRD",
+          "either",
+          "`verbolia-prd` publishes a tabbed editable page of its own; it predates the fused form and overlaps the house template"
+        ]
+      ]
+    },
+    {
+      "id": "b-h-q",
+      "type": "heading",
+      "level": 2,
+      "text": "Open questions",
+      "info": "Pin a note on a row to answer it. Q1 is the one that changes the most."
+    },
+    {
+      "id": "b-q-table",
+      "type": "table",
+      "head": [
+        "#",
+        "Question",
+        "Why it blocks something"
+      ],
+      "rows": [
+        [
+          "Q1",
+          "Now that Claude Docs exists, what is this runtime still for?",
+          "decides whether to keep building it out, or narrow it to the journal and the Verbolia templates and let Docs take the rest"
+        ],
+        [
+          "Q2",
+          "When the Outline goes, where does \"How this document should be written\" live?",
+          "it is the only way to add, mute or delete a style directive, and it exists only in the Outline header"
+        ],
+        [
+          "Q3",
+          "Can a recorded decision be changed or cleared, and is a choice plus a note one operation or two?",
+          "your own open question; it sets the shape of the journal entry, which is hard to change later"
+        ],
+        [
+          "Q4",
+          "Commit the in-flight runtime work in the main tree before the branch merges, or after?",
+          "the branch carries a copy of it, so there are two sources of the same change until one is resolved"
+        ],
+        [
+          "Q5",
+          "Do the four October requests go on this branch, or a new one?",
+          "affects what you are testing when you test the branch"
+        ]
+      ]
+    }
+  ]
+}
