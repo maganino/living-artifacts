@@ -123,6 +123,10 @@
       .replace(/\[([^\]]+)\]\(=([A-Za-z0-9_.-]+)\)/g, function (_, label, id) {
         return citeHtml(label, id);
       })
+      /* `[D8, roles removed](#b-h-d "D8: remove every role, then sign in")`:
+         a reference to another section carries its summary on hover, so a
+         case id never sends the reader away to learn what it was. */
+      .replace(/\[([^\]]+)\]\(([^)\s]+) &quot;([^&]*?)&quot;\)/g, '<a href="$2" class="la-ref" data-tip="$3" rel="noopener">$1</a>')
       .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2" rel="noopener">$1</a>');
   }
   /* Range tags are anchored by QUOTE, not by character offset — an offset
@@ -2923,7 +2927,7 @@
     /* a link into a section this view does not show is unwrapped to its words */
     var ids = {};
     html.replace(/id="([^"]+)"/g, function (_, id) { ids[id] = 1; return _; });
-    html = html.replace(/<a href="#([^"]+)">([\s\S]*?)<\/a>/g, function (m0, id, text) { return ids[id] ? m0 : text; });
+    html = html.replace(/<a href="#([^"]+)"[^>]*>([\s\S]*?)<\/a>/g, function (m0, id, text) { return ids[id] ? m0 : text; });
     return html;
   }
 

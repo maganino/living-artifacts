@@ -283,6 +283,16 @@ body.la-dragging { cursor: grabbing; user-select: none; }
 .la-cite-v { display: block; }
 .la-cite-step { display: block; margin-bottom: 3px; padding-left: 1.4em; text-indent: -1.4em; }
 .la-cite-step i { font-style: normal; color: var(--ink-muted); margin-right: .5em; }
+/* A reference to another section: a link that shows its summary on hover,
+   so the reader learns what D8 was without leaving the sentence. */
+.la-ref { position: relative; border-bottom: 1px dotted currentColor; text-decoration: none; }
+.la-ref[data-tip]:hover::after, .la-ref[data-tip]:focus::after {
+  content: attr(data-tip); position: absolute; z-index: 30; left: 0; top: calc(100% + 6px);
+  width: min(26rem, 78vw); background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line-strong); border-radius: 8px; padding: 10px 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .18); font-size: 13px; line-height: 1.45;
+  font-weight: 400; white-space: normal; text-align: left; pointer-events: none;
+}
 @media (max-width: 640px) {
   .la-cite-pop { position: fixed; left: 12px; right: 12px; width: auto; top: auto; bottom: 68px; }
   .la-cite-g { grid-template-columns: 1fr; gap: 2px; }
