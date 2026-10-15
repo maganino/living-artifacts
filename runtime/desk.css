@@ -6,11 +6,14 @@
    chips, a recommendation box. Selected by `template: "desk-research"` on
    the model; scoped under .house.desk so the house look is untouched. */
 .house.desk {
-  --core-red: #d9414e; --core-orange: #fc6e1c; --core-yellow: #fdab1d; --core-green: #12b31f;
-  --ground: #fafafa; --surface: #ffffff; --sunken: #f6f6f6;
-  --ink: #000000; --ink-2: #454545; --ink-3: #6d6d6d; --ink-4: #9a9a9a;
-  --rule: #e4e4e4; --rule-2: #d1d1d1; --accent: #fc6e1c;
-  --ok-fg: #0b7a17; --ok-bg: #eafaec; --part-fg: #8a5d0a; --part-bg: #fef6e4; --no-fg: #b32b37; --no-bg: #fceaec;
+  /* every value here is a brand token: desk.css restated the palette by hand
+     and happened to be right, which is luck rather than a guarantee */
+  --ground: var(--bg-page); --surface: var(--bg-surface); --sunken: var(--bg-sunken);
+  --ink: var(--text-primary); --ink-2: var(--text-body); --ink-3: var(--text-secondary); --ink-4: var(--text-muted);
+  --rule: var(--border-default); --rule-2: var(--border-strong);
+  --ok-fg: var(--success-strong); --ok-bg: var(--success-bg);
+  --part-fg: var(--warning-strong); --part-bg: var(--warning-bg);
+  --no-fg: var(--danger-strong); --no-bg: var(--danger-bg);
   --dshadow: 0 4px 16px rgba(0,0,0,.06); --r-sm: 8px; --r-md: 16px; --r-full: 999px;
   --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   background: var(--ground); color: var(--ink); font-weight: 400; font-size: 15px; line-height: 1.6;
@@ -56,9 +59,17 @@
 .house.desk section ul, .house.desk section ol { margin: 0; padding-left: 20px; color: var(--ink-2); font-size: 14px; display: grid; gap: 6px; max-width: 78ch; }
 
 /* logo, nav underline, tier bars */
+/* Two wordmarks, the brand's own black and white files, one shown per theme.
+   This used to be one exported PNG inverted by a filter, which turned the
+   brand orange into a blue nobody approved. */
 .house.desk header.top .logo { position: absolute; top: 54px; right: 0; height: 22px; width: auto; opacity: .9; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .house.desk header.top .logo { filter: invert(1) hue-rotate(180deg); } }
-:root[data-theme="dark"] .house.desk header.top .logo { filter: invert(1) hue-rotate(180deg); }
+.house.desk header.top .logo-dark { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .house.desk header.top .logo-light { display: none; }
+  :root:not([data-theme="light"]) .house.desk header.top .logo-dark { display: block; }
+}
+:root[data-theme="dark"] .house.desk header.top .logo-light { display: none; }
+:root[data-theme="dark"] .house.desk header.top .logo-dark { display: block; }
 .house.desk nav.sections a { position: relative; --p: 0; }
 .house.desk nav.sections a::after { content: ''; position: absolute; left: 10px; right: 10px; bottom: 1px; height: 2px; border-radius: 2px; background: var(--core-orange); transform: scaleX(var(--p)); transform-origin: left center; opacity: 0; transition: transform .12s linear, opacity .2s ease; }
 .house.desk nav.sections a.active { color: var(--ink); }
