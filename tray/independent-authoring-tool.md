@@ -1,6 +1,6 @@
 ---
 type: thread
-status: todo
+status: decided
 area: living-artifacts
 topic: tooling
 created: 2026-09-16
@@ -12,6 +12,29 @@ title: Independent authoring tool
 Asked for 2026-09-16: creating a new living document should be an independent
 tool, still callable from a skill when that helps — not something that requires
 me to be in the loop every time.
+
+
+## Decided 15 October 2026: accept the split, make starting cheap
+
+Chosen: **CLI + manual publish**. Authoring and building already work with no
+session; only minting the URL does not, and no page can create a second
+artefact. So a document started alone is a draft — full editor, full model, no
+autosave, no journal, no comments — until a session publishes it.
+
+To build: `la new <title>` scaffolds the `.doc.json`, builds the shell and
+opens it locally.
+
+Rejected for now, not forever:
+
+- **A drafting bench artefact** — one published scratch surface where a draft
+  can start with no session, promoted to its own artefact when it matters.
+  Real work for a problem the next item may solve for free.
+- **Duplicating a template artefact from the claude.ai UI** — unverified. If
+  the interface can duplicate an artefact with its files, this is the smallest
+  answer by a distance. Check before designing anything around it.
+
+The workbench is off the table: see [[v3-index-and-export]], decided the same
+week.
 
 ## What blocks it
 
