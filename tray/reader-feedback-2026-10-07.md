@@ -1,6 +1,6 @@
 ---
 type: thread
-status: todo
+status: done
 area: living-artifacts-factory
 topic: runtime-reader-feedback
 created: 2026-10-07
@@ -10,8 +10,13 @@ title: Reader feedback from the Action Inventory review, 7 October 2026
 # Reader feedback from the Action Inventory review, 7 October 2026
 
 Mina reviewed the vpage-triage Action Inventory on the page on 7 October 2026
-and asked for four changes to the runtime and the authoring rules. These are
-her requests, recorded as given. None has been built yet.
+and asked for four changes to the runtime and the authoring rules, recorded
+below as given.
+
+**All four were built on 9 October 2026**, in commit `6a2edad`, along with the
+chip bug found while applying that round. Four affordances that lived only in
+the Outline moved into the page rather than going with it: the writing rules,
+a section's `info`, the `badge`, and the empty-section placeholder.
 
 Source: the vpage-triage-package session, `tray/recommendation-ontology.md` in
 that repo. The document is

@@ -21,8 +21,19 @@ Decided in principle 2026-09-16, not yet implemented.
 - **`dist/` should not be committed at all.** It is build output: model +
   inlined CSS/JS, fully derivable. Committing it is committing `node_modules`.
 
+## Done since
+
+- **The `pull` step is in the skill**: every round pulls the live model down
+  with `build.mjs extract` before editing, and the document is pulled and
+  committed when it is finished.
+- **A download button exists** and hands over the whole editable document.
+  `Publish` beside it hands over a read-only copy with a changelog.
+- **`dist/` is gitignored** and nothing under it is tracked.
+
 ## What is still missing
 
+- Doing the pull without a Claude session. Fetching an artifact still needs
+  one, so the hook idea below is unbuilt:
 - A `pull` step: read the live artifact, `build.mjs extract` its model, write it
   back over the `.doc.json`, commit. Today this needs a Claude session because
   fetching the artifact does. Wire it into the skill as "when the user says a
