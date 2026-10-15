@@ -25,7 +25,7 @@
  * (buildDocument in la-runtime.js). Both forms render identically because the
  * reset lives in la-style.css, not in a host wrapper.
  */
-import { readFileSync, writeFileSync, mkdirSync, realpathSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, realpathSync, readdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -114,8 +114,29 @@ export function writeDesignSystem(dir) {
 <div class="deferred" data-variant="excluded"><span class="tag">Excluded</span><div>Excluded variant.</div></div>
 <p>Owner chips: <span class="pill role" style="--role-h:260">PM</span> <span class="pill role" style="--role-h:214">Dev</span> <span class="pill role" style="--role-h:150">CS</span> <span class="pill role" style="--role-h:334">Sec</span> <span class="pill role" style="--role-h:96">Sales</span> <span class="pill role" style="--role-h:28">Legal</span></p>
 <p>Importance: <span class="pill high">High</span> <span class="pill medium">Medium</span> <span class="pill low">Low</span></p>
-</div></div></div></body></html>
+</div>
+${iconSheet()}
+</div></div></body></html>
 `);
+}
+
+/* The brand icon set, rendered so it can be judged rather than described.
+ * It is a DOMAIN set — crawling, indexing, traffic — not a UI-chrome set:
+ * of 43 icons exactly one (`info`) names something this runtime's controls do.
+ * So the sheet is here to decide what a document's CONTENT can reach for, and
+ * the runtime keeps its text glyphs for the rest. */
+function iconSheet() {
+  let icons;
+  try { icons = JSON.parse(readFileSync(join(REPO, 'runtime/brand/icons.json'), 'utf8')); }
+  catch (e) { return ''; }
+  const names = Object.keys(icons).sort();
+  const cells = names.map((n) => `<figure style="margin:0;text-align:center">`
+    + `<svg viewBox="0 0 24 24" style="width:26px;height:26px;color:var(--ink)" aria-hidden="true">${icons[n]}</svg>`
+    + `<figcaption style="font-size:10.5px;color:var(--muted);margin-top:6px;word-break:break-word">${esc(n)}</figcaption>`
+    + `</figure>`).join('');
+  return `<h2 style="margin-top:44px">The icon set</h2>
+<p class="muted" style="max-width:62ch">${names.length} icons, 24x24, drawn in <code>currentColor</code>: each one takes the colour of whatever it sits in, so there is no light and dark variant to keep in step. One of them, <code>info</code>, is chrome and the runtime draws it. The rest name things a document can be <em>about</em>.</p>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:18px 10px;margin-top:20px">${cells}</div>`;
 }
 
 export function buildBody(model) {
@@ -171,6 +192,10 @@ export function brandRepo(explicit) {
   }
 }
 
+/* The icons the runtime itself draws. Everything else in the brand set is for
+ * a document's content, not for chrome. */
+export const RUNTIME_ICONS = ['info'];
+
 export function vendorBrand(repo) {
   const bundle = join(repo, 'claude-design');
   const readme = readFileSync(join(bundle, 'README.md'), 'utf8');
@@ -197,6 +222,26 @@ export function vendorBrand(repo) {
                              ['DK_LOGO_WHITE', 'verbolia-wordmark-white']]) {
     logos[key] = uri(readFileSync(join(bundle, 'logos/svg', name + '.svg'), 'utf8'));
   }
+  /* The whole icon set is vendored for the reference page, but only the icons
+     the runtime actually draws go INTO the runtime: it is inlined into every
+     document, and 24 KB of icons nobody uses is paid for on every save. Adding
+     one to the chrome means adding its name here, deliberately. */
+  const iconDir = join(bundle, 'icons/svg');
+  const all = {};
+  for (const f of readdirSync(iconDir).filter((n) => n.endsWith('.svg'))) {
+    const svg = readFileSync(join(iconDir, f), 'utf8');
+    const inner = (svg.match(/<svg[^>]*>([\s\S]*)<\/svg>/) || [])[1];
+    if (!inner) throw new Error(`cannot read the icon ${f}`);
+    all[f.replace(/\.svg$/, '')] = inner.trim();
+  }
+  writeFileSync(join(out, 'icons.json'), JSON.stringify(all, null, 1) + '\n');
+
+  const used = {};
+  for (const name of RUNTIME_ICONS) {
+    if (!all[name]) throw new Error(`the design system has no icon "${name}"`);
+    used[name] = all[name];
+  }
+
   const rtPath = join(REPO, 'runtime/la-runtime.js');
   let rt = readFileSync(rtPath, 'utf8');
   let patched = 0;
@@ -207,8 +252,11 @@ export function vendorBrand(repo) {
   if (patched !== 2) {
     throw new Error(`expected to patch DK_LOGO and DK_LOGO_WHITE in la-runtime.js, patched ${patched}`);
   }
+  const iconRe = /(var ICONS = )\{[\s\S]*?\};/;
+  if (!iconRe.test(rt)) throw new Error('cannot find the ICONS map in la-runtime.js');
+  rt = rt.replace(iconRe, `$1${JSON.stringify(used, null, 1)};`);
   writeFileSync(rtPath, rt);
-  return { version, out, logos: patched };
+  return { version, out, logos: patched, icons: Object.keys(all).length, inRuntime: RUNTIME_ICONS };
 }
 
 /* The read-mode layouts, read out of the runtime's own TEMPLATES registry so
@@ -301,9 +349,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     console.log(`${dir}/  index.html + model.js (${(modelJs(model).length / 1024).toFixed(1)} KB, ${model.blocks.length} blocks, rev ${model.rev ?? 0}) + runtime.js + style.css`);
   } else if (cmd === 'brand') {
     const repo = brandRepo(input);
-    const { version, out } = vendorBrand(repo);
+    const vendored = vendorBrand(repo);
+    const { version, out } = vendored;
     console.log(`${out}/  tokens.css  (design-system v${version}, from ${repo})`
-      + `\n  la-runtime.js  wordmark constants rewritten from logos/svg`);
+      + `\n  runtime/brand/icons.json  ${vendored.icons} icons`
+      + `\n  la-runtime.js  wordmark + ${vendored.inRuntime.length} chrome icon(s): ${vendored.inRuntime.join(', ')}`);
   } else if (cmd === 'ds') {
     const dir = input ?? join(REPO, 'dist', 'design-system');
     writeDesignSystem(dir);

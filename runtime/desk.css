@@ -254,9 +254,8 @@
 .house.desk .gt-st.wait { color: var(--core-red); } .house.desk .gt-st.est { color: var(--core-orange); margin-left: 12px; }
 /* the ⓘ: detail rides with the row it describes */
 .house.desk .gt-i { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px;
-  margin-left: 6px; border-radius: 999px; border: 1px solid var(--rule); color: var(--ink-3);
-  font-size: 9.5px; font-style: normal; font-weight: 700; cursor: help; position: relative; vertical-align: middle; }
-.house.desk .gt-i:hover, .house.desk .gt-i:focus-within { border-color: var(--core-orange); color: var(--core-orange); outline: none; }
+  margin-left: 6px; color: var(--ink-3); cursor: help; position: relative; vertical-align: middle; }
+.house.desk .gt-i:hover, .house.desk .gt-i:focus-within { color: var(--core-orange); outline: none; }
 /* A transparent bridge across the gap, so the pointer can travel from the ⓘ
    into the popover without dropping :hover. Without it any link in there is
    unclickable. */
@@ -289,10 +288,9 @@
 
 /* the ⓘ on a column header: its definition, opening downward over the rows */
 .th-i { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px;
-  margin-left: 5px; border-radius: 999px; border: 1px solid var(--rule); color: var(--ink-3);
-  font-size: 9.5px; font-style: normal; font-weight: 700; letter-spacing: 0; text-transform: none;
+  margin-left: 5px; color: var(--ink-3); letter-spacing: 0; text-transform: none;
   cursor: help; position: relative; vertical-align: middle; }
-.th-i:hover, .th-i:focus-within { border-color: var(--core-orange); color: var(--core-orange); outline: none; }
+.th-i:hover, .th-i:focus-within { color: var(--core-orange); outline: none; }
 .th-i::after { content: ''; position: absolute; left: -24px; right: -24px; top: 100%; height: 12px; }
 .th-pop { position: absolute; left: 50%; top: calc(100% + 8px); transform: translateX(-50%);
   width: 290px; max-width: 70vw; background: var(--bg-surface, var(--surface, #fff)); color: var(--ink-2);
@@ -302,3 +300,7 @@
 .th-i:hover .th-pop, .th-i:focus-within .th-pop { opacity: 1; visibility: visible; }
 th:first-child .th-pop { left: -12px; transform: none; }
 th:last-child .th-pop, th:nth-last-child(2) .th-pop { left: auto; right: -12px; transform: none; }
+
+/* A brand icon takes the colour of whatever it sits in and scales with it. */
+.house .la-icon { width: 1em; height: 1em; display: block; }
+.house.desk .th-i .la-icon, .house.desk .gt-i .la-icon { width: 14px; height: 14px; }
