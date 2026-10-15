@@ -2492,12 +2492,11 @@
     var head = '';
     if (sec.eyebrow || sec.claim) {
       /* The section's `info` is the template's own description of what the
-         section is for. It rendered in the outline and nowhere else, so moving
-         editing into the page quietly dropped every brief a template carries.
-         A sub-head and the desk layout already show it; this is the house. */
+         section is for. It is rendered by all three layouts; the house was the
+         last to get it, because the flat block list used to carry it instead. */
       var sinfo = (sec.block && sec.block.info) ? '<p>' + inline(sec.block.info) + '</p>' : '';
       /* `badge` says which sections a template demands, so a reader can tell
-         them from the ones this document added. Outline-only until now. */
+         them from the ones this document added. */
       var sbadge = (sec.block && sec.block.badge)
         ? '<span class="la-badge" title="This section comes from ' + esc(sec.block.badge) + '">'
           + esc(sec.block.badge) + '</span>' : '';
