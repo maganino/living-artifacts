@@ -513,15 +513,40 @@ jump links, one per section, and the label is what names them: a claim is a
 sentence and makes a poor pill. So a section with a label gets a short, scannable
 link and a heading that argues something, from one field each.
 
-## The look is Verbolia's
+## The look is Verbolia's, and it comes from the brand repo
 
 The runtime ships the Verbolia design system as its default theme: Lexend,
 black and white dominant, orange for what changed, red for danger, fully round
 controls. Nothing to opt into — publish and it is on brand, in light and dark.
-Four greys and two tints are interpolated because the brand palette has no step
-there; everything else is a brand hex. If a document needs a different look,
-change the tokens at the top of `runtime/la-style.css` rather than styling a
-page: one theme, every document.
+
+**The brand is vendored, not written.** `runtime/brand/tokens.css` is a copy of
+`claude-design/tokens.css` from the Verbolia design system repo, carrying the
+version it came from. Refresh it with
+
+```sh
+node "$LA/runtime/build.mjs" brand          # resolves the repo from its skill symlink
+node "$LA/runtime/build.mjs" brand <path>   # or point at it
+```
+
+which also rewrites the wordmark constants in `la-runtime.js` from the brand's
+own `logos/svg`. **Never edit `runtime/brand/` by hand**: edit the brand repo
+and run the command again. The runtime inlines its stylesheet into every
+document, so it cannot link to the brand at render time — the copy is
+unavoidable, which is exactly why it is generated and stamped rather than
+pasted.
+
+Everything downstream reads those tokens. `la-style.css` maps the runtime's
+roles onto them; `desk.css` consumes the semantic layer. If a document needs a
+colour, it is a token or it is a question for the brand, never a hex in a
+stylesheet.
+
+**Two values are deliberately not brand.** `--changed` and `--changed-tint`,
+the purple that marks what moved in a round. They mark the STATE of a document
+rather than a meaning in it, and all four brand accents are spoken for: orange
+highlights, red warns, green is opportunity, yellow is data quality.
+
+**The brand tokens are light-only.** The dark mapping is the runtime's own
+extension and is marked as such in `la-style.css`.
 
 Charts drawn into a `figure` should use the brand accents on the marks and
 `currentColor` for every word, so they follow the page's theme instead of being
