@@ -1,6 +1,6 @@
 ---
 type: thread
-status: todo
+status: decided
 area: living-artifacts
 topic: roadmap
 created: 2026-09-16
@@ -8,6 +8,26 @@ title: v3 — cross-document index and export
 ---
 
 # v3 — cross-document index and stakeholder export
+
+## Decided 15 October 2026: documents stay independent, the index is a page I keep
+
+Chosen: **C with A**. Documents keep their own artefact, their own URL and
+their own store. The index is a separate artefact that Claude writes, not a
+page that queries — no page can read another artefact's store, so a live
+cross-document view was never on the table without merging the documents into
+one artefact, and that was rejected.
+
+The `tray/` records stay the underlying source: one `type: artefact` record per
+document, written on every publish. The index artefact is rendered from them,
+so it is a snapshot that is exactly as fresh as the last time Claude published
+or finished a document.
+
+Rejected: one workbench artefact holding every document. It buys a live index
+and self-service creation, but one URL means one version history, sharing one
+document means sharing all of them, and deleting it erases every journal at
+once. The blast radius is the problem, not the ergonomics.
+
+**Still to build.** Nothing yet — this is the decision, not the work.
 
 ## Correction (2026-09-16): the original plan cannot work
 
