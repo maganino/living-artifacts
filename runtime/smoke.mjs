@@ -1601,5 +1601,80 @@ console.log('\nicons a document names: it pays for those and no others');
   ok('and the refusal lists the set', /conversion-funnel/.test(refused));
 }
 
+
+/* ------------------------------------------------------------------------- */
+console.log('\nprototype: a working screen whose strings the reader owns');
+{
+  const screen = '<!doctype html><html><body>'
+    + '<h1 data-la-text="title">Sign in</h1>'
+    + '<button data-la-text="cta">Continue</button>'
+    + '<script>document.querySelector("button").onclick=()=>{document.body.dataset.step="2"}<\/script>'
+    + '</body></html>';
+  const m = {
+    v: 1, docId: 'proto', title: 'Sign-in prototype', rev: 0,
+    blocks: [
+      { id: 'b-tab', type: 'heading', level: 2, text: 'The screen', tags: [] },
+      { id: 'b-p', type: 'prototype', tags: [], caption: 'Step one of the sign-in',
+        html: screen, labels: { title: 'Sign in', cta: 'Continue' }, height: 300 }
+    ]
+  };
+  eq('a prototype with its strings validates', validate(m).length, 0);
+  ok('a string the screen cannot show is refused',
+    validate({ ...m, blocks: [m.blocks[0], { ...m.blocks[1], labels: { ghost: 'x' } }] })
+      .some((e) => /no data-la-text="ghost"/.test(e)));
+  ok('a prototype with no screen is refused',
+    validate({ ...m, blocks: [m.blocks[0], { ...m.blocks[1], html: '' }] }).some((e) => /no html/.test(e)));
+
+  /* the reader: the screen and the caption, nothing else */
+  const r = boot(wrap(buildBody(m), 'Proto'), { use: async () => null });
+  await settle();
+  const rf = r.d.querySelector('iframe.la-proto-frame');
+  ok('the reader gets the screen in a frame', !!rf);
+  ok('sandboxed, so its script cannot reach the page', /allow-scripts/.test(rf.getAttribute('sandbox')));
+  ok('with the current strings written into it', /Sign in<\/h1>/.test(rf.getAttribute('srcdoc')));
+  ok('and no list of strings', !r.d.querySelector('.la-proto-strings'));
+  ok('the caption is under it', /Step one/.test(r.d.querySelector('.la-proto figcaption').textContent));
+
+  /* the writer: the strings are text beside the screen, so they can be marked */
+  const w = boot(wrap(buildBody(m), 'Proto'), { page: true });
+  await settle();
+  ok('the writer sees the strings as text', /Continue/.test(w.d.querySelector('.la-proto-strings').textContent));
+  w.w.__la.offerTag('b-p', 'Continue', null);
+  pickTag(w, 'test');
+  await settle();
+  const tagged = w.model().blocks[1].marks || [];
+  ok('a string can be tagged, and the tag points at it', tagged.some((mk) => mk.quote === 'Continue' && mk.tag === 'test'));
+
+  /* editing: the screen re-reads the string as it is typed, then one edit op */
+  clickBody(blockEl(w.d, 'b-p'));
+  await settle();
+  const inputs = [...blockEl(w.d, 'b-p').querySelectorAll('.la-field-pair input:not(.la-key)')];
+  const cta = inputs.find((i) => i.value === 'Continue');
+  ok('the editor is a form over the strings', !!cta);
+  cta.value = 'Next';
+  cta.dispatchEvent(new w.w.Event('input', { bubbles: true }));
+  const live = blockEl(w.d, 'b-p').querySelector('.la-figure-prev iframe').getAttribute('srcdoc');
+  ok('the screen under the form shows the new string before anything is saved', /Next<\/button>/.test(live));
+  w.d.body.dispatchEvent(new w.w.MouseEvent('mousedown', { bubbles: true }));
+  await settle();
+  eq('clicking away keeps it as one edit', w.model().blocks[1].labels.cta, 'Next');
+  const op = w.ops().filter((o) => o.op === 'edit').pop();
+  ok('recorded with before and after', op && /Continue/.test(op.before) && /Next/.test(op.after));
+  ok('the screen itself was never touched', w.model().blocks[1].html === screen);
+  ok('and the page now shows the new string in the frame',
+    /Next<\/button>/.test(blockEl(w.d, 'b-p').querySelector('iframe.la-proto-frame').getAttribute('srcdoc')));
+
+  /* the read-only copy carries a working screen */
+  const saves = [];
+  const caps = async (n) => n === 'artifact' ? Object.freeze({ publish: async () => ({ version: 'v2' }) })
+    : n === 'db' ? Object.freeze({ doc: () => ({ set: async () => {} }) })
+    : n === 'downloads' ? Object.freeze({ save: async (f) => { saves.push(f); } }) : null;
+  const pub = boot(wrap(buildBody(m), 'Proto'), { use: caps });
+  await settle();
+  await pub.w.__la.publishCopy();
+  await settle();
+  ok('a published copy carries the screen, strings written in', /srcdoc=/.test(saves[0].data) && /Sign in/.test(saves[0].data));
+}
+
 console.log(failed ? `\n${failed} failing\n` : '\nall green\n');
 process.exit(failed ? 1 : 0);

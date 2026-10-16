@@ -331,6 +331,19 @@ every save, so a heavy image is paid for on every write. A figure with a
 caption and no `src` is a legitimate thing for either of you to add: it is how
 a chart gets asked for.
 
+**`prototype` — a working screen whose strings the reader owns.** For a
+screen the reader drives rather than a picture of one. `html` is the whole
+screen, run sandboxed in a frame so its own script and style stay inside it.
+Every string it shows is marked `data-la-text="key"` and listed in `labels`
+under the same key; the build refuses a label with no element. The reader edits
+a string and **the screen shows it as they type** — no round, which is what
+makes a prototype's copy theirs rather than a request to you. They tag or note
+a string and it comes back in the journal pointing at that word on the screen:
+`test` on a button, `verify` on a claim, a note on a label that could not be
+drawn. A structural change is a note on the block; you regenerate `html` next
+round, exactly as you redraw a figure. Write the screen so its strings are
+elements, not fragments of a sentence, or they cannot be marked.
+
 **Neither is a `code` block.** A mermaid fence inside `code` renders as source
 text, which is the failure this replaced.
 

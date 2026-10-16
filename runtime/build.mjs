@@ -425,6 +425,17 @@ export function validate(model) {
       errs.push(`figure block ${b.id} has no svg, src or caption — an empty figure says nothing`);
     if (b.type === 'figure' && b.labels && typeof b.labels !== 'object')
       errs.push(`figure block ${b.id}: labels must be an object of name -> text`);
+    if (b.type === 'prototype' && !b.html)
+      errs.push(`prototype block ${b.id} has no html — the screen IS the block`);
+    if (b.type === 'prototype' && b.labels && typeof b.labels !== 'object')
+      errs.push(`prototype block ${b.id}: labels must be an object of data-la-text key -> text`);
+    if (b.type === 'prototype' && b.html && b.labels) {
+      /* a string the screen cannot show is a string the reader edits for nothing */
+      for (const k of Object.keys(b.labels)) {
+        if (!new RegExp(`data-la-text=["']${k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']`).test(b.html))
+          errs.push(`prototype block ${b.id}: label "${k}" has no data-la-text="${k}" element in the screen`);
+      }
+    }
   }
   return errs;
 }

@@ -1,6 +1,6 @@
 ---
 type: thread
-status: tray
+status: wip
 area: living-artifacts
 topic: artefact-types
 created: 2026-09-16
@@ -26,7 +26,27 @@ https://claude.ai/code/artifact/091a2988-e4e7-42dd-8e65-aecf005cc892) is a real
 two-step sign-in that responds to typed addresses. Wrapping that in a block
 model would destroy the thing that makes it useful.
 
-## What has to be decided
+## Decided and built, 16 October 2026
+
+A prototype is a **living document with one `prototype` block** holding the
+screen, and ordinary blocks around it. The screen runs sandboxed in a frame;
+its strings are `labels` keyed by `data-la-text`, listed beside the frame for
+the writer; editing one shows on the screen as it is typed and lands as one
+`edit` op; tagging one is a mark that points into the screen. Feedback comes
+back as the journal. Versioned as any document.
+
+Chosen over a plain artefact with comments because the 14 open threads on the
+SSO screen were mostly copy and "what has to be tested" — exactly what strings
+and tags carry. Chosen over region anchors because the text IS the anchor, so
+nothing couples a screen to the runtime beyond one attribute.
+
+**Not yet done: migrating the SSO prototype.** It lives in another repo
+(`sso-client-scoping/components/login-journey`, published at
+https://claude.ai/code/artifact/091a2988-e4e7-42dd-8e65-aecf005cc892) and has
+the 14 threads to prove the design against. Next step: mark its strings with
+`data-la-text`, wrap it in a document, carry the open threads over as notes.
+
+## What had to be decided
 
 - What a prototype artefact **is**: a whole page with no block model, or a
   living document with one block that is the prototype and ordinary blocks

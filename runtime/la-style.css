@@ -983,3 +983,14 @@ body.la-placing { cursor: copy; }
    1em, so it takes the colour and size of its heading or tag without asking. */
 .house .la-icon-head, .house .la-icon-tag { display: inline-block; vertical-align: -0.12em; margin-right: 0.45em; }
 .house .la-icon-tag { width: 0.95em; height: 0.95em; }
+
+/* A prototype: the working screen in its own frame, the strings it shows
+   listed beside it for the writer, the caption under it for everyone. */
+.house .la-proto-frame { display: block; width: 100%; border: 1px solid var(--line); border-radius: 12px;
+  background: #fff; }
+.la-proto-strings { margin: 10px 0 0; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 8px;
+  font-size: 0.84rem; display: grid; gap: 4px; }
+.la-proto-strings > div { display: grid; grid-template-columns: minmax(80px, 160px) 1fr; gap: 10px; }
+.la-proto-strings dt { color: var(--ink-muted); font-family: var(--font-mono); font-size: 0.76rem; }
+.la-proto-strings dd { margin: 0; }
+.la-proto-edit .la-figure-prev iframe { width: 100%; border: 1px solid var(--line); border-radius: 12px; }

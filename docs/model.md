@@ -70,6 +70,7 @@ Per-type content fields:
 | `callout` | `title`, `text` | textarea — title, blank line, body |
 | `mermaid` | `text` | textarea — the diagram source |
 | `figure` | `src`, `alt`, `caption`, `labels{}` | **a form** — caption, alt and the words on the picture |
+| `prototype` | `html`, `labels{}`, `caption`, `height` | **a form** over the strings; the screen under it re-reads them as you type |
 | `divider` | — | not editable |
 | `raw` | `html`, `label` | not editable |
 
@@ -118,6 +119,38 @@ placeholder; clicking it starts a block there, ready to type. That is the point:
 when a document follows a template, every section the template names stays
 visible whether or not it has been written, so leaving one empty stays a
 decision rather than an oversight.
+
+### `prototype`
+
+A working screen the reader drives — a sign-in flow, a settings page — not a
+picture of one. Same bargain as a `figure`: the screen is Claude's and the
+words on it are the reader's. One difference: **the screen reads its strings
+live**, so an edit shows without a round.
+
+```jsonc
+{
+  "id": "b-signin", "type": "prototype",
+  "html": "<!doctype html>…",            // the whole screen, its own script and style
+  "labels": { "title": "Sign in", "cta": "Continue" },
+  "caption": "Step one of the sign-in",
+  "height": 560                           // px; the frame's height
+}
+```
+
+The screen marks each string with `data-la-text="key"`; `labels` is keyed the
+same way, and every key must have its element or the build refuses. On render
+the current labels are written into those elements and the result is handed to
+a **sandboxed iframe** (`allow-scripts allow-forms`): the screen's script and
+style never reach the page, and the page never reaches in except through these
+strings.
+
+The writer sees the strings as text beside the frame, so a word on the screen
+can be selected, tagged and noted like any passage — a tag on `Continue` is a
+tag that points into the screen. A reader gets the frame and the caption.
+Editing opens a form; the frame under it re-reads the strings on every
+keystroke, and clicking away records one `edit` op. A structural change is a
+note on the block, and Claude regenerates `html` on the next round — that is
+`figure`'s redraw.
 
 ### `mermaid`
 

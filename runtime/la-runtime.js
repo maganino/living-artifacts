@@ -365,6 +365,7 @@
     if (b.type === 'raw') return b.label || 'embedded markup';
     if (b.type === 'heading' && b.eyebrow) return b.eyebrow + ': ' + (b.text || '');
     if (b.type === 'figure') return b.caption || b.alt || 'figure';
+    if (b.type === 'prototype') return b.caption || 'prototype';
     if (b.type === 'mermaid') return 'diagram';
     return b.text || '';
   }
@@ -395,6 +396,13 @@
           out.push(k + ': ' + b.labels[k]);
         });
         return out.join('\n');
+      /* A prototype's SCREEN is not editable — the strings it shows are. Same
+         bargain as a figure, one difference: the screen reads them live, so an
+         edit lands without a round. */
+      case 'prototype':
+        var po = ['caption: ' + (b.caption || '')];
+        Object.keys(b.labels || {}).forEach(function (k) { po.push(k + ': ' + b.labels[k]); });
+        return po.join('\n');
       default: return b.text || '';
     }
   }
@@ -434,9 +442,47 @@
         });
         b.labels = labels;
         break;
+      case 'prototype':
+        var plabels = {};
+        src.split('\n').forEach(function (line) {
+          var m = line.match(/^\s*([^:]+?)\s*:\s*([\s\S]*)$/);
+          if (!m) return;
+          var k = m[1].trim(), v = m[2].trim();
+          if (k === 'caption') b.caption = v;
+          else if (k) plabels[k] = v;
+        });
+        b.labels = plabels;
+        break;
       default:
         b.text = src;
     }
+  }
+
+  /* ------------------------------------------------------------ prototype */
+  /* The screen marks each string it shows with data-la-text="key". The current
+     labels are written into those elements before the screen is handed to its
+     frame, so an edited string appears without anyone regenerating anything.
+     The screen runs sandboxed in an iframe: its own script and style never
+     reach this page, and this page never reaches into it except through
+     these strings. */
+  function protoDoc(b) {
+    var html = b.html || '', labels = b.labels || {};
+    if (typeof DOMParser === 'undefined') return html;
+    try {
+      var doc = new DOMParser().parseFromString(html, 'text/html');
+      var nodes = doc.querySelectorAll('[data-la-text]');
+      for (var i = 0; i < nodes.length; i++) {
+        var k = nodes[i].getAttribute('data-la-text');
+        if (labels[k] != null) nodes[i].textContent = labels[k];
+      }
+      return '<!doctype html>' + doc.documentElement.outerHTML;
+    } catch (e) { return html; }
+  }
+  function protoFrame(b) {
+    var h = parseInt(b.height, 10) || 560;
+    return '<iframe class="la-proto-frame" sandbox="allow-scripts allow-forms" loading="lazy"'
+      + ' title="' + esc(b.caption || 'prototype') + '" style="height:' + h + 'px"'
+      + ' srcdoc="' + esc(protoDoc(b)) + '"></iframe>';
   }
 
   /* ------------------------------------------------------------------- ops */
@@ -1106,9 +1152,87 @@
     return row;
   }
 
+  /* The prototype editor is the figure editor with the redraw taken out: the
+     screen under the form re-reads the strings on every keystroke, so what you
+     type is what the screen says, now. Click away keeps it as one edit. */
+  function renderPrototypeEditor(b) {
+    var wrap = el('div', 'la-figure-edit la-proto-edit');
+    var caption = b.caption || '';
+    var keys = Object.keys(b.labels || {});
+    var vals = {}; keys.forEach(function (k) { vals[k] = b.labels[k]; });
+    var frame = null;
+
+    function source() {
+      var out = ['caption: ' + caption];
+      keys.forEach(function (k) { out.push(k + ': ' + vals[k]); });
+      return out.join('\n');
+    }
+    function commit() { commitSource(b, source()); }
+    function refresh() {
+      if (!frame) return;
+      frame.setAttribute('srcdoc', protoDoc({ html: b.html, labels: vals }));
+    }
+    function redraw() { wrap.textContent = ''; build(); }
+
+    function build() {
+      var prev = el('div', 'la-figure-prev');
+      prev.innerHTML = protoFrame({ html: b.html, labels: vals, caption: caption, height: b.height });
+      frame = prev.querySelector('iframe');
+      wrap.appendChild(prev);
+      wrap.appendChild(el('p', 'la-hint',
+        'The screen is not editable here. Its strings are: change one and the screen '
+        + 'shows it as you type. Anything structural is a note to Claude.'));
+
+      var crow = el('div', 'la-field');
+      var cl = el('label', null, 'Caption'); var ci = el('input'); ci.value = caption;
+      ci.oninput = function () { caption = ci.value; };
+      cl.appendChild(ci); crow.appendChild(cl); wrap.appendChild(crow);
+
+      keys.forEach(function (k, i) {
+        var row = el('div', 'la-field la-field-pair');
+        var kn = el('input', 'la-key');
+        kn.value = k; kn.setAttribute('aria-label', 'Name of string ' + (i + 1));
+        kn.placeholder = 'data-la-text key';
+        kn.onchange = function () {
+          var nk = kn.value.trim();
+          if (!nk || nk === k) { kn.value = k; return; }
+          if (vals[nk] !== undefined) { kn.value = k; return; }
+          vals[nk] = vals[k]; delete vals[k]; keys[i] = nk; redraw();
+        };
+        var v = el('input');
+        v.value = vals[k]; v.setAttribute('aria-label', 'Text of ' + k);
+        v.placeholder = 'what the screen says';
+        v.oninput = function () { vals[keys[i]] = v.value; refresh(); };
+        var x = el('button', 'la-cellx', '\u00d7');
+        x.title = 'Remove this string'; x.setAttribute('aria-label', 'Remove string ' + k);
+        x.onclick = function () { delete vals[keys[i]]; keys.splice(i, 1); redraw(); };
+        row.appendChild(kn); row.appendChild(v); row.appendChild(x);
+        wrap.appendChild(row);
+      });
+
+      var bar = el('div', 'la-editbar');
+      bar.appendChild(el('span', null, 'click outside to keep \u00b7 esc to discard'));
+      var add = el('button', 'la-btn', '+ string');
+      add.title = 'A string the screen shows, keyed by its data-la-text';
+      add.onclick = function () {
+        var n = 'string ' + (keys.length + 1);
+        while (vals[n] !== undefined) n = n + '.';
+        keys.push(n); vals[n] = ''; redraw();
+      };
+      bar.appendChild(add);
+      wrap.appendChild(bar); wrap.appendChild(syntaxRow(b));
+    }
+
+    build();
+    closeOnOutside(wrap, commit);
+    setTimeout(function () { var f = wrap.querySelector('input'); if (f) f.focus(); }, 0);
+    return wrap;
+  }
+
   function renderEditor(b) {
     if (b.type === 'table' && !editAsText) return renderGridEditor(b);
     if (b.type === 'figure') return renderFigureEditor(b);
+    if (b.type === 'prototype') return renderPrototypeEditor(b);
     var wrap = el('div'), cancelled = false;
     var ta = el('textarea', 'la-edit');
     ta.value = blockSource(b);
@@ -2347,6 +2471,22 @@
         return '<div class="diagram-wrap"><figure><p class="muted">Figure to be redrawn: ' + esc((b.labels || {}).title || b.caption || 'this figure') + '.</p>' + fc + '</figure></div>';
       }
       case 'raw': return b.html || '';
+      case 'prototype': {
+        var pc = b.caption ? '<figcaption>' + rText(b, b.caption) + '</figcaption>' : '';
+        /* The writer sees the strings beside the screen, as text, so a word on
+           the screen can be selected, tagged and noted like any other passage;
+           the reader gets the screen and the caption, nothing else. */
+        var strings = '';
+        if (pageEdit) {
+          var ks = Object.keys(b.labels || {});
+          if (ks.length) {
+            strings = '<dl class="la-proto-strings">' + ks.map(function (k) {
+              return '<div><dt>' + esc(k) + '</dt><dd>' + rText(b, b.labels[k]) + '</dd></div>';
+            }).join('') + '</dl>';
+          }
+        }
+        return '<div class="diagram-wrap la-proto"><figure>' + protoFrame(b) + pc + '</figure>' + strings + '</div>';
+      }
       case 'divider': return pageEdit ? '<hr class="la-divider">' : '';
       case 'heading': return '<div class="sub-head" id="' + esc(b.id) + '"><h3>' + rText(b, b.text || '') + '</h3></div>';
       default: return '<p>' + rText(b, b.text || '') + '</p>';
