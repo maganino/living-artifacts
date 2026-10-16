@@ -40,7 +40,11 @@ SSO screen were mostly copy and "what has to be tested" — exactly what strings
 and tags carry. Chosen over region anchors because the text IS the anchor, so
 nothing couples a screen to the runtime beyond one attribute.
 
-**Not yet done: migrating the SSO prototype.** It lives in another repo
+**Shown as a sample, 16 October 2026:** https://claude.ai/artifact/KGj8KtLfUSc75iqYvx3okP
+— the real screen, its twelve strings, and its seven open threads carried over
+as typed operations. Record: `tray/sso-signin-sample-artefact.md`.
+
+**Not yet done: migrating the SSO prototype for real.** It lives in another repo
 (`sso-client-scoping/components/login-journey`, published at
 https://claude.ai/code/artifact/091a2988-e4e7-42dd-8e65-aecf005cc892) and has
 the 14 threads to prove the design against. Next step: mark its strings with

@@ -1,0 +1,169 @@
+{
+  "v": 1,
+  "docId": "sso-signin-sample",
+  "title": "Signing in, before and after",
+  "url": "https://claude.ai/artifact/KGj8KtLfUSc75iqYvx3okP",
+  "thread": "living-artifacts",
+  "component": "Prototype",
+  "template": "house",
+  "rev": 0,
+  "style": {
+    "directives": [
+      {
+        "id": "s-pics",
+        "text": "Stop describing what is seen in pictures. The screen shows itself; the words around it say what to look for.",
+        "rev": 1,
+        "active": true
+      }
+    ]
+  },
+  "blocks": [
+    {
+      "id": "b-lede",
+      "type": "para",
+      "text": "This is the SSO sign-in prototype from `sso-client-scoping/components/login-journey`, carried into a living document as a sample of the migration. The screen is the real one — type an address and it answers. What changed is who owns the words on it: every string is now yours to edit, and the seven comment threads that sat open on the published copy become typed operations the journal can read back."
+    },
+    {
+      "id": "b-h-screen",
+      "type": "heading",
+      "level": 2,
+      "text": "The screen",
+      "info": "The working sign-in, in a sandboxed frame. Its strings are listed beside it: edit one and the screen shows it as you type."
+    },
+    {
+      "id": "b-proto",
+      "type": "prototype",
+      "html": "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\">\n<style>\n  :root{--black:#000;--anth:#454545;--g500:#6d6d6d;--g300:#d1d1d1;--g100:#f6f6f6;--orange:#fc6e1c;--ostrong:#a23f06;--obg:#fff1e8}\n  body{margin:0;font:15px/1.5 Lexend,-apple-system,\"Segoe UI\",sans-serif;color:var(--anth);background:var(--g100);padding:24px}\n  .proto{display:grid;grid-template-columns:minmax(260px,360px) 1fr;gap:24px;align-items:start}\n  .card{background:#fff;border:1px solid var(--g300);border-radius:16px;padding:22px 24px;box-shadow:0 1px 2px rgba(69,69,69,.06),0 6px 20px rgba(69,69,69,.05)}\n  h4{margin:0 0 14px;font-size:1.05rem;font-weight:600;color:var(--black)}\n  input{width:100%;box-sizing:border-box;font:inherit;padding:10px 12px;border:1px solid var(--g300);border-radius:999px;margin-bottom:10px}\n  input:focus{outline:2px solid var(--black);outline-offset:-1px}\n  .btn{display:inline-block;font:inherit;font-weight:600;padding:10px 18px;border-radius:999px;border:0;cursor:pointer;background:var(--black);color:#fff}\n  .btn.go{background:var(--orange);color:#fff}\n  .muted{color:var(--g500);font-size:.86rem;margin:8px 0 0}\n  .try{font-family:ui-monospace,Menlo,monospace;font-size:.78rem;color:var(--g500);margin:0 0 10px}\n  .try code{cursor:pointer;text-decoration:underline;text-underline-offset:3px}\n  .why{border:1px solid var(--g300);border-left:3px solid var(--orange);border-radius:12px;padding:12px 14px;background:#fff;font-size:.9rem}\n  .why.unknown{border-left-color:var(--g300)}\n  [hidden]{display:none!important}\n</style></head><body>\n<div class=\"proto\">\n  <div class=\"card\">\n    <h4 data-la-text=\"title\">Log in to your Verbolia account</h4>\n    <input id=\"pe\" type=\"email\" autocomplete=\"off\" data-la-text=\"email\" aria-label=\"Your email\">\n    <div id=\"s-none\"><p class=\"muted\" data-la-text=\"nothing-yet\">Nothing else is asked yet.</p></div>\n    <div id=\"s-known\" hidden>\n      <button class=\"btn go\" type=\"button\"><span data-la-text=\"continue-with\">Continue with</span> <span id=\"k-name\"></span></button>\n    </div>\n    <div id=\"s-pw\" hidden>\n      <input type=\"password\" data-la-text=\"password\" aria-label=\"Your password\">\n      <p class=\"muted\" data-la-text=\"forgot\">Forgot your password?</p>\n      <button class=\"btn\" type=\"button\" data-la-text=\"login\">Log In</button>\n      <p class=\"muted\" data-la-text=\"no-account\">Don’t have an account? Contact us</p>\n    </div>\n  </div>\n  <div>\n    <p class=\"try\"><span data-la-text=\"try\">try:</span>\n      <code data-fill=\"anna@dior.com\">anna@dior.com</code> &nbsp;\n      <code data-fill=\"anna@christiandior.com\">anna@christiandior.com</code> &nbsp;\n      <code data-fill=\"sam@anagency.example\">sam@anagency.example</code></p>\n    <div id=\"w-known\" class=\"why\" hidden><b id=\"w-name\"></b> <span data-la-text=\"why-known\">signs them in on their own system, with their own second factor, then returns them here. No Verbolia password is involved and none is set.</span></div>\n    <div id=\"w-unknown\" class=\"why unknown\" hidden><span data-la-text=\"why-unknown-a\">We do not recognise</span> <b id=\"w-domain\"></b><span data-la-text=\"why-unknown-b\">, so the screen they already know appears, unchanged.</span></div>\n  </div>\n</div>\n<script>\n(function(){\n  var known={\"dior.com\":\"Dior\",\"christiandior.com\":\"Dior\",\"stradivarius.com\":\"Stradivarius\",\"kiabi.com\":\"Kiabi\",\"mmfg.it\":\"Max Mara\",\"maxmara.it\":\"Max Mara\"};\n  var $=function(id){return document.getElementById(id)};\n  var input=$(\"pe\");\n  function show(id,on){$(id).hidden=!on}\n  function render(){\n    var v=(input.value||\"\").trim().toLowerCase(),at=v.indexOf(\"@\"),domain=at>-1?v.slice(at+1):\"\",c=known[domain];\n    show(\"s-none\",!at||!domain);show(\"s-known\",!!c);show(\"s-pw\",!!(at&&domain&&!c));\n    show(\"w-known\",!!c);show(\"w-unknown\",!!(at&&domain&&!c));\n    if(c){$(\"k-name\").textContent=c;$(\"w-name\").textContent=c}\n    if(at&&domain&&!c){$(\"w-domain\").textContent=domain}\n  }\n  input.addEventListener(\"input\",render);\n  document.querySelectorAll(\"[data-fill]\").forEach(function(el){el.addEventListener(\"click\",function(){input.value=el.getAttribute(\"data-fill\");render();input.focus()})});\n  render();\n})();\n</script></body></html>",
+      "labels": {
+        "title": "Log in to your Verbolia account",
+        "email": "Your email",
+        "nothing-yet": "Nothing else is asked yet.",
+        "continue-with": "Continue with",
+        "password": "Your password",
+        "forgot": "Forgot your password?",
+        "login": "Log In",
+        "no-account": "Don’t have an account? Contact us",
+        "try": "try:",
+        "why-known": "signs them in on their own system, with their own second factor, then returns them here. No Verbolia password is involved and none is set.",
+        "why-unknown-a": "We do not recognise",
+        "why-unknown-b": ", so the screen they already know appears, unchanged."
+      },
+      "height": 420,
+      "caption": "After: one field, then either the employer's button or the password form they already know",
+      "marks": [
+        {
+          "tag": "test",
+          "quote": "Continue with"
+        },
+        {
+          "tag": "verify",
+          "quote": "signs them in on their own system, with their own second factor, then returns them here. No Verbolia password is involved and none is set."
+        }
+      ],
+      "note": "From thread a5f075ed, 4 September: the known-domain button should keep orange like the login one, not green. Applied in the sample — the button is `--orange`. The thread stays open on the old copy because it was never sent to Claude.",
+      "noteDone": "Applied: the hand-off button is brand orange. Left the thread open on the old artefact; it cannot be resolved from here."
+    },
+    {
+      "id": "b-screen-note",
+      "type": "para",
+      "text": "Try `anna@dior.com` and `sam@anagency.example`. The first is a known domain and gets the hand-off; the second is not and gets the password form. The routing table behind it has six domains and is the thing thread d0d1c44f called a must.",
+      "tags": [],
+      "marks": [
+        {
+          "tag": "seed-next",
+          "quote": "The routing table behind it has six domains"
+        }
+      ]
+    },
+    {
+      "id": "b-h-threads",
+      "type": "heading",
+      "level": 2,
+      "text": "What the seven threads become",
+      "info": "Each open comment on the published copy, and the typed operation it is in this document. None of them needed re-reading a page to act on."
+    },
+    {
+      "id": "b-threads-table",
+      "type": "table",
+      "head": [
+        "Thread",
+        "What was said",
+        "What it is now",
+        "Where"
+      ],
+      "rows": [
+        [
+          "a5f075ed",
+          "ask for the email first; known domain shows Continue with the customer; keep it orange, not green",
+          "a `note` on the prototype block, answered in place, and the orange is in the screen",
+          "the block above, `noteDone`"
+        ],
+        [
+          "5b5e530c",
+          "make it a live prototype in the page with an if-condition on the domain",
+          "the `prototype` block itself: a live screen, sandboxed, with the condition in its own script",
+          "the block above"
+        ],
+        [
+          "469c5ba2",
+          "stop describing what is seen in pictures, apply to all artefacts",
+          "a **style directive**: standing, applies on every regeneration, visible under Writing rules",
+          "the bar, Writing rules · 1"
+        ],
+        [
+          "d0d1c44f",
+          "the domain routing table is a must; reflect it in the plan, remove the comments here",
+          "a `seed-next` tag on the sentence about the routing table, so the plan's next round starts from it",
+          "the paragraph under the screen"
+        ],
+        [
+          "6043b420",
+          "drop — on \"You will be sent to okta.lvmh.com\"",
+          "a `delete` op: the sentence is gone and the journal carries its text",
+          "nowhere; that is the point"
+        ],
+        [
+          "2bd28fa1",
+          "drop this comment — on the per-customer-link reasoning",
+          "a `delete` op, same",
+          "nowhere"
+        ],
+        [
+          "c38b7b6d",
+          "drop — on the opening paragraph",
+          "a `delete` op, same",
+          "nowhere"
+        ]
+      ]
+    },
+    {
+      "id": "b-threads-close",
+      "type": "para",
+      "text": "Three of the seven were the single word *drop*. On a plain artefact each one is a thread a human has to open, read the anchor of, and act on. Here a delete is a gesture and the journal carries what left. The other four were a copy change, a structural request, a standing rule and a hand-off to another document — which is one string edit, one note, one style directive and one tag."
+    },
+    {
+      "id": "b-h-migrate",
+      "type": "heading",
+      "level": 2,
+      "text": "How it was migrated",
+      "info": "The three steps, so the real one in sso-client-scoping is a repeat and not a redesign."
+    },
+    {
+      "id": "b-migrate-list",
+      "type": "list",
+      "ordered": true,
+      "items": [
+        "**Make every string an element.** The original built its dynamic text with `innerHTML` strings — `'Sending you to ' + customer + '…'`. Those cannot be marked. Each became an element with `data-la-text`, and the customer name a separate `<span>` the script fills. The logic did not change; it now toggles `hidden` instead of rebuilding markup.",
+        "**List the strings in `labels` under the same keys.** The build refuses a label with no element behind it, so a typo is caught before publishing, not after.",
+        "**Carry the open threads over as what they are.** A copy request is an edit or a note. A rule is a style directive. A *drop* is a delete. A hand-off to another document is a `seed-next` tag. Nothing is pasted as a comment."
+      ]
+    },
+    {
+      "id": "b-migrate-open",
+      "type": "callout",
+      "variant": "warning",
+      "title": "Not done here, on purpose",
+      "text": "The real prototype still lives in `sso-client-scoping`, and its seven threads stay open on the old artefact because none was sent to Claude — they cannot be resolved from a session. Migrating it for real is: this same screen file into that repo's `docs/`, the threads applied against the real plan, and the old artefact's record pointed at the new URL."
+    }
+  ]
+}

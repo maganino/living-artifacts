@@ -1632,6 +1632,14 @@ console.log('\nprototype: a working screen whose strings the reader owns');
   ok('the reader gets the screen in a frame', !!rf);
   ok('sandboxed, so its script cannot reach the page', /allow-scripts/.test(rf.getAttribute('sandbox')));
   ok('with the current strings written into it', /Sign in<\/h1>/.test(rf.getAttribute('srcdoc')));
+  {
+    const f = { ...m, blocks: [m.blocks[0], { ...m.blocks[1],
+      html: '<input data-la-text="email">', labels: { email: 'Your email' } }] };
+    const ef = boot(wrap(buildBody(f), 'Field'), { use: async () => null });
+    await settle();
+    ok('a field gets its string as a placeholder, not as text',
+      /placeholder="Your email"/.test(ef.d.querySelector('iframe').getAttribute('srcdoc')));
+  }
   ok('and no list of strings', !r.d.querySelector('.la-proto-strings'));
   ok('the caption is under it', /Step one/.test(r.d.querySelector('.la-proto figcaption').textContent));
 

@@ -473,7 +473,11 @@
       var nodes = doc.querySelectorAll('[data-la-text]');
       for (var i = 0; i < nodes.length; i++) {
         var k = nodes[i].getAttribute('data-la-text');
-        if (labels[k] != null) nodes[i].textContent = labels[k];
+        if (labels[k] == null) continue;
+        /* a field's string is what it shows while empty */
+        var tag = (nodes[i].tagName || '').toUpperCase();
+        if (tag === 'INPUT' || tag === 'TEXTAREA') nodes[i].setAttribute('placeholder', labels[k]);
+        else nodes[i].textContent = labels[k];
       }
       return '<!doctype html>' + doc.documentElement.outerHTML;
     } catch (e) { return html; }
