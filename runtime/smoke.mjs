@@ -1540,5 +1540,27 @@ console.log('\ndocument templates: a format declared once, not retyped');
     validateTemplate({ v: 1, name: 'empty', sections: [] }).some((e) => /non-empty/.test(e)));
 }
 
+
+/* ------------------------------------------------------------------------- */
+console.log('\nthe house PRD template: every component it has, this runtime draws');
+{
+  const m = {
+    v: 1, docId: 'roles', title: 'Roles', rev: 0,
+    blocks: [
+      { id: 'b-tab', type: 'heading', level: 2, text: 'Validation', tags: [] },
+      { id: 'b-r', type: 'table', variant: 'roles', tags: [],
+        head: ['Role', 'Can view', 'Can change'],
+        rows: [['Administrator', 'everything', 'everything'], ['Member', 'their own team', 'nothing']] }
+    ]
+  };
+  const e = boot(wrap(buildBody(m), 'Roles'), { use: async () => null });
+  await settle();
+  ok('a roles table carries the template\u2019s class', !!e.d.querySelector('table.roles-tbl'));
+  eq('and its rows', e.d.querySelectorAll('table.roles-tbl tbody tr').length, 2);
+  const plain = boot(wrap(buildBody({ ...m, blocks: [m.blocks[0], { ...m.blocks[1], variant: undefined }] }), 'Plain'), { use: async () => null });
+  await settle();
+  ok('a plain table does not', !plain.d.querySelector('table.roles-tbl'));
+}
+
 console.log(failed ? `\n${failed} failing\n` : '\nall green\n');
 process.exit(failed ? 1 : 0);

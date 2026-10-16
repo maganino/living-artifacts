@@ -37,7 +37,7 @@
   var WIDTH_LABEL = { full: '1', half: '½', third: '⅓', 'two-thirds': '⅔' };
   var VARIANTS = {
     callout: ['note', 'warning', 'decision', 'design', 'excluded', 'deferred'],
-    table: ['plain', 'striped'],
+    table: ['plain', 'striped', 'roles'],
     list: ['bullets', 'checks']
   };
   /* Sticky per session, not per document: a reader who prefers pasting a table
@@ -2276,7 +2276,11 @@
   }
   function rTableInner(b) {
     var head = b.head || [], rows = b.rows || [], rcols = roleColumns(head);
-    var out = '<div class="tbl-wrap' + (b.variant === 'striped' ? ' striped' : '') + '"><table>';
+    /* `roles` is the permissions table from the house PRD template: a Role /
+       Can view / Can change grid whose first column never wraps. It was the one
+       component that template had and this runtime could not draw. */
+    var out = '<div class="tbl-wrap' + (b.variant === 'striped' ? ' striped' : '') + '">'
+      + '<table' + (b.variant === 'roles' ? ' class="roles-tbl"' : '') + '>';
     if (head.some(function (h) { return String(h).trim(); })) {
       out += '<thead><tr>' + head.map(function (h, hi) { return '<th>' + inline(h) + thInfo(b, h, hi) + '</th>'; }).join('') + '</tr></thead>';
     }

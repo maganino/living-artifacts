@@ -1,8 +1,12 @@
 /* The house look: Alicia's PRD template stylesheet, comments stripped and every
    rule scoped under .house so it never leaks into the editor. Read mode renders
    the same class names the exporter used, so this is the one stylesheet for
-   the published look. The editor chrome lives in la-style.css. Regenerated from
-   the template by build.mjs house; do not edit by hand. */
+   the published look. The editor chrome lives in la-style.css.
+
+   Taken from assets/prd-artifact-template.html in the product-team-processes
+   repo (bitbucket.org/bpfsteam, skills/verbolia-prd), scoped and committed
+   here. There is no command that regenerates it: carry changes over by hand
+   and say so, after diffing that template against this file. */
 :root { --bg: #F6F6F6; --surface: #FFFFFF; --surface-2: #EDEDED; --text: #454545; --muted: #6D6D6D; --border: #D1D1D1; --red: #D9414E; --orange: #FC6E1C; --yellow: #FDAB1D; --green: #12B31F; --red-text: #C2353F; --orange-text: #C4530E; --yellow-text: #A66E00; --green-text: #0E8A18; --code-bg: #EFEEEE; --shadow: 0 1px 2px rgba(69, 69, 69, 0.06), 0 6px 20px rgba(69, 69, 69, 0.05); }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) { --bg: #1F1F1F; --surface: #2A2A2A; --surface-2: #353535; --text: #F6F6F6; --muted: #B9B9B9; --border: #454545; --red-text: #F06A75; --orange-text: #FC8A47; --yellow-text: #FDBE4F; --green-text: #3FCB4A; --code-bg: #333333; --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 20px rgba(0, 0, 0, 0.25); }

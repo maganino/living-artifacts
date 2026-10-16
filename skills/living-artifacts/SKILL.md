@@ -601,6 +601,24 @@ answer.
   sense; regenerating from the ops is Execution. Don't collapse them into one
   step — the read-back gate is where the round is won or lost.
 
+## The house layout IS the Verbolia PRD template
+
+`house` is not a look inspired by the PRD template — it is that template's own
+stylesheet, scoped. It came from `assets/prd-artifact-template.html` in
+`bitbucket.org/bpfsteam/product-team-processes` (`skills/verbolia-prd/`),
+cloned at `~/Documents/Code/product-team-processes`.
+
+Checked on 16 October 2026: of the 62 components that template's markup uses,
+this runtime draws 61 from a model. The one gap was the permissions table,
+now `variant: "roles"`. **So a PRD published through this runtime already is
+the house PRD page** — there is nothing to export it into, and a second
+renderer over the same model would only drift from this one.
+
+To carry an upstream change over: pull that repo, diff its
+`assets/prd-artifact-template.html` against `runtime/house.css` and the
+`r*` render functions, and port by hand. There is no command that regenerates
+it, whatever an older comment claimed.
+
 ## Two things are called "template"
 
 A **layout** is how the page is drawn: `house`, `desk-research`, `brief`. This

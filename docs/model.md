@@ -62,7 +62,7 @@ Per-type content fields:
 | `heading` | `text`, `level` (2, 3 or 4), `info`, `badge` | textarea — the text, blank line, the `info` |
 | `para` | `text` | textarea — the text |
 | `list` | `items[]`, `ordered` | textarea — one item per line |
-| `table` | `head[]`, `rows[][]`, `cellNotes{}` | **a grid**: a heading input per column, a body cell that wraps and grows to its text; Enter moves down a row; a cell never holds a newline; `as text` falls back to TSV |
+| `table` | `head[]`, `rows[][]`, `cellNotes{}`, `variant` (`plain`, `striped`, `roles`) | **a grid**: a heading input per column, a body cell that wraps and grows to its text; Enter moves down a row; a cell never holds a newline; `as text` falls back to TSV |
 | `code` | `text`, `lang` | textarea — the text |
 | `callout` | `title`, `text` | textarea — title, blank line, body |
 | `mermaid` | `text` | textarea — the diagram source |
