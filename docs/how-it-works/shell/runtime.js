@@ -1,3 +1,4 @@
+/* living-artifacts b89b477 · built 2026-10-16 */
 /* living-artifacts runtime — v1.1 (direct manipulation).
  *
  * The document's truth is the JSON in <script id="la-model">. The DOM is a
@@ -37,7 +38,7 @@
   var WIDTH_LABEL = { full: '1', half: '½', third: '⅓', 'two-thirds': '⅔' };
   var VARIANTS = {
     callout: ['note', 'warning', 'decision', 'design', 'excluded', 'deferred'],
-    table: ['plain', 'striped'],
+    table: ['plain', 'striped', 'roles'],
     list: ['bullets', 'checks']
   };
   /* Sticky per session, not per document: a reader who prefers pasting a table
@@ -365,6 +366,7 @@
     if (b.type === 'raw') return b.label || 'embedded markup';
     if (b.type === 'heading' && b.eyebrow) return b.eyebrow + ': ' + (b.text || '');
     if (b.type === 'figure') return b.caption || b.alt || 'figure';
+    if (b.type === 'prototype') return b.caption || 'prototype';
     if (b.type === 'mermaid') return 'diagram';
     return b.text || '';
   }
@@ -395,6 +397,13 @@
           out.push(k + ': ' + b.labels[k]);
         });
         return out.join('\n');
+      /* A prototype's SCREEN is not editable — the strings it shows are. Same
+         bargain as a figure, one difference: the screen reads them live, so an
+         edit lands without a round. */
+      case 'prototype':
+        var po = ['caption: ' + (b.caption || '')];
+        Object.keys(b.labels || {}).forEach(function (k) { po.push(k + ': ' + b.labels[k]); });
+        return po.join('\n');
       default: return b.text || '';
     }
   }
@@ -434,9 +443,47 @@
         });
         b.labels = labels;
         break;
+      case 'prototype':
+        var plabels = {};
+        src.split('\n').forEach(function (line) {
+          var m = line.match(/^\s*([^:]+?)\s*:\s*([\s\S]*)$/);
+          if (!m) return;
+          var k = m[1].trim(), v = m[2].trim();
+          if (k === 'caption') b.caption = v;
+          else if (k) plabels[k] = v;
+        });
+        b.labels = plabels;
+        break;
       default:
         b.text = src;
     }
+  }
+
+  /* ------------------------------------------------------------ prototype */
+  /* The screen marks each string it shows with data-la-text="key". The current
+     labels are written into those elements before the screen is handed to its
+     frame, so an edited string appears without anyone regenerating anything.
+     The screen runs sandboxed in an iframe: its own script and style never
+     reach this page, and this page never reaches into it except through
+     these strings. */
+  function protoDoc(b) {
+    var html = b.html || '', labels = b.labels || {};
+    if (typeof DOMParser === 'undefined') return html;
+    try {
+      var doc = new DOMParser().parseFromString(html, 'text/html');
+      var nodes = doc.querySelectorAll('[data-la-text]');
+      for (var i = 0; i < nodes.length; i++) {
+        var k = nodes[i].getAttribute('data-la-text');
+        if (labels[k] != null) nodes[i].textContent = labels[k];
+      }
+      return '<!doctype html>' + doc.documentElement.outerHTML;
+    } catch (e) { return html; }
+  }
+  function protoFrame(b) {
+    var h = parseInt(b.height, 10) || 560;
+    return '<iframe class="la-proto-frame" sandbox="allow-scripts allow-forms" loading="lazy"'
+      + ' title="' + esc(b.caption || 'prototype') + '" style="height:' + h + 'px"'
+      + ' srcdoc="' + esc(protoDoc(b)) + '"></iframe>';
   }
 
   /* ------------------------------------------------------------------- ops */
@@ -1106,9 +1153,87 @@
     return row;
   }
 
+  /* The prototype editor is the figure editor with the redraw taken out: the
+     screen under the form re-reads the strings on every keystroke, so what you
+     type is what the screen says, now. Click away keeps it as one edit. */
+  function renderPrototypeEditor(b) {
+    var wrap = el('div', 'la-figure-edit la-proto-edit');
+    var caption = b.caption || '';
+    var keys = Object.keys(b.labels || {});
+    var vals = {}; keys.forEach(function (k) { vals[k] = b.labels[k]; });
+    var frame = null;
+
+    function source() {
+      var out = ['caption: ' + caption];
+      keys.forEach(function (k) { out.push(k + ': ' + vals[k]); });
+      return out.join('\n');
+    }
+    function commit() { commitSource(b, source()); }
+    function refresh() {
+      if (!frame) return;
+      frame.setAttribute('srcdoc', protoDoc({ html: b.html, labels: vals }));
+    }
+    function redraw() { wrap.textContent = ''; build(); }
+
+    function build() {
+      var prev = el('div', 'la-figure-prev');
+      prev.innerHTML = protoFrame({ html: b.html, labels: vals, caption: caption, height: b.height });
+      frame = prev.querySelector('iframe');
+      wrap.appendChild(prev);
+      wrap.appendChild(el('p', 'la-hint',
+        'The screen is not editable here. Its strings are: change one and the screen '
+        + 'shows it as you type. Anything structural is a note to Claude.'));
+
+      var crow = el('div', 'la-field');
+      var cl = el('label', null, 'Caption'); var ci = el('input'); ci.value = caption;
+      ci.oninput = function () { caption = ci.value; };
+      cl.appendChild(ci); crow.appendChild(cl); wrap.appendChild(crow);
+
+      keys.forEach(function (k, i) {
+        var row = el('div', 'la-field la-field-pair');
+        var kn = el('input', 'la-key');
+        kn.value = k; kn.setAttribute('aria-label', 'Name of string ' + (i + 1));
+        kn.placeholder = 'data-la-text key';
+        kn.onchange = function () {
+          var nk = kn.value.trim();
+          if (!nk || nk === k) { kn.value = k; return; }
+          if (vals[nk] !== undefined) { kn.value = k; return; }
+          vals[nk] = vals[k]; delete vals[k]; keys[i] = nk; redraw();
+        };
+        var v = el('input');
+        v.value = vals[k]; v.setAttribute('aria-label', 'Text of ' + k);
+        v.placeholder = 'what the screen says';
+        v.oninput = function () { vals[keys[i]] = v.value; refresh(); };
+        var x = el('button', 'la-cellx', '\u00d7');
+        x.title = 'Remove this string'; x.setAttribute('aria-label', 'Remove string ' + k);
+        x.onclick = function () { delete vals[keys[i]]; keys.splice(i, 1); redraw(); };
+        row.appendChild(kn); row.appendChild(v); row.appendChild(x);
+        wrap.appendChild(row);
+      });
+
+      var bar = el('div', 'la-editbar');
+      bar.appendChild(el('span', null, 'click outside to keep \u00b7 esc to discard'));
+      var add = el('button', 'la-btn', '+ string');
+      add.title = 'A string the screen shows, keyed by its data-la-text';
+      add.onclick = function () {
+        var n = 'string ' + (keys.length + 1);
+        while (vals[n] !== undefined) n = n + '.';
+        keys.push(n); vals[n] = ''; redraw();
+      };
+      bar.appendChild(add);
+      wrap.appendChild(bar); wrap.appendChild(syntaxRow(b));
+    }
+
+    build();
+    closeOnOutside(wrap, commit);
+    setTimeout(function () { var f = wrap.querySelector('input'); if (f) f.focus(); }, 0);
+    return wrap;
+  }
+
   function renderEditor(b) {
     if (b.type === 'table' && !editAsText) return renderGridEditor(b);
     if (b.type === 'figure') return renderFigureEditor(b);
+    if (b.type === 'prototype') return renderPrototypeEditor(b);
     var wrap = el('div'), cancelled = false;
     var ta = el('textarea', 'la-edit');
     ta.value = blockSource(b);
@@ -2276,7 +2401,11 @@
   }
   function rTableInner(b) {
     var head = b.head || [], rows = b.rows || [], rcols = roleColumns(head);
-    var out = '<div class="tbl-wrap' + (b.variant === 'striped' ? ' striped' : '') + '"><table>';
+    /* `roles` is the permissions table from the house PRD template: a Role /
+       Can view / Can change grid whose first column never wraps. It was the one
+       component that template had and this runtime could not draw. */
+    var out = '<div class="tbl-wrap' + (b.variant === 'striped' ? ' striped' : '') + '">'
+      + '<table' + (b.variant === 'roles' ? ' class="roles-tbl"' : '') + '>';
     if (head.some(function (h) { return String(h).trim(); })) {
       out += '<thead><tr>' + head.map(function (h, hi) { return '<th>' + inline(h) + thInfo(b, h, hi) + '</th>'; }).join('') + '</tr></thead>';
     }
@@ -2332,7 +2461,8 @@
       case 'table': return rTableInner(b);
       case 'callout':
         return '<div class="deferred" data-variant="' + esc(b.variant || 'note') + '"><span class="tag">'
-          + esc(b.title || 'Note') + '</span><div>' + rText(b, b.text || '').replace(/\n/g, '<br>') + '</div></div>';
+          + icon(b.icon, 'la-icon-tag') + esc(b.title || 'Note') + '</span><div>'
+          + rText(b, b.text || '').replace(/\n/g, '<br>') + '</div></div>';
       case 'code': return '<pre class="json"><code>' + esc(b.text || '') + '</code></pre>';
       case 'mermaid': return '<div class="diagram-wrap"><figure><pre class="mermaid">' + esc(b.text || '') + '</pre></figure></div>';
       case 'figure': {
@@ -2342,6 +2472,22 @@
         return '<div class="diagram-wrap"><figure><p class="muted">Figure to be redrawn: ' + esc((b.labels || {}).title || b.caption || 'this figure') + '.</p>' + fc + '</figure></div>';
       }
       case 'raw': return b.html || '';
+      case 'prototype': {
+        var pc = b.caption ? '<figcaption>' + rText(b, b.caption) + '</figcaption>' : '';
+        /* The writer sees the strings beside the screen, as text, so a word on
+           the screen can be selected, tagged and noted like any other passage;
+           the reader gets the screen and the caption, nothing else. */
+        var strings = '';
+        if (pageEdit) {
+          var ks = Object.keys(b.labels || {});
+          if (ks.length) {
+            strings = '<dl class="la-proto-strings">' + ks.map(function (k) {
+              return '<div><dt>' + esc(k) + '</dt><dd>' + rText(b, b.labels[k]) + '</dd></div>';
+            }).join('') + '</dl>';
+          }
+        }
+        return '<div class="diagram-wrap la-proto"><figure>' + protoFrame(b) + pc + '</figure>' + strings + '</div>';
+      }
       case 'divider': return pageEdit ? '<hr class="la-divider">' : '';
       case 'heading': return '<div class="sub-head" id="' + esc(b.id) + '"><h3>' + rText(b, b.text || '') + '</h3></div>';
       default: return '<p>' + rText(b, b.text || '') + '</p>';
@@ -2399,7 +2545,7 @@
   function rSubHead(b) {
     var info = b.info ? '<p>' + inline(b.info) + '</p>' : '';
     var badge = b.badge ? '<span class="la-badge" title="This section comes from ' + esc(b.badge) + '">' + esc(b.badge) + '</span>' : '';
-    return wrapBlk(b, '<div class="sub-head" id="' + esc(b.id) + '"><h3>' + rText(b, b.text || '') + badge + '</h3>' + info + '</div>');
+    return wrapBlk(b, '<div class="sub-head" id="' + esc(b.id) + '"><h3>' + icon(b.icon, 'la-icon-head') + rText(b, b.text || '') + badge + '</h3>' + info + '</div>');
   }
   function rSectionBody(sec) {
     var eb = sec.eyebrow.toLowerCase(), blocks = sec.blocks, out = [], g;
@@ -2492,17 +2638,17 @@
     var head = '';
     if (sec.eyebrow || sec.claim) {
       /* The section's `info` is the template's own description of what the
-         section is for. It rendered in the outline and nowhere else, so moving
-         editing into the page quietly dropped every brief a template carries.
-         A sub-head and the desk layout already show it; this is the house. */
+         section is for. It is rendered by all three layouts; the house was the
+         last to get it, because the flat block list used to carry it instead. */
       var sinfo = (sec.block && sec.block.info) ? '<p>' + inline(sec.block.info) + '</p>' : '';
       /* `badge` says which sections a template demands, so a reader can tell
-         them from the ones this document added. Outline-only until now. */
+         them from the ones this document added. */
       var sbadge = (sec.block && sec.block.badge)
         ? '<span class="la-badge" title="This section comes from ' + esc(sec.block.badge) + '">'
           + esc(sec.block.badge) + '</span>' : '';
       var inner = '<div class="sec-head">' + (sec.eyebrow ? '<div class="eyebrow">' + esc(sec.eyebrow) + '</div>' : '')
-        + (sec.claim ? '<h2>' + (sec.block ? rText(sec.block, sec.claim) : inline(sec.claim)) + sbadge + '</h2>' : '') + sinfo + '</div>';
+        + (sec.claim ? '<h2>' + (sec.block ? icon(sec.block.icon, 'la-icon-head') : '')
+            + (sec.block ? rText(sec.block, sec.claim) : inline(sec.claim)) + sbadge + '</h2>' : '') + sinfo + '</div>';
       head = sec.block ? wrapBlk(sec.block, inner, 'la-sechead' + (sec.internal ? ' la-internal' : '')) : inner;
     }
     var bid = sec.bid ? '<span id="' + esc(sec.bid) + '"></span>' : '';
@@ -2606,6 +2752,22 @@
   /* The wordmark. Both constants are REWRITTEN by `build.mjs brand` from the
      design system's own logos/svg — do not edit them by hand. Black for a
      light page, white for a dark one, so no filter has to fake it. */
+  /* The brand icon set, the ones this runtime draws as chrome. REWRITTEN by
+     `build.mjs brand` from the design system's icons/svg — do not edit by hand.
+     Every icon is 24x24 and drawn in currentColor, so it takes the colour of
+     whatever it sits in and needs no light and dark variant. */
+  var ICONS = {
+ "info": "<path fill=\"currentColor\" stroke=\"none\" d=\"M17.37,6.12c-3.25-2.96-8.28-2.73-11.25.51-2.96,3.25-2.73,8.28.51,11.25,3.25,2.96,8.28,2.73,11.25-.51,2.96-3.25,2.73-8.28-.51-11.25ZM12.75,15.49c0,.41-.34.75-.75.75s-.75-.34-.75-.75v-4.28c0-.41.34-.75.75-.75s.75.34.75.75v4.28ZM12.69,8.8c-.04.09-.09.17-.16.24-.14.14-.33.22-.53.22s-.39-.08-.53-.22c-.07-.07-.13-.15-.17-.24-.03-.09-.05-.19-.05-.29s.02-.2.05-.29c.04-.09.1-.17.17-.24.28-.28.78-.28,1.06,0,.07.07.12.15.16.24.04.09.06.19.06.29s-.02.2-.06.29Z\"/>"
+};
+  /* Chrome icons travel in the runtime; an icon a DOCUMENT names travels with
+     the document, so a document pays only for the icons it uses. */
+  function icon(name, cls) {
+    var doc = (typeof window !== 'undefined' && window.__laIcons) || {};
+    var g = ICONS[name] || doc[name];
+    if (!g) return '';
+    return '<svg class="la-icon' + (cls ? ' ' + cls : '') + '" viewBox="0 0 24 24"'
+      + ' aria-hidden="true" focusable="false">' + g + '</svg>';
+  }
   var DK_LOGO = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20463.36%2056.57%22%3E%3Cpath%20d%3D%22M26.33%2C55.72h0c2.21%2C0%2C4.22-1.3%2C5.13-3.32L51%2C8.95c1.71-3.8-1.07-8.09-5.23-8.09h0c-2.25%2C0-4.29%2C1.33-5.2%2C3.38l-19.33%2C43.65c-1.63%2C3.68%2C1.07%2C7.83%2C5.1%2C7.83Z%22%2F%3E%3Cpath%20d%3D%22M67.81.86s-.04.02-.04.04v54.79s.02.04.04.04h38.06s.04-.02.04-.04v-9.34s-.02-.04-.04-.04h-26.46s-.04-.02-.04-.04v-13.62s.02-.04.04-.04h24.59s.04-.02.04-.04v-9.42s-.02-.04-.04-.04h-24.59s-.04-.02-.04-.04v-12.77s.02-.04.04-.04h26.46s.04-.02.04-.04V.89s-.02-.04-.04-.04h-38.06Z%22%2F%3E%3Cpath%20d%3D%22M159.08%2C34.08c-.68-.47-1.41-.84-2.17-1.13-.03-.01-.03-.06%2C0-.07.78-.25%2C1.53-.54%2C2.25-.87%2C2.83-1.32%2C5.01-3.22%2C6.54-5.68%2C1.53-2.46%2C2.3-5.41%2C2.3-8.83%2C0-5.24-1.69-9.32-5.06-12.26-3.37-2.93-8.15-4.4-14.32-4.4h-24.86s-.04.02-.04.04v54.79s.02.04.04.04h12.07s.04-.02.04-.04V10.31s.02-.04.04-.04h10.62c3.16%2C0%2C5.58.64%2C7.24%2C1.91%2C1.66%2C1.27%2C2.49%2C3.18%2C2.49%2C5.72s-.83%2C4.46-2.49%2C5.76c-1.66%2C1.3-4.07%2C1.95-7.24%2C1.95h-.7c-2.41%2C0-4.36%2C1.95-4.36%2C4.36s1.95%2C4.36%2C4.36%2C4.36c2.1%2C0%2C2.95%2C2.04%2C3.89%2C3.74l8.47%2C17.64s.02.02.03.02h13.3s.05-.03.03-.05l-8.14-16.37c-1.14-2.28-2.58-4.02-4.32-5.21Z%22%2F%3E%3Cpath%20d%3D%22M223.82%2C27.34s-.04-.05%2C0-.07c2.24-.87%2C4.09-2.15%2C5.54-3.85%2C1.95-2.28%2C2.92-5.06%2C2.92-8.33%2C0-4.41-1.63-7.89-4.9-10.43-3.27-2.54-7.91-3.81-13.93-3.81h-25.25s-.04.02-.04.04v54.79s.02.04.04.04h26.11c6.07%2C0%2C10.83-1.36%2C14.28-4.09%2C3.45-2.72%2C5.17-6.52%2C5.17-11.4%2C0-3.68-1.08-6.68-3.23-8.99-1.68-1.8-3.92-3.1-6.7-3.91ZM219.74%2C44.98c-1.61%2C1.14-3.92%2C1.71-6.93%2C1.71h-13.04s-.04-.02-.04-.04V9.84s.02-.04.04-.04h11.48c3.16%2C0%2C5.5.57%2C7%2C1.71%2C1.5%2C1.14%2C2.26%2C2.83%2C2.26%2C5.06s-.75%2C3.99-2.26%2C5.14c-1.51%2C1.14-3.84%2C1.71-7%2C1.71h-1.42c-2.47%2C0-4.47%2C2-4.47%2C4.47s2%2C4.47%2C4.47%2C4.47h2.98c3.01%2C0%2C5.32.56%2C6.93%2C1.67%2C1.61%2C1.12%2C2.41%2C2.95%2C2.41%2C5.49s-.8%2C4.31-2.41%2C5.45Z%22%2F%3E%3Cpath%20d%3D%22M291.34%2C3.5C287.29%2C1.17%2C282.49%2C0%2C276.94%2C0s-10.35%2C1.17-14.4%2C3.5c-4.05%2C2.33-7.15%2C5.62-9.3%2C9.84-2.15%2C4.23-3.23%2C9.2-3.23%2C14.9s1.09%2C10.61%2C3.27%2C14.86c2.18%2C4.25%2C5.28%2C7.56%2C9.3%2C9.92%2C4.02%2C2.36%2C8.81%2C3.54%2C14.36%2C3.54s10.35-1.18%2C14.4-3.54c4.05-2.36%2C7.17-5.65%2C9.38-9.88%2C2.2-4.23%2C3.31-9.22%2C3.31-14.98s-1.1-10.59-3.31-14.82c-2.21-4.23-5.33-7.51-9.38-9.84ZM287.6%2C41.51c-2.44%2C3.19-5.99%2C4.79-10.66%2C4.79s-8.34-1.6-10.7-4.79c-2.36-3.19-3.54-7.61-3.54-13.27s1.18-10.13%2C3.54-13.27c2.36-3.14%2C5.93-4.71%2C10.7-4.71s8.29%2C1.57%2C10.7%2C4.71c2.41%2C3.14%2C3.62%2C7.56%2C3.62%2C13.27s-1.22%2C10.08-3.66%2C13.27Z%22%2F%3E%3Cpath%20d%3D%22M335.03%2C45.52s-.04-.02-.04-.04V.89s-.02-.04-.04-.04h-12.07s-.04.02-.04.04v54.79s.02.04.04.04h36.81s.04-.02.04-.04v-10.12s-.02-.04-.04-.04h-24.67Z%22%2F%3E%3Cpath%20d%3D%22M376.5.86s-.04.02-.04.04v54.79s.02.04.04.04h12.07s.04-.02.04-.04V.89s-.02-.04-.04-.04h-12.07Z%22%2F%3E%3Cpath%20d%3D%22M439.97%2C5.39c-1.29-2.77-4.06-4.54-7.12-4.54s-5.85%2C1.79-7.13%2C4.57l-23.09%2C50.24s0%2C.05.03.05h12.14s.02-.01.03-.02l17.97-42.08h.31l8.97%2C20.8s0%2C.05-.03.05h-9.56c-2.58%2C0-4.67%2C2.09-4.67%2C4.67s2.09%2C4.67%2C4.67%2C4.67h13.41s.03%2C0%2C.03.02l5.14%2C11.86s.02.02.03.02h12.21s.04-.03.03-.05l-23.39-50.27Z%22%2F%3E%3Cpath%20d%3D%22M30.56.86c-2.6%2C0-4.71%2C2.11-4.71%2C4.71s2.11%2C4.71%2C4.71%2C4.71%2C4.71-2.11%2C4.71-4.71-2.11-4.71-4.71-4.71Z%22%2F%3E%3Cpath%20d%3D%22M17.62%2C29.75c-2.6%2C0-4.71%2C2.11-4.71%2C4.71s2.11%2C4.71%2C4.71%2C4.71%2C4.71-2.11%2C4.71-4.71-2.11-4.71-4.71-4.71Z%22%2F%3E%3Cpath%20d%3D%22M24.13%2C15.3h-12.98c-2.6%2C0-4.71%2C2.11-4.71%2C4.71v.04c0%2C2.58%2C2.09%2C4.67%2C4.67%2C4.67h13.02c2.6%2C0%2C4.71-2.11%2C4.71-4.71s-2.11-4.71-4.71-4.71Z%22%2F%3E%3Cpath%20d%3D%22M22.4%2C5.56c0-2.6-2.11-4.71-4.71-4.71H4.71c-2.6%2C0-4.71%2C2.11-4.71%2C4.71v.04c0%2C2.58%2C2.09%2C4.67%2C4.67%2C4.67h13.02c2.6%2C0%2C4.71-2.11%2C4.71-4.71Z%22%2F%3E%3C%2Fsvg%3E';
   var DK_LOGO_WHITE = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20463.36%2056.57%22%3E%3Cpath%20fill%3D%22%23fff%22%20d%3D%22M26.33%2C55.72h0c2.21%2C0%2C4.22-1.3%2C5.13-3.32L51%2C8.95c1.71-3.8-1.07-8.09-5.23-8.09h0c-2.25%2C0-4.29%2C1.33-5.2%2C3.38l-19.33%2C43.65c-1.63%2C3.68%2C1.07%2C7.83%2C5.1%2C7.83Z%22%2F%3E%3Cpath%20fill%3D%22%23fff%22%20d%3D%22M67.81.86s-.04.02-.04.04v54.79s.02.04.04.04h38.06s.04-.02.04-.04v-9.34s-.02-.04-.04-.04h-26.46s-.04-.02-.04-.04v-13.62s.02-.04.04-.04h24.59s.04-.02.04-.04v-9.42s-.02-.04-.04-.04h-24.59s-.04-.02-.04-.04v-12.77s.02-.04.04-.04h26.46s.04-.02.04-.04V.89s-.02-.04-.04-.04h-38.06Z%22%2F%3E%3Cpath%20fill%3D%22%23fff%22%20d%3D%22M159.08%2C34.08c-.68-.47-1.41-.84-2.17-1.13-.03-.01-.03-.06%2C0-.07.78-.25%2C1.53-.54%2C2.25-.87%2C2.83-1.32%2C5.01-3.22%2C6.54-5.68%2C1.53-2.46%2C2.3-5.41%2C2.3-8.83%2C0-5.24-1.69-9.32-5.06-12.26-3.37-2.93-8.15-4.4-14.32-4.4h-24.86s-.04.02-.04.04v54.79s.02.04.04.04h12.07s.04-.02.04-.04V10.31s.02-.04.04-.04h10.62c3.16%2C0%2C5.58.64%2C7.24%2C1.91%2C1.66%2C1.27%2C2.49%2C3.18%2C2.49%2C5.72s-.83%2C4.46-2.49%2C5.76c-1.66%2C1.3-4.07%2C1.95-7.24%2C1.95h-.7c-2.41%2C0-4.36%2C1.95-4.36%2C4.36s1.95%2C4.36%2C4.36%2C4.36c2.1%2C0%2C2.95%2C2.04%2C3.89%2C3.74l8.47%2C17.64s.02.02.03.02h13.3s.05-.03.03-.05l-8.14-16.37c-1.14-2.28-2.58-4.02-4.32-5.21Z%22%2F%3E%3Cpath%20fill%3D%22%23fff%22%20d%3D%22M223.82%2C27.34s-.04-.05%2C0-.07c2.24-.87%2C4.09-2.15%2C5.54-3.85%2C1.95-2.28%2C2.92-5.06%2C2.92-8.33%2C0-4.41-1.63-7.89-4.9-10.43-3.27-2.54-7.91-3.81-13.93-3.81h-25.25s-.04.02-.04.04v54.79s.02.04.04.04h26.11c6.07%2C0%2C10.83-1.36%2C14.28-4.09%2C3.45-2.72%2C5.17-6.52%2C5.17-11.4%2C0-3.68-1.08-6.68-3.23-8.99-1.68-1.8-3.92-3.1-6.7-3.91ZM219.74%2C44.98c-1.61%2C1.14-3.92%2C1.71-6.93%2C1.71h-13.04s-.04-.02-.04-.04V9.84s.02-.04.04-.04h11.48c3.16%2C0%2C5.5.57%2C7%2C1.71%2C1.5%2C1.14%2C2.26%2C2.83%2C2.26%2C5.06s-.75%2C3.99-2.26%2C5.14c-1.51%2C1.14-3.84%2C1.71-7%2C1.71h-1.42c-2.47%2C0-4.47%2C2-4.47%2C4.47s2%2C4.47%2C4.47%2C4.47h2.98c3.01%2C0%2C5.32.56%2C6.93%2C1.67%2C1.61%2C1.12%2C2.41%2C2.95%2C2.41%2C5.49s-.8%2C4.31-2.41%2C5.45Z%22%2F%3E%3Cpath%20fill%3D%22%23fff%22%20d%3D%22M291.34%2C3.5C287.29%2C1.17%2C282.49%2C0%2C276.94%2C0s-10.35%2C1.17-14.4%2C3.5c-4.05%2C2.33-7.15%2C5.62-9.3%2C9.84-2.15%2C4.23-3.23%2C9.2-3.23%2C14.9s1.09%2C10.61%2C3.27%2C14.86c2.18%2C4.25%2C5.28%2C7.56%2C9.3%2C9.92%2C4.02%2C2.36%2C8.81%2C3.54%2C14.36%2C3.54s10.35-1.18%2C14.4-3.54c4.05-2.36%2C7.17-5.65%2C9.38-9.88%2C2.2-4.23%2C3.31-9.22%2C3.31-14.98s-1.1-10.59-3.31-14.82c-2.21-4.23-5.33-7.51-9.38-9.84ZM287.6%2C41.51c-2.44%2C3.19-5.99%2C4.79-10.66%2C4.79s-8.34-1.6-10.7-4.79c-2.36-3.19-3.54-7.61-3.54-13.27s1.18-10.13%2C3.54-13.27c2.36-3.14%2C5.93-4.71%2C10.7-4.71s8.29%2C1.57%2C10.7%2C4.71c2.41%2C3.14%2C3.62%2C7.56%2C3.62%2C13.27s-1.22%2C10.08-3.66%2C13.27Z%22%2F%3E%3Cpath%20fill%3D%22%23fff%22%20d%3D%22M335.03%2C45.52s-.04-.02-.04-.04V.89s-.02-.04-.04-.04h-12.07s-.04.02-.04.04v54.79s.02.04.04.04h36.81s.04-.02.04-.04v-10.12s-.02-.04-.04-.04h-24.67Z%22%2F%3E%3Cpath%20fill%3D%22%23fff%22%20d%3D%22M376.5.86s-.04.02-.04.04v54.79s.02.04.04.04h12.07s.04-.02.04-.04V.89s-.02-.04-.04-.04h-12.07Z%22%2F%3E%3Cpath%20fill%3D%22%23fff%22%20d%3D%22M439.97%2C5.39c-1.29-2.77-4.06-4.54-7.12-4.54s-5.85%2C1.79-7.13%2C4.57l-23.09%2C50.24s0%2C.05.03.05h12.14s.02-.01.03-.02l17.97-42.08h.31l8.97%2C20.8s0%2C.05-.03.05h-9.56c-2.58%2C0-4.67%2C2.09-4.67%2C4.67s2.09%2C4.67%2C4.67%2C4.67h13.41s.03%2C0%2C.03.02l5.14%2C11.86s.02.02.03.02h12.21s.04-.03.03-.05l-23.39-50.27Z%22%2F%3E%3Cpath%20fill%3D%22%23fff%22%20d%3D%22M30.56.86c-2.6%2C0-4.71%2C2.11-4.71%2C4.71s2.11%2C4.71%2C4.71%2C4.71%2C4.71-2.11%2C4.71-4.71-2.11-4.71-4.71-4.71Z%22%2F%3E%3Cpath%20fill%3D%22%23fff%22%20d%3D%22M17.62%2C29.75c-2.6%2C0-4.71%2C2.11-4.71%2C4.71s2.11%2C4.71%2C4.71%2C4.71%2C4.71-2.11%2C4.71-4.71-2.11-4.71-4.71-4.71Z%22%2F%3E%3Cpath%20fill%3D%22%23fff%22%20d%3D%22M24.13%2C15.3h-12.98c-2.6%2C0-4.71%2C2.11-4.71%2C4.71v.04c0%2C2.58%2C2.09%2C4.67%2C4.67%2C4.67h13.02c2.6%2C0%2C4.71-2.11%2C4.71-4.71s-2.11-4.71-4.71-4.71Z%22%2F%3E%3Cpath%20fill%3D%22%23fff%22%20d%3D%22M22.4%2C5.56c0-2.6-2.11-4.71-4.71-4.71H4.71c-2.6%2C0-4.71%2C2.11-4.71%2C4.71v.04c0%2C2.58%2C2.09%2C4.67%2C4.67%2C4.67h13.02c2.6%2C0%2C4.71-2.11%2C4.71-4.71Z%22%2F%3E%3C%2Fsvg%3E';
   var DK_TONE = { ok: 'ok', good: 'ok', green: 'ok', yes: 'ok', cheap: 'ok', part: 'part', partial: 'part', yellow: 'part', dear: 'part', no: 'no', bad: 'no', red: 'no', hot: 'hot', orange: 'hot', time: 'hot', mute: 'mute', grey: 'mute', gray: 'mute' };
@@ -2691,7 +2853,8 @@
   function thInfo(b, h, i) {
     var m = b.headInfo || {}, t = m[String(h).trim()] != null ? m[String(h).trim()] : m[i];
     if (!t || !String(t).trim()) return '';
-    return '<i class="th-i" tabindex="0" role="button" aria-label="What ' + esc(String(h)) + ' means">i<span class="th-pop">' + inline(String(t)) + '</span></i>';
+    return '<i class="th-i" tabindex="0" role="button" aria-label="What ' + esc(String(h)) + ' means">'
+      + icon('info') + '<span class="th-pop">' + inline(String(t)) + '</span></i>';
   }
   function dkGrid(b) {
     var head = b.head || [], rows = b.rows || [], rcols = roleColumns(head), n = head.length;
@@ -2743,7 +2906,7 @@
         var note = String(r[8] || '').trim(), grp = String(r[7] || '').trim();
         rs += '<div class="gt-row" data-cell="r' + ri + 'c1">'
           + '<div class="gt-lab"><b>' + rText(b, r[1] || '', 'r' + ri + 'c1')
-          + (note ? '<i class="gt-i" tabindex="0" role="button" aria-label="More about ' + esc(r[1] || '') + '">i<span class="gt-pop">' + rText(b, note, 'r' + ri + 'c8') + '</span></i>' : '')
+          + (note ? '<i class="gt-i" tabindex="0" role="button" aria-label="More about ' + esc(r[1] || '') + '">' + icon('info') + '<span class="gt-pop">' + rText(b, note, 'r' + ri + 'c8') + '</span></i>' : '')
           + '</b><span>'
           + (grp ? '<em class="gt-grp ' + gtGrp(grp) + '">' + rText(b, grp, 'r' + ri + 'c7') + '</em>' : '')
           + rText(b, r[2] || '', 'r' + ri + 'c2') + '</span></div>'
@@ -2809,9 +2972,9 @@
   function dkCallout(b) {
     var v = b.variant || 'note', title = b.title || '';
     if (v === 'decision') return dkDecision(b);
-    if (v === 'warning' || v === 'excluded') return '<div class="blind"><h3>' + rText(b, title) + '</h3>' + dkParas(b, b.text) + '</div>';
+    if (v === 'warning' || v === 'excluded') return '<div class="blind"><h3>' + icon(b.icon, 'la-icon-head') + rText(b, title) + '</h3>' + dkParas(b, b.text) + '</div>';
     if (/not part of/i.test(title) || /^round/i.test(title)) return '<div class="roundnote"><h3>' + rText(b, title) + '</h3>' + dkParas(b, b.text) + '</div>';
-    return '<div class="notebox">' + (title ? '<h3>' + rText(b, title) + '</h3>' : '') + dkParas(b, b.text) + '</div>';
+    return '<div class="notebox">' + (title ? '<h3>' + icon(b.icon, 'la-icon-head') + rText(b, title) + '</h3>' : '') + dkParas(b, b.text) + '</div>';
   }
   function dkBlock(b, eb) {
     if (b.type === 'table') return wrapBlk(b, dkTable(b));
