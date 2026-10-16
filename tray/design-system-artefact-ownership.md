@@ -1,6 +1,6 @@
 ---
 type: thread
-status: todo
+status: done
 area: living-artifacts
 topic: publishing
 created: 2026-10-16
@@ -59,8 +59,16 @@ living document's next publish.
 Option 2 does not prevent the collision, it makes it cheap. That is probably
 the right trade, and it composes with option 1.
 
-## Next step
+## Decided and done, 16 October 2026
 
-Pick one. Option 2 is roughly an hour: add the SHA to `runtimeSource()` in
-`runtime/build.mjs`, and a line in the skill saying to read it before
-republishing the design system.
+**Option 2 with option 1 beside it.** `buildStamp()` in `runtime/build.mjs`
+puts `living-artifacts <sha> · built <date>` at the top of both generated
+files, and marks `+uncommitted-changes` when the tree is dirty, because a SHA
+that does not describe the build is worse than no SHA. The skill carries the
+habit under *Republishing the shared design system*: clean tree, green suite,
+read the stamp — and on a refusal, take the SHA off the live file's first line
+and `git diff` against it.
+
+Option 3, every document inlining its own runtime, was rejected: it ends the
+collision but gives up the property that made the shared artefact worth having,
+which is that one runtime fix reaches every document on its next publish.

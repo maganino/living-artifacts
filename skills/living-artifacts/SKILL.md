@@ -601,6 +601,32 @@ answer.
   sense; regenerating from the ops is Execution. Don't collapse them into one
   step — the read-back gate is where the round is won or lost.
 
+## Republishing the shared design system
+
+Every shell-form document copies `runtime.js` and `style.css` from one shared
+artefact at publish time, and `dist/` is gitignored — so **the published
+artefact is the only copy of what every living document is actually running.**
+More than one session republishes it.
+
+**Before republishing it, be able to say which commit you are publishing.**
+Build from a clean tree at `origin/main` with the suite green:
+
+```sh
+git status --short && npm test && node runtime/build.mjs ds dist/design-system
+head -1 dist/design-system/runtime.js      # living-artifacts <sha> · built <date>
+```
+
+Both generated files carry that line. If the build says
+`+uncommitted-changes`, the SHA does not describe what you are about to
+publish — commit first, or know exactly what you are shipping and say so in
+the publish `label`.
+
+**If the publish is refused**, the live artefact was built by another session.
+Read its `runtime.js`, take the SHA off its first line, and `git diff <that
+sha> HEAD -- runtime/` to see what the two builds differ by. That is the whole
+reason the stamp exists: without it the reconciliation is a 240 KB text
+compare.
+
 ## The house layout IS the Verbolia PRD template
 
 `house` is not a look inspired by the PRD template — it is that template's own

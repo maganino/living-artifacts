@@ -27,6 +27,7 @@
  */
 import { readFileSync, writeFileSync, mkdirSync, realpathSync, readdirSync } from 'node:fs';
 import { homedir } from 'node:os';
+import { execSync } from 'node:child_process';
 import { dirname, join, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -45,8 +46,30 @@ const embed = (model) => JSON.stringify(model, null, 2).replace(/</g, '\\u003c')
 /* One stylesheet for both looks: the house look for read mode, scoped under
    .house so it never leaks, then the editor chrome. Tokens come with the house
    sheet. */
+
+/* The commit a generated file was built from, so the published copy can say
+ * which source it came from. The shared design-system artifact is republished
+ * by hand from more than one session, and `dist/` is gitignored — so the
+ * published file is the only copy of what every document runs. Without this,
+ * reconciling two sessions' builds means diffing 240 KB of generated text by
+ * eye; with it, it is a `git diff` between two SHAs. */
+export function buildStamp() {
+  let sha = 'unknown', dirty = '';
+  try {
+    sha = execSync('git rev-parse --short HEAD', { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString().trim();
+    const status = execSync('git status --porcelain runtime templates', { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString().trim();
+    /* A dirty build is legitimate while developing and dangerous to publish:
+       its SHA does not describe it, so say so in the file itself. */
+    if (status) dirty = ' +uncommitted-changes';
+  } catch (e) { /* not a git checkout: say unknown rather than guess */ }
+  return `living-artifacts ${sha}${dirty} · built ${new Date().toISOString().slice(0, 10)}`;
+}
+
 export function styleBundle() {
-  return readFileSync(join(REPO, 'runtime/brand/tokens.css'), 'utf8') + '\n'
+  return `/* ${buildStamp()} */\n`
+    + readFileSync(join(REPO, 'runtime/brand/tokens.css'), 'utf8') + '\n'
     + readFileSync(join(REPO, 'runtime/house.css'), 'utf8') + '\n'
     + readFileSync(join(REPO, 'runtime/desk.css'), 'utf8') + '\n'
     + readFileSync(join(REPO, 'runtime/brief.css'), 'utf8') + '\n'
@@ -57,7 +80,7 @@ export function runtimeSource() {
   if (js.includes('<' + '/script')) {
     throw new Error('la-runtime.js contains a literal closing script tag — it cannot be re-emitted.');
   }
-  return js;
+  return `/* ${buildStamp()} */\n` + js;
 }
 
 /* --- the shared-runtime form --------------------------------------------
