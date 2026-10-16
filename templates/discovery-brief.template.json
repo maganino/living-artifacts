@@ -1,0 +1,24 @@
+{
+  "v": 1,
+  "name": "discovery-brief",
+  "title": "Discovery brief",
+  "layout": "brief",
+  "badge": "two-stage",
+  "source": "The prd-two-stage skill, Stage 1. Every `info` is that skill's own wording. Length: one to two pages — if it is longer, the solution has crept in.",
+  "sections": [
+    { "text": "Problem", "level": 2, "required": true,
+      "info": "Name the problem, not the solution. \"Admins can't tell which seats are unused\", not \"Seat utilisation dashboard\". If you catch yourself writing a feature name, the brief has already collapsed into a spec." },
+    { "text": "Desired outcome", "level": 2, "required": true,
+      "info": "A measurable change in behaviour or business result, with a current baseline where one exists. \"Reduce time-to-first-integration from X days to Y\" beats \"improve onboarding\". If the baseline is unknown, say [baseline unknown] — that is itself a finding worth surfacing." },
+    { "text": "Who has this problem", "level": 2, "required": true,
+      "info": "Which customers, which roles, how many, and how you know. Evidence, not an assumed persona." },
+    { "text": "The four risks", "level": 2, "required": true,
+      "info": "Value (will customers choose it?), usability (can they figure it out?), feasibility (can we build it?), viability (does it work for our business — legal, security, sales, support, pricing?). For each: the risk in one line, rated high, medium or low, and who you would test it with. Most briefs have one risk that dominates. Say which one. In B2B that is very often viability or value, rarely usability." },
+    { "text": "What we'll prototype and test", "level": 2, "required": true,
+      "info": "What would have to be true for this to work, and the cheapest thing that would tell you. Name the test, not the build." },
+    { "text": "No-gos", "level": 2, "required": true,
+      "info": "Borrowed from Shape Up. What we are deliberately not doing, and why. This prevents the scope argument from happening three weeks in. Two to five items." },
+    { "text": "Open questions", "level": 2, "required": true,
+      "info": "What is still unanswered, who owns each one, and what would settle it. A question with no owner is a question nobody is asking." }
+  ]
+}

@@ -67,8 +67,17 @@ line('hover chrome', `${d.querySelectorAll('.la-acts').length} of ${seen.size} a
 line('no js errors', jsErrors.length ? jsErrors.join('; ') : 'none', jsErrors.length === 0);
 line('every block has an id', String(model.blocks.every((b) => b.id)), model.blocks.every((b) => b.id));
 
-/* exercise a real round: tag, edit, save, and read the model back out */
-const first = model.blocks.find((b) => b.type === 'para');
+/* Exercise a real round: tag, edit, save, and read the model back out.
+   A document scaffolded from a template is all headings and no prose — every
+   section present and empty is the point of it — so the round is driven on
+   whatever block is actually addressable, and skipped when none is. A level-2
+   heading is a tab in the house layout and has no chrome to drive. */
+const first = model.blocks.find((b) => seen.has(b.id) && b.type !== 'divider' && b.type !== 'raw');
+if (!first) {
+  line('a round can be driven', 'no addressable block — nothing but tabs', false);
+  console.log(`\n  ${bad} failing — do not publish\n`);
+  process.exit(1);
+}
 const host = () => d.querySelector(`[data-block-id="${first.id}"]`);
 [...host().querySelectorAll('button')].find((b) => b.textContent.trim() === 'tag').click();
 const tp = d.querySelector('#la-tagpop');

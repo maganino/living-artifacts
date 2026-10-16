@@ -4,31 +4,78 @@
   "title": "Verbolia PRD",
   "layout": "house",
   "badge": "verbolia prd",
-  "source": "The verbolia-prd skill, references/prd-template.md. The wording of every `info` is that file's own, not a gloss over it.",
+  "source": "The verbolia-prd skill, references/prd-template.md — the five tabs and their wording, unchanged. The rigour of prd-two-stage Stage 2 is folded into the sections that already exist rather than added as new ones: the four risks frame Unknowns and risks, and acceptance criteria inside Requirements are written EARS-style. Discovery is a separate document, discovery-brief.template.json, and gates this one.",
   "sections": [
-    { "text": "Product thesis", "level": 2, "required": true,
-      "info": "Why this is worth building, what goes wrong today, what is built instead, and how we will know we were right." },
-    { "text": "Why now", "level": 3, "eyebrow": "Timing", "required": true,
-      "info": "The strategic pillar, the timing, and what this unblocks, each with a source. Where a prospect or a deal drives the work, name it. Quotes carry speaker, role, meeting and date." },
-    { "text": "Problem description", "level": 3, "eyebrow": "Problem", "required": true,
-      "info": "What goes wrong today, for whom, and what it costs, in the customer's framing. Give the magnitude in numbers where they exist and the mechanism that produces the cost. Where roles matter, define them here so the rest of the page can use the names freely." },
-    { "text": "Proposed solution", "level": 3, "eyebrow": "Solution", "required": true,
-      "info": "What is built, in the reader's language, before any field names. A diagram where the mechanism needs one. Then one block per option considered and dropped, with its reason and who decided, so it is not reopened in review." },
-    { "text": "Hypothesis and success measurement", "level": 3, "eyebrow": "Success", "required": true,
-      "info": "\"We believe that X will Y, because Z\", what it unblocks, and how we will know we are right. Then metrics as name and definition, and a baseline saying what to measure now so the metrics can be read later. A deal-driven initiative can legitimately have one metric, which is whether the deal progresses." },
-    { "text": "Unknowns and risks", "level": 3, "eyebrow": "Open", "required": true,
-      "info": "One row per open question with an owner, and one per risk with its importance and mitigation. Fill answers in as they arrive and keep the row, so the table doubles as the decision log. Cost, effort and performance questions belong here." },
-
-    { "text": "Requirements", "level": 2, "required": true,
-      "info": "One tab at full scope. Phasing is an outlier the PM and the IT lead settle between them. A feature uses the regular variant, an endpoint the API variant; an initiative can need both." },
-
-    { "text": "Testing", "level": 2, "required": true,
-      "info": "How this is proven to work before it ships, and who signs it off." },
-
-    { "text": "Monitoring", "level": 2, "required": true,
-      "info": "What is watched once it is live, with the threshold that means something is wrong and who is told." },
-
-    { "text": "GTM and adoption", "level": 2, "required": true,
-      "info": "How the people who need this find out it exists, and what has to be true for them to use it." }
+    {
+      "text": "Scope",
+      "level": 2,
+      "required": true,
+      "info": "What this does and does not cover. Carry the discovery brief's no-gos here verbatim: they are what prevents the scope argument three weeks in, and they only work if they survive the move. Two to five items, each with its reason."
+    },
+    {
+      "text": "Product thesis",
+      "level": 2,
+      "required": true,
+      "info": "Why this is worth building, what goes wrong today, what is built instead, and how we will know we were right."
+    },
+    {
+      "text": "Why now",
+      "level": 3,
+      "eyebrow": "Timing",
+      "required": true,
+      "info": "The strategic pillar, the timing, and what this unblocks, each with a source. Where a prospect or a deal drives the work, name it. Quotes carry speaker, role, meeting and date. Where a discovery brief preceded this, its desired outcome and baseline carry into this section rather than being restated differently."
+    },
+    {
+      "text": "Problem description",
+      "level": 3,
+      "eyebrow": "Problem",
+      "required": true,
+      "info": "What goes wrong today, for whom, and what it costs, in the customer's framing. Give the magnitude in numbers where they exist and the mechanism that produces the cost. Where roles matter, define them here so the rest of the page can use the names freely."
+    },
+    {
+      "text": "Proposed solution",
+      "level": 3,
+      "eyebrow": "Solution",
+      "required": true,
+      "info": "What is built, in the reader's language, before any field names. A diagram where the mechanism needs one. Then one block per option considered and dropped, with its reason and who decided, so it is not reopened in review. Where a discovery brief preceded this, what was prototyped and what it showed belongs here, with the test that produced it. A solution with no test behind it is a proposal, and should say so."
+    },
+    {
+      "text": "Hypothesis and success measurement",
+      "level": 3,
+      "eyebrow": "Success",
+      "required": true,
+      "info": "\"We believe that X will Y, because Z\", what it unblocks, and how we will know we are right. Then metrics as name and definition, and a baseline saying what to measure now so the metrics can be read later. A deal-driven initiative can legitimately have one metric, which is whether the deal progresses."
+    },
+    {
+      "text": "Unknowns and risks",
+      "level": 3,
+      "eyebrow": "Open",
+      "required": true,
+      "info": "One row per open question with an owner, and one per risk with its importance and mitigation. Fill answers in as they arrive and keep the row, so the table doubles as the decision log. Cost, effort and performance questions belong here. Frame the risks as the four: value (will customers choose it?), usability (can they figure it out?), feasibility (can we build it?), viability (does it work for our business — legal, security, sales, support, pricing?). Most initiatives have one that dominates; say which. In B2B that is very often viability or value, rarely usability. A risk carried over from the discovery brief keeps its rating, so the two documents can be read together."
+    },
+    {
+      "text": "Requirements",
+      "level": 2,
+      "required": true,
+      "info": "One tab at full scope. Phasing is an outlier the PM and the IT lead settle between them. A feature uses the regular variant, an endpoint the API variant; an initiative can need both. Write each acceptance criterion as observable behaviour in EARS form — WHEN <trigger>, the system SHALL <response> — so it can be tested rather than interpreted. Non-functional requirements belong in this tab too: performance, security, limits."
+    },
+    {
+      "text": "Testing",
+      "level": 2,
+      "required": true,
+      "info": "How this is proven to work before it ships, and who signs it off."
+    },
+    {
+      "text": "Monitoring",
+      "level": 2,
+      "required": true,
+      "info": "What is watched once it is live, with the threshold that means something is wrong and who is told."
+    },
+    {
+      "text": "GTM and adoption",
+      "level": 2,
+      "required": true,
+      "info": "How the people who need this find out it exists, and what has to be true for them to use it."
+    }
   ]
 }
