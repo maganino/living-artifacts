@@ -601,6 +601,33 @@ answer.
   sense; regenerating from the ops is Execution. Don't collapse them into one
   step — the read-back gate is where the round is won or lost.
 
+## Two things are called "template"
+
+A **layout** is how the page is drawn: `house`, `desk-research`, `brief`. This
+runtime owns them, and the next section is how to choose one.
+
+A **document template** is which sections a document has, what each is for, and
+which ones a format demands. That is content structure and it belongs to the
+skill that owns the format — `verbolia-prd`, `prd-two-stage`, a Jira spec. This
+repo owns none of them; `templates/` holds files vendored from skills that
+cannot yet carry their own.
+
+**Start a document from its format, not from a blank model:**
+
+```sh
+node "$LA/runtime/build.mjs" new <docId> --template <file> --title "..."
+```
+
+Every section the format names is present and empty, carrying the format's own
+`info` and a `badge` on the ones it demands. Fill them one at a time; a section
+left empty stays a visible decision rather than something forgotten.
+
+**Where a format already exists, the format wins and this runtime carries it.**
+Do not invent a structure for a document whose format is already written down,
+and do not let a format ship its own HTML: the sections are the format's, the
+page is this runtime's. A format that brings its own page is a template forked
+per document, which is the failure this repo exists to prevent.
+
 ## Choosing the template
 
 The look is always Verbolia and is not a decision. The **template** is the

@@ -269,6 +269,78 @@ export function knownTemplates() {
   return [...block[1].matchAll(/^\s*'([^']+)':/gm)].map((m) => m[1]);
 }
 
+
+/* --- document templates ----------------------------------------------------
+ * A LAYOUT says how a page is drawn: house, desk-research, brief. It lives in
+ * the runtime and this repo owns it.
+ *
+ * A DOCUMENT TEMPLATE says which sections a document has, what each one is FOR
+ * and which ones a format demands. That is content structure, and it belongs to
+ * whoever owns the domain — the Verbolia PRD format, the two-stage one, a Jira
+ * spec. The model has carried it all along: `info` holds the template's own
+ * description of a section, `badge` records which format demanded it, and an
+ * empty section keeps its heading so leaving it empty stays a visible decision.
+ * What was missing was a file, so a template was retyped from prose each time.
+ *
+ *   node runtime/build.mjs new <docId> --template <file> [--title "..."] [out.json]
+ *
+ * It writes a model whose sections are all present and all empty. */
+export function validateTemplate(t) {
+  const errs = [];
+  if (!t || typeof t !== 'object') return ['a template must be an object'];
+  if (!t.name) errs.push('name is required — it is what a document records as its format');
+  if (!Array.isArray(t.sections) || !t.sections.length) errs.push('sections must be a non-empty array');
+  if (t.layout && !knownTemplates().includes(t.layout))
+    errs.push(`layout "${t.layout}" is not a read-mode layout — known: ${knownTemplates().join(', ')}`);
+  const seen = new Set();
+  for (const [i, sec] of (t.sections ?? []).entries()) {
+    const at = `section ${i + 1}${sec && sec.text ? ` ("${sec.text}")` : ''}`;
+    if (!sec || !sec.text) { errs.push(`${at} has no text`); continue; }
+    const lvl = sec.level ?? 2;
+    if (![2, 3, 4].includes(lvl)) errs.push(`${at}: level must be 2, 3 or 4`);
+    if (i === 0 && lvl !== 2) errs.push(`${at}: the first section must be level 2 — it is the document's first tab`);
+    const key = `${lvl}:${sec.text}`;
+    if (seen.has(key)) errs.push(`${at}: two sections at the same level share a name`);
+    seen.add(key);
+  }
+  return errs;
+}
+
+const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
+
+/* Section ids are derived from the template and the section name, so the same
+ * template always produces the same ids: a document regenerated from it keeps
+ * every note, tag and change mark anchored where it was. */
+export function scaffold(t, { docId, title, thread, component } = {}) {
+  const used = new Set();
+  const blocks = t.sections.map((sec) => {
+    let id = `h-${slug(sec.text)}`;
+    let n = 2;
+    while (used.has(id)) id = `h-${slug(sec.text)}-${n++}`;
+    used.add(id);
+    const b = { id, type: 'heading', level: sec.level ?? 2, text: sec.text, tags: [], author: 'claude' };
+    if (sec.eyebrow) b.eyebrow = sec.eyebrow;
+    /* the template's OWN words, never a gloss written over them */
+    if (sec.info) b.info = sec.info;
+    /* badge what the format demands, leave what a document adds bare: the
+       contrast is the information */
+    if (sec.required && (sec.badge ?? t.badge)) b.badge = sec.badge ?? t.badge;
+    return b;
+  });
+  const model = {
+    v: 1,
+    docId: docId ?? slug(title ?? t.name),
+    title: title ?? t.title ?? t.name,
+    template: t.layout ?? 'house',
+    format: t.name,
+    rev: 0,
+    blocks
+  };
+  if (thread) model.thread = thread;
+  if (component) model.component = component;
+  return model;
+}
+
 /* --- validation: catch what only shows up after publishing ---------------- */
 export function validate(model) {
   const errs = [];
@@ -347,6 +419,29 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     const dir = output ?? join(REPO, 'dist', basename(input).replace(/\.(doc\.)?json$/, ''));
     writeShell(model, dir);
     console.log(`${dir}/  index.html + model.js (${(modelJs(model).length / 1024).toFixed(1)} KB, ${model.blocks.length} blocks, rev ${model.rev ?? 0}) + runtime.js + style.css`);
+  } else if (cmd === 'new') {
+    const args = process.argv.slice(3);
+    const flag = (name) => { const i = args.indexOf('--' + name); return i === -1 ? null : args[i + 1]; };
+    const positional = args.filter((a, i) =>
+      !a.startsWith('--') && !(i > 0 && args[i - 1].startsWith('--')));
+    const docId = positional[0];
+    if (!docId) { console.error('usage: build.mjs new <docId> --template <file> [--title "..."] [out.json]'); process.exit(1); }
+    const tplPath = flag('template');
+    if (!tplPath) { console.error('a document needs a template: --template <file>'); process.exit(1); }
+    const tpl = JSON.parse(readFileSync(tplPath, 'utf8'));
+    const terrs = validateTemplate(tpl);
+    if (terrs.length) { console.error('invalid template:\n  - ' + terrs.join('\n  - ')); process.exit(1); }
+    const model = scaffold(tpl, {
+      docId, title: flag('title'), thread: flag('thread'), component: flag('component')
+    });
+    const merrs = validate(model);
+    if (merrs.length) { console.error('the template produced an invalid model:\n  - ' + merrs.join('\n  - ')); process.exit(1); }
+    const out = positional[1] ?? join(REPO, 'docs', docId, docId + '.doc.json');
+    mkdirSync(dirname(out), { recursive: true });
+    writeFileSync(out, JSON.stringify(model, null, 2) + '\n');
+    const demanded = model.blocks.filter((b) => b.badge).length;
+    console.log(`${out}  (${model.blocks.length} sections from "${tpl.name}", ${demanded} the format demands,`
+      + ` layout ${model.template}, all empty)`);
   } else if (cmd === 'brand') {
     const repo = brandRepo(input);
     const vendored = vendorBrand(repo);

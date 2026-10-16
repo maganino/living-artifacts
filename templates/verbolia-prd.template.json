@@ -1,0 +1,34 @@
+{
+  "v": 1,
+  "name": "verbolia-prd",
+  "title": "Verbolia PRD",
+  "layout": "house",
+  "badge": "verbolia prd",
+  "source": "The verbolia-prd skill, references/prd-template.md. The wording of every `info` is that file's own, not a gloss over it.",
+  "sections": [
+    { "text": "Product thesis", "level": 2, "required": true,
+      "info": "Why this is worth building, what goes wrong today, what is built instead, and how we will know we were right." },
+    { "text": "Why now", "level": 3, "eyebrow": "Timing", "required": true,
+      "info": "The strategic pillar, the timing, and what this unblocks, each with a source. Where a prospect or a deal drives the work, name it. Quotes carry speaker, role, meeting and date." },
+    { "text": "Problem description", "level": 3, "eyebrow": "Problem", "required": true,
+      "info": "What goes wrong today, for whom, and what it costs, in the customer's framing. Give the magnitude in numbers where they exist and the mechanism that produces the cost. Where roles matter, define them here so the rest of the page can use the names freely." },
+    { "text": "Proposed solution", "level": 3, "eyebrow": "Solution", "required": true,
+      "info": "What is built, in the reader's language, before any field names. A diagram where the mechanism needs one. Then one block per option considered and dropped, with its reason and who decided, so it is not reopened in review." },
+    { "text": "Hypothesis and success measurement", "level": 3, "eyebrow": "Success", "required": true,
+      "info": "\"We believe that X will Y, because Z\", what it unblocks, and how we will know we are right. Then metrics as name and definition, and a baseline saying what to measure now so the metrics can be read later. A deal-driven initiative can legitimately have one metric, which is whether the deal progresses." },
+    { "text": "Unknowns and risks", "level": 3, "eyebrow": "Open", "required": true,
+      "info": "One row per open question with an owner, and one per risk with its importance and mitigation. Fill answers in as they arrive and keep the row, so the table doubles as the decision log. Cost, effort and performance questions belong here." },
+
+    { "text": "Requirements", "level": 2, "required": true,
+      "info": "One tab at full scope. Phasing is an outlier the PM and the IT lead settle between them. A feature uses the regular variant, an endpoint the API variant; an initiative can need both." },
+
+    { "text": "Testing", "level": 2, "required": true,
+      "info": "How this is proven to work before it ships, and who signs it off." },
+
+    { "text": "Monitoring", "level": 2, "required": true,
+      "info": "What is watched once it is live, with the threshold that means something is wrong and who is told." },
+
+    { "text": "GTM and adoption", "level": 2, "required": true,
+      "info": "How the people who need this find out it exists, and what has to be true for them to use it." }
+  ]
+}

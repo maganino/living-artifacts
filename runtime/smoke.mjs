@@ -5,7 +5,7 @@
  * itself again, unchanged. */
 import { JSDOM } from 'jsdom';
 import { readFileSync } from 'node:fs';
-import { buildBody, extractModel, validate } from './build.mjs';
+import { buildBody, extractModel, validate, validateTemplate, scaffold } from './build.mjs';
 
 let failed = 0;
 const ok = (name, cond, extra) => {
@@ -1495,6 +1495,49 @@ console.log('\npublish: a read-only copy of this version, with what changed on t
   /* nothing was written into the model: the changelog is derived */
   ok('the changelog is not stored on the model',
     !('changelog' in e.w.__la.model()) && !e.w.__la.model().publicMarks);
+}
+
+
+/* ------------------------------------------------------------------------- */
+console.log('\ndocument templates: a format declared once, not retyped');
+{
+  const tpl = {
+    v: 1, name: 'test-format', title: 'Test format', layout: 'house', badge: 'test format',
+    sections: [
+      { text: 'First tab', level: 2, required: true, info: 'What this tab is for.' },
+      { text: 'A section', level: 3, eyebrow: 'Label', required: true, info: 'The format\u2019s own words.' },
+      { text: 'Something this document added', level: 3 },
+      { text: 'Second tab', level: 2, required: true }
+    ]
+  };
+  eq('a good template validates', validateTemplate(tpl).length, 0);
+
+  const m = scaffold(tpl, { docId: 'scaffolded', title: 'A scaffolded document' });
+  eq('every section becomes a heading', m.blocks.length, 4);
+  eq('and nothing else: the sections are empty', m.blocks.filter((b) => b.type !== 'heading').length, 0);
+  eq('the layout comes from the template', m.template, 'house');
+  eq('and the document records its format', m.format, 'test-format');
+  eq('guidance is the template\u2019s own words', m.blocks[1].info, 'The format\u2019s own words.');
+  eq('a section the format demands is badged', m.blocks[1].badge, 'test format');
+  ok('one the document added is not', !m.blocks[2].badge);
+  eq('the label rides with it', m.blocks[1].eyebrow, 'Label');
+  ok('the model it produces is valid', validate(m).length === 0, validate(m).join('; '));
+
+  /* ids are derived, so regenerating keeps every note and mark anchored */
+  const again = scaffold(tpl, { docId: 'scaffolded', title: 'A scaffolded document' });
+  ok('the same template always produces the same ids',
+    m.blocks.map((b) => b.id).join() === again.blocks.map((b) => b.id).join());
+
+  const dupes = scaffold({ ...tpl, sections: [
+    { text: 'Tab', level: 2 }, { text: 'Same', level: 3 }, { text: 'Same', level: 4 }
+  ] }, { docId: 'd', title: 'D' });
+  eq('two sections that slug alike still get unique ids', new Set(dupes.blocks.map((b) => b.id)).size, 3);
+
+  const bad = validateTemplate({ v: 1, name: 'bad', layout: 'deck', sections: [{ text: 'A', level: 3 }] });
+  ok('an unknown layout is refused', bad.some((e) => /not a read-mode layout/.test(e)));
+  ok('and a template that does not open with a tab', bad.some((e) => /first section must be level 2/.test(e)));
+  ok('a template with no sections is refused',
+    validateTemplate({ v: 1, name: 'empty', sections: [] }).some((e) => /non-empty/.test(e)));
 }
 
 console.log(failed ? `\n${failed} failing\n` : '\nall green\n');
