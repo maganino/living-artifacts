@@ -1,6 +1,6 @@
 ---
 type: thread
-status: tray
+status: done
 area: living-artifacts
 topic: brand
 created: 2026-10-16
@@ -54,7 +54,19 @@ document written under it carries the syntax.
 - The icons are `currentColor` throughout, so there is no light and dark
   variant to keep in step.
 
-## Next step
+## Decided and built, 16 October 2026
 
-Put the three options above to Mina with a recommendation. Do not build first:
-the syntax is the decision.
+**Option 1: a field on a block.** `icon` on a heading or a callout, validated
+at build time against `runtime/brand/icons.json`, with an unknown name failing
+the build and printing the whole set.
+
+Inline syntax was rejected rather than deferred: the places an icon earns its
+keep are structural — a callout, a card, a stat tile, a section head — and
+those are all blocks. A `:name:` syntax would also collide with text that
+legitimately contains colons, which this repo's documents are full of
+(`db:`, `op:`). If a genuine inline need appears it can be added later without
+changing anything written under the field; the reverse would not be true.
+
+The size constraint holds: only the icons a document names travel with it,
+collected at build time into `window.__laIcons` beside the model. The runtime
+still carries exactly one, `info`.

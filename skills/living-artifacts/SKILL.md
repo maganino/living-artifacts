@@ -280,6 +280,24 @@ render as a `<>` the reader can click to start writing. A missing section is
 invisible and gets forgotten; an empty one is a visible decision, and the reader
 is the one who should make it.
 
+## Icons name what a section is about
+
+`icon` on a **heading** or a **callout** draws one of the Verbolia icons beside
+its title. The set is a domain set — `sitemap`, `robot`, `bounce`,
+`broken-link`, `conversion-funnel`, `keyword`, `server`, `speedometer`,
+`workflow` and the rest — so an icon says what the section is *about*, never
+what a control does. `node "$LA/runtime/build.mjs" brand` lists them, and a
+name that is not in the set fails the build and prints the whole set.
+
+Every icon is `currentColor`, so it takes the colour and size of the heading it
+sits in and there is no light and dark variant to keep in step.
+
+**Only the icons a document names travel with it.** They are collected from the
+model at build time and emitted beside it. The runtime carries one icon, `info`,
+which is the only one that is chrome. Do not put an icon on every heading: the
+set earns its keep where a reader scans for a subject, and a page where
+everything is iconed is a page where nothing is.
+
 ## Diagrams and pictures
 
 A document that cannot hold a picture quietly becomes a document that argues

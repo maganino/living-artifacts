@@ -49,6 +49,9 @@ later round. Never renumber, never reuse a dead id.
                            // clicking the chosen chip again clears it. The
                            // chosen chip is the filled one, and the
                            // recommendation falls back to a ring.
+  "icon": "sitemap",       // HEADINGS and CALLOUTS: one of the brand icons, drawn
+                           // beside the title. Validated at build time, and only
+                           // the icons a document names travel with it.
   "touched": { "rev": 7, "by": "viewer" }          // amber until Claude's next rebuild
   // or, when Claude answered a note:
   // "touched": { "rev": 8, "by": "claude", "spans": ["calendar weeks"] }

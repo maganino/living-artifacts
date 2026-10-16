@@ -88,8 +88,39 @@ export function runtimeSource() {
  * are the design system's files, copied server-side into every document at
  * publish, so they are shipped once and never re-read. The page saves
  * model.js and nothing else. */
+
+/* --- icons a document uses -------------------------------------------------
+ * The brand set is 43 icons and the runtime is inlined into every document, so
+ * the runtime carries only the one it draws as chrome. An icon a DOCUMENT names
+ * travels with that document instead: collected from the model at build time,
+ * validated against the set, and emitted beside the model. A document pays for
+ * the icons it uses and for no others. */
+export function documentIcons(model) {
+  const want = new Set();
+  for (const b of model.blocks ?? []) if (b.icon) want.add(String(b.icon));
+  if (!want.size) return {};
+  let all;
+  try { all = JSON.parse(readFileSync(join(REPO, 'runtime/brand/icons.json'), 'utf8')); }
+  catch (e) { throw new Error('runtime/brand/icons.json is missing — run `build.mjs brand`'); }
+  const out = {}, unknown = [];
+  for (const name of [...want].sort()) {
+    if (all[name]) out[name] = all[name];
+    else unknown.push(name);
+  }
+  if (unknown.length) {
+    throw new Error(`no such icon: ${unknown.join(', ')}.\n`
+      + `The set is: ${Object.keys(all).sort().join(', ')}`);
+  }
+  return out;
+}
+export function iconsJs(model) {
+  const icons = documentIcons(model);
+  return Object.keys(icons).length
+    ? 'window.__laIcons = ' + JSON.stringify(icons) + ';\n' : '';
+}
+
 export function modelJs(model) {
-  return 'window.__laModel = ' + JSON.stringify(model, null, 1) + ';\n';
+  return iconsJs(model) + 'window.__laModel = ' + JSON.stringify(model, null, 1) + ';\n';
 }
 export function shellHtml(model) {
   return `<!doctype html>
@@ -162,6 +193,11 @@ function iconSheet() {
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:18px 10px;margin-top:20px">${cells}</div>`;
 }
 
+/* The single-file form carries the same icons the shell form puts in model.js. */
+function iconsScript(model) {
+  const js = iconsJs(model);
+  return js ? `${S}>\n${js}${E}\n` : '';
+}
 export function buildBody(model) {
   const css = styleBundle();
   const js = runtimeSource();
@@ -172,7 +208,7 @@ ${css}
 ${S} type="application/json" id="${MODEL_EL}">
 ${embed(model)}
 ${E}
-<div class="la-shell"><div id="la-root"></div></div>
+${iconsScript(model)}<div class="la-shell"><div id="la-root"></div></div>
 ${S} id="${RUNTIME_EL}">
 ${js}
 ${E}
@@ -432,7 +468,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     }
     const out = output ?? join(REPO, 'dist', basename(input).replace(/\.(doc\.)?json$/, '') + '.html');
     mkdirSync(dirname(out), { recursive: true });
-    const body = buildBody(model);
+    let body;
+    try { body = buildBody(model); }
+    catch (e) { console.error(e.message); process.exit(1); }
     writeFileSync(out, body);
     console.log(`${out}  (${(body.length / 1024).toFixed(1)} KB, ${model.blocks.length} blocks, rev ${model.rev ?? 0})`);
   } else if (cmd === 'shell') {
@@ -440,7 +478,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     const errs = validate(model);
     if (errs.length) { console.error('invalid document model:\n  - ' + errs.join('\n  - ')); process.exit(1); }
     const dir = output ?? join(REPO, 'dist', basename(input).replace(/\.(doc\.)?json$/, ''));
-    writeShell(model, dir);
+    try { writeShell(model, dir); }
+    catch (e) { console.error(e.message); process.exit(1); }
     console.log(`${dir}/  index.html + model.js (${(modelJs(model).length / 1024).toFixed(1)} KB, ${model.blocks.length} blocks, rev ${model.rev ?? 0}) + runtime.js + style.css`);
   } else if (cmd === 'new') {
     const args = process.argv.slice(3);

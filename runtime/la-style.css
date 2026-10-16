@@ -978,3 +978,8 @@ body.la-placing { cursor: copy; }
   text-decoration-color: var(--changed, #6E56CF); }
 .la-changelog .who { margin-left: 8px; font-size: 0.72rem; color: var(--muted, #6D6D6D); }
 @media print { .la-changelog { break-inside: avoid; } }
+
+/* An icon a document names, beside the thing it labels. It is currentColor and
+   1em, so it takes the colour and size of its heading or tag without asking. */
+.house .la-icon-head, .house .la-icon-tag { display: inline-block; vertical-align: -0.12em; margin-right: 0.45em; }
+.house .la-icon-tag { width: 0.95em; height: 0.95em; }

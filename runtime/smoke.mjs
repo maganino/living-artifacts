@@ -5,7 +5,7 @@
  * itself again, unchanged. */
 import { JSDOM } from 'jsdom';
 import { readFileSync } from 'node:fs';
-import { buildBody, extractModel, validate, validateTemplate, scaffold } from './build.mjs';
+import { buildBody, extractModel, validate, validateTemplate, scaffold, documentIcons } from './build.mjs';
 
 let failed = 0;
 const ok = (name, cond, extra) => {
@@ -1560,6 +1560,45 @@ console.log('\nthe house PRD template: every component it has, this runtime draw
   const plain = boot(wrap(buildBody({ ...m, blocks: [m.blocks[0], { ...m.blocks[1], variant: undefined }] }), 'Plain'), { use: async () => null });
   await settle();
   ok('a plain table does not', !plain.d.querySelector('table.roles-tbl'));
+}
+
+
+/* ------------------------------------------------------------------------- */
+console.log('\nicons a document names: it pays for those and no others');
+{
+  const m = {
+    v: 1, docId: 'icons', title: 'Icons', template: 'desk-research', rev: 0,
+    blocks: [
+      { id: 'b-h', type: 'heading', level: 2, text: 'Crawl', tags: [] },
+      { id: 'b-s', type: 'heading', level: 3, eyebrow: 'Evidence', text: 'The sitemap is stale', icon: 'sitemap', tags: [] },
+      { id: 'b-c', type: 'callout', title: 'Bot traffic', icon: 'robot', text: 'Three registries.', tags: [] }
+    ]
+  };
+  const picked = documentIcons(m);
+  eq('only the icons the model names are collected', Object.keys(picked).sort().join(), 'robot,sitemap');
+
+  const html = buildBody(m);
+  /* the runtime mentions window.__laIcons when it reads it, so match the
+     ASSIGNMENT, which only the document's own icon script makes */
+  ok('they travel with the document', /window\.__laIcons = /.test(html));
+  ok('and the other 41 do not', !/conversion-funnel|shopping-cart/.test(html));
+
+  const e = boot(wrap(html, 'Icons'), { use: async () => null });
+  await settle();
+  ok('an icon on a heading is drawn', !!e.d.querySelector('h3 svg.la-icon, h2 svg.la-icon'));
+  ok('an icon on a callout is drawn', !!e.d.querySelector('.notebox svg.la-icon, .blind svg.la-icon'));
+  ok('it is currentColor, so it needs no theme variant',
+    /currentColor/.test(e.d.querySelector('svg.la-icon').innerHTML));
+
+  /* a document with no icons carries none of them */
+  ok('a document that names none carries none',
+    !/window\.__laIcons = /.test(buildBody({ ...m, blocks: [m.blocks[0]] })));
+
+  let refused = '';
+  try { documentIcons({ blocks: [{ id: 'x', icon: 'sitemapp' }] }); }
+  catch (err) { refused = err.message; }
+  ok('a name that is not in the set is refused', /no such icon: sitemapp/.test(refused));
+  ok('and the refusal lists the set', /conversion-funnel/.test(refused));
 }
 
 console.log(failed ? `\n${failed} failing\n` : '\nall green\n');

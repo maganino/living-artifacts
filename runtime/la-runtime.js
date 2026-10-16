@@ -2336,7 +2336,8 @@
       case 'table': return rTableInner(b);
       case 'callout':
         return '<div class="deferred" data-variant="' + esc(b.variant || 'note') + '"><span class="tag">'
-          + esc(b.title || 'Note') + '</span><div>' + rText(b, b.text || '').replace(/\n/g, '<br>') + '</div></div>';
+          + icon(b.icon, 'la-icon-tag') + esc(b.title || 'Note') + '</span><div>'
+          + rText(b, b.text || '').replace(/\n/g, '<br>') + '</div></div>';
       case 'code': return '<pre class="json"><code>' + esc(b.text || '') + '</code></pre>';
       case 'mermaid': return '<div class="diagram-wrap"><figure><pre class="mermaid">' + esc(b.text || '') + '</pre></figure></div>';
       case 'figure': {
@@ -2403,7 +2404,7 @@
   function rSubHead(b) {
     var info = b.info ? '<p>' + inline(b.info) + '</p>' : '';
     var badge = b.badge ? '<span class="la-badge" title="This section comes from ' + esc(b.badge) + '">' + esc(b.badge) + '</span>' : '';
-    return wrapBlk(b, '<div class="sub-head" id="' + esc(b.id) + '"><h3>' + rText(b, b.text || '') + badge + '</h3>' + info + '</div>');
+    return wrapBlk(b, '<div class="sub-head" id="' + esc(b.id) + '"><h3>' + icon(b.icon, 'la-icon-head') + rText(b, b.text || '') + badge + '</h3>' + info + '</div>');
   }
   function rSectionBody(sec) {
     var eb = sec.eyebrow.toLowerCase(), blocks = sec.blocks, out = [], g;
@@ -2505,7 +2506,8 @@
         ? '<span class="la-badge" title="This section comes from ' + esc(sec.block.badge) + '">'
           + esc(sec.block.badge) + '</span>' : '';
       var inner = '<div class="sec-head">' + (sec.eyebrow ? '<div class="eyebrow">' + esc(sec.eyebrow) + '</div>' : '')
-        + (sec.claim ? '<h2>' + (sec.block ? rText(sec.block, sec.claim) : inline(sec.claim)) + sbadge + '</h2>' : '') + sinfo + '</div>';
+        + (sec.claim ? '<h2>' + (sec.block ? icon(sec.block.icon, 'la-icon-head') : '')
+            + (sec.block ? rText(sec.block, sec.claim) : inline(sec.claim)) + sbadge + '</h2>' : '') + sinfo + '</div>';
       head = sec.block ? wrapBlk(sec.block, inner, 'la-sechead' + (sec.internal ? ' la-internal' : '')) : inner;
     }
     var bid = sec.bid ? '<span id="' + esc(sec.bid) + '"></span>' : '';
@@ -2616,8 +2618,11 @@
   var ICONS = {
  "info": "<path fill=\"currentColor\" stroke=\"none\" d=\"M17.37,6.12c-3.25-2.96-8.28-2.73-11.25.51-2.96,3.25-2.73,8.28.51,11.25,3.25,2.96,8.28,2.73,11.25-.51,2.96-3.25,2.73-8.28-.51-11.25ZM12.75,15.49c0,.41-.34.75-.75.75s-.75-.34-.75-.75v-4.28c0-.41.34-.75.75-.75s.75.34.75.75v4.28ZM12.69,8.8c-.04.09-.09.17-.16.24-.14.14-.33.22-.53.22s-.39-.08-.53-.22c-.07-.07-.13-.15-.17-.24-.03-.09-.05-.19-.05-.29s.02-.2.05-.29c.04-.09.1-.17.17-.24.28-.28.78-.28,1.06,0,.07.07.12.15.16.24.04.09.06.19.06.29s-.02.2-.06.29Z\"/>"
 };
+  /* Chrome icons travel in the runtime; an icon a DOCUMENT names travels with
+     the document, so a document pays only for the icons it uses. */
   function icon(name, cls) {
-    var g = ICONS[name];
+    var doc = (typeof window !== 'undefined' && window.__laIcons) || {};
+    var g = ICONS[name] || doc[name];
     if (!g) return '';
     return '<svg class="la-icon' + (cls ? ' ' + cls : '') + '" viewBox="0 0 24 24"'
       + ' aria-hidden="true" focusable="false">' + g + '</svg>';
@@ -2826,9 +2831,9 @@
   function dkCallout(b) {
     var v = b.variant || 'note', title = b.title || '';
     if (v === 'decision') return dkDecision(b);
-    if (v === 'warning' || v === 'excluded') return '<div class="blind"><h3>' + rText(b, title) + '</h3>' + dkParas(b, b.text) + '</div>';
+    if (v === 'warning' || v === 'excluded') return '<div class="blind"><h3>' + icon(b.icon, 'la-icon-head') + rText(b, title) + '</h3>' + dkParas(b, b.text) + '</div>';
     if (/not part of/i.test(title) || /^round/i.test(title)) return '<div class="roundnote"><h3>' + rText(b, title) + '</h3>' + dkParas(b, b.text) + '</div>';
-    return '<div class="notebox">' + (title ? '<h3>' + rText(b, title) + '</h3>' : '') + dkParas(b, b.text) + '</div>';
+    return '<div class="notebox">' + (title ? '<h3>' + icon(b.icon, 'la-icon-head') + rText(b, title) + '</h3>' : '') + dkParas(b, b.text) + '</div>';
   }
   function dkBlock(b, eb) {
     if (b.type === 'table') return wrapBlk(b, dkTable(b));
