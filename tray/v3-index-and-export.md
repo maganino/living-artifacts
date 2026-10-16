@@ -1,6 +1,6 @@
 ---
 type: thread
-status: decided
+status: todo
 area: living-artifacts
 topic: roadmap
 created: 2026-09-16
@@ -27,7 +27,26 @@ and self-service creation, but one URL means one version history, sharing one
 document means sharing all of them, and deleting it erases every journal at
 once. The blast radius is the problem, not the ergonomics.
 
-**Still to build.** Nothing yet — this is the decision, not the work.
+**Still to build, as of 16 October 2026.** Nothing. The decision is made and no
+code exists for it.
+
+Next steps, in order:
+
+1. Decide what the index page shows per document. Candidates, all already in
+   the `tray/` artefact records: title, URL, status, source seed, the date it
+   was last published, and the *Shared versions* rows. Nothing else is
+   available without opening each artefact, which the index must not do.
+2. Write a `build.mjs index` that reads `tray/*.md` with `type: artefact` and
+   produces a `.doc.json` — the index is itself a living document, which means
+   it gets the same layouts and the same Publish button for free.
+   `desk-research` is the likely layout: it is a long page with a table.
+3. Publish it once, record its URL in a `tray/` record of its own, and
+   republish it whenever a document is published or finished. That republish
+   step belongs in the living-artifacts skill next to "Record the URL".
+
+**The staleness is by design and must be stated on the page itself**: the index
+is a snapshot taken when Claude last published something, not a query. A reader
+who thinks it is live will trust a stale row.
 
 ## Correction (2026-09-16): the original plan cannot work
 

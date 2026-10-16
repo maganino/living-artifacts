@@ -1,6 +1,6 @@
 ---
 type: thread
-status: decided
+status: wip
 area: living-artifacts
 topic: tooling
 created: 2026-09-16
@@ -13,6 +13,25 @@ Asked for 2026-09-16: creating a new living document should be an independent
 tool, still callable from a skill when that helps — not something that requires
 me to be in the loop every time.
 
+
+## Built on 16 October 2026: the scaffold, not yet the shell
+
+`build.mjs new` exists and is tested:
+
+```sh
+node runtime/build.mjs new <docId> --template templates/<name>.template.json \
+  --title "What it is called"
+```
+
+It writes `docs/<docId>/<docId>.doc.json` with every section the format names,
+present and empty, carrying the format's own `info` and a `badge` on the ones
+it demands. Section ids are derived from the template, so regenerating a
+document from the same template keeps notes and marks anchored.
+
+**What is still missing from the decision below:** it does not build the shell
+or open it locally. Today you run `build.mjs shell` yourself afterwards. The
+next action is one step in the CLI: after writing the seed, call `writeShell`
+and print the local path.
 
 ## Decided 15 October 2026: accept the split, make starting cheap
 
