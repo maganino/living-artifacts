@@ -6,7 +6,7 @@
   "thread": "living-artifacts",
   "component": "Prototype",
   "template": "house",
-  "rev": 0,
+  "rev": 3,
   "style": {
     "directives": [
       {
@@ -35,7 +35,7 @@
       "type": "prototype",
       "html": "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\">\n<style>\n  :root{--black:#000;--anth:#454545;--g500:#6d6d6d;--g300:#d1d1d1;--g100:#f6f6f6;--orange:#fc6e1c;--ostrong:#a23f06;--obg:#fff1e8}\n  body{margin:0;font:15px/1.5 Lexend,-apple-system,\"Segoe UI\",sans-serif;color:var(--anth);background:var(--g100);padding:24px}\n  .proto{display:grid;grid-template-columns:minmax(260px,360px) 1fr;gap:24px;align-items:start}\n  .card{background:#fff;border:1px solid var(--g300);border-radius:16px;padding:22px 24px;box-shadow:0 1px 2px rgba(69,69,69,.06),0 6px 20px rgba(69,69,69,.05)}\n  h4{margin:0 0 14px;font-size:1.05rem;font-weight:600;color:var(--black)}\n  input{width:100%;box-sizing:border-box;font:inherit;padding:10px 12px;border:1px solid var(--g300);border-radius:999px;margin-bottom:10px}\n  input:focus{outline:2px solid var(--black);outline-offset:-1px}\n  .btn{display:inline-block;font:inherit;font-weight:600;padding:10px 18px;border-radius:999px;border:0;cursor:pointer;background:var(--black);color:#fff}\n  .btn.go{background:var(--orange);color:#fff}\n  .muted{color:var(--g500);font-size:.86rem;margin:8px 0 0}\n  .try{font-family:ui-monospace,Menlo,monospace;font-size:.78rem;color:var(--g500);margin:0 0 10px}\n  .try code{cursor:pointer;text-decoration:underline;text-underline-offset:3px}\n  .why{border:1px solid var(--g300);border-left:3px solid var(--orange);border-radius:12px;padding:12px 14px;background:#fff;font-size:.9rem}\n  .why.unknown{border-left-color:var(--g300)}\n  [hidden]{display:none!important}\n</style></head><body>\n<div class=\"proto\">\n  <div class=\"card\">\n    <h4 data-la-text=\"title\">Log in to your Verbolia account</h4>\n    <input id=\"pe\" type=\"email\" autocomplete=\"off\" data-la-text=\"email\" aria-label=\"Your email\">\n    <div id=\"s-none\"><p class=\"muted\" data-la-text=\"nothing-yet\">Nothing else is asked yet.</p></div>\n    <div id=\"s-known\" hidden>\n      <button class=\"btn go\" type=\"button\"><span data-la-text=\"continue-with\">Continue with</span> <span id=\"k-name\"></span></button>\n    </div>\n    <div id=\"s-pw\" hidden>\n      <input type=\"password\" data-la-text=\"password\" aria-label=\"Your password\">\n      <p class=\"muted\" data-la-text=\"forgot\">Forgot your password?</p>\n      <button class=\"btn\" type=\"button\" data-la-text=\"login\">Log In</button>\n      <p class=\"muted\" data-la-text=\"no-account\">Don’t have an account? Contact us</p>\n    </div>\n  </div>\n  <div>\n    <p class=\"try\"><span data-la-text=\"try\">try:</span>\n      <code data-fill=\"anna@dior.com\">anna@dior.com</code> &nbsp;\n      <code data-fill=\"anna@christiandior.com\">anna@christiandior.com</code> &nbsp;\n      <code data-fill=\"sam@anagency.example\">sam@anagency.example</code></p>\n    <div id=\"w-known\" class=\"why\" hidden><b id=\"w-name\"></b> <span data-la-text=\"why-known\">signs them in on their own system, with their own second factor, then returns them here. No Verbolia password is involved and none is set.</span></div>\n    <div id=\"w-unknown\" class=\"why unknown\" hidden><span data-la-text=\"why-unknown-a\">We do not recognise</span> <b id=\"w-domain\"></b><span data-la-text=\"why-unknown-b\">, so the screen they already know appears, unchanged.</span></div>\n  </div>\n</div>\n<script>\n(function(){\n  var known={\"dior.com\":\"Dior\",\"christiandior.com\":\"Dior\",\"stradivarius.com\":\"Stradivarius\",\"kiabi.com\":\"Kiabi\",\"mmfg.it\":\"Max Mara\",\"maxmara.it\":\"Max Mara\"};\n  var $=function(id){return document.getElementById(id)};\n  var input=$(\"pe\");\n  function show(id,on){$(id).hidden=!on}\n  function render(){\n    var v=(input.value||\"\").trim().toLowerCase(),at=v.indexOf(\"@\"),domain=at>-1?v.slice(at+1):\"\",c=known[domain];\n    show(\"s-none\",!at||!domain);show(\"s-known\",!!c);show(\"s-pw\",!!(at&&domain&&!c));\n    show(\"w-known\",!!c);show(\"w-unknown\",!!(at&&domain&&!c));\n    if(c){$(\"k-name\").textContent=c;$(\"w-name\").textContent=c}\n    if(at&&domain&&!c){$(\"w-domain\").textContent=domain}\n  }\n  input.addEventListener(\"input\",render);\n  document.querySelectorAll(\"[data-fill]\").forEach(function(el){el.addEventListener(\"click\",function(){input.value=el.getAttribute(\"data-fill\");render();input.focus()})});\n  render();\n})();\n</script></body></html>",
       "labels": {
-        "title": "Log in to your Verbolia account",
+        "title": "Log in to ur Verbolia account",
         "email": "Your email",
         "nothing-yet": "Nothing else is asked yet.",
         "continue-with": "Continue with",
@@ -61,7 +61,12 @@
         }
       ],
       "note": "From thread a5f075ed, 4 September: the known-domain button should keep orange like the login one, not green. Applied in the sample — the button is `--orange`. The thread stays open on the old copy because it was never sent to Claude.",
-      "noteDone": "Applied: the hand-off button is brand orange. Left the thread open on the old artefact; it cannot be resolved from here."
+      "noteDone": "Applied: the hand-off button is brand orange. Left the thread open on the old artefact; it cannot be resolved from here.",
+      "author": "viewer",
+      "touched": {
+        "rev": 1,
+        "by": "viewer"
+      }
     },
     {
       "id": "b-screen-note",
@@ -164,6 +169,50 @@
       "variant": "warning",
       "title": "Not done here, on purpose",
       "text": "The real prototype still lives in `sso-client-scoping`, and its seven threads stay open on the old artefact because none was sent to Claude — they cannot be resolved from a session. Migrating it for real is: this same screen file into that repo's `docs/`, the threads applied against the real plan, and the old artefact's record pointed at the new URL."
+    }
+  ],
+  "tagColors": {
+    "test": 8,
+    "verify": 28,
+    "seed-next": 48
+  },
+  "updated": "1 edit by viewer · 2026-10-19",
+  "journal": [
+    {
+      "rev": 1,
+      "at": "2026-10-16T13:33:46.682Z",
+      "by": "viewer",
+      "ops": [
+        {
+          "op": "edit",
+          "block": "b-proto",
+          "before": "caption: After: one field, then either the employer's button or the password form they already know\ntitle: Log in to your Verbolia account\nemail: Your email\nnothing-yet: Nothing else is asked yet.\ncontinue-with: Continue with\npassword: Your password\nforgot: Forgot your password?\nlogin: Log In\nno-account: Don’t have an account? Contact us\ntry: try:\nwhy-known: signs them in on their own system, with their own second factor, then returns them here. No Verbolia password is involved and none is set.\nwhy-unknown-a: We do not recognise\nwhy-unknown-b: , so the screen they already know appears, unchanged.",
+          "after": "caption: After: one field, then either the employer's button or the password form they already know\ntitle: Log in to ur Verbolia account\nemail: Your email\nnothing-yet: Nothing else is asked yet.\ncontinue-with: Continue with\npassword: Your password\nforgot: Forgot your password?\nlogin: Log In\nno-account: Don’t have an account? Contact us\ntry: try:\nwhy-known: signs them in on their own system, with their own second factor, then returns them here. No Verbolia password is involved and none is set.\nwhy-unknown-a: We do not recognise\nwhy-unknown-b: , so the screen they already know appears, unchanged."
+        }
+      ]
+    },
+    {
+      "rev": 2,
+      "at": "2026-10-19T15:33:34.287Z",
+      "by": "viewer",
+      "ops": [
+        {
+          "op": "note",
+          "block": "b-screen-note",
+          "text": "dwdvsv"
+        }
+      ]
+    },
+    {
+      "rev": 3,
+      "at": "2026-10-19T15:33:48.045Z",
+      "by": "viewer",
+      "ops": [
+        {
+          "op": "undo",
+          "undid": "note"
+        }
+      ]
     }
   ]
 }
