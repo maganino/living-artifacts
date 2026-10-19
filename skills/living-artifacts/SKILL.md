@@ -209,8 +209,10 @@ On a republish notification, or on "check my edits" / "apply my feedback":
      recommendation, carry the choice into the document and say once, in the
      reply, what it costs. A note on the same decision is a separate op and
      says something the chip could not.
-   - A `note` op is a request pinned to a block — the structured replacement
-     for a comment. It is not document content; act on it, then clear it.
+   - A `note` op is a request pinned to a block, a cell or a passage — the
+     structured replacement for a comment. Several can sit on one element and
+     the op's `noteId` says which; empty `text` is the reader deleting that
+     one. It is not document content; act on it, then answer it in place.
    - A `move` op is an argument about order. Ask what the new order is meant to
      foreground before rewriting around it.
    - A `highlight` op with no tag is still signal: they singled that passage out
@@ -361,12 +363,14 @@ to it. When you act on one:
    the whole block. This replaces
    the reader's own `touched` on that block, which is the point: their highlight
    giving way to yours is how they see the request was handled.
-3. **Answer the note in place**: `"noteDone": "<one line on what you did>"`. The
-   note keeps its text and renders as handled. Never delete the reader's note.
-4. **Where you did not do what was asked**, say so in `noteDone` and put the
+3. **Answer the note in place**: `"done": "<one line on what you did>"` on
+   that note's entry in `notes[]`, found by its `id`. The note keeps its text
+   and renders as handled. Never delete the reader's note, and never answer a
+   different entry than the one the op named: a block can carry several.
+4. **Where you did not do what was asked**, say so in that note's `done` and put the
    reason on the page — a contradiction goes in the open decisions, not in a
    silent choice.
-5. **The reply is the conversation. The document is not.** `noteDone` is the only
+5. **The reply is the conversation. The document is not.** A note's `done` is the only
    place that addresses the reader: *you are right*, *I did not do this because*,
    *pick one and I will write it in*. The block itself is published, so it never
    argues with the reader, never says "the question you are asking", and never
@@ -375,8 +379,8 @@ to it. When you act on one:
    decision that holds the options — the case for each option lives in that
    decision row, and the recommendation lives in the reply.
 
-Cell notes work the same way: `cellNotesDone` keyed by the same cell. So do
-passage notes, `noteDone` on the mark in `marks[]` that carries the `note`; the
+Cell notes work the same way: an entry in `cellNotes[cell]`. So do passage
+notes, an entry in `notes` on the mark in `marks[]` that carries the quote; the
 mark keeps its quote and renders as handled.
 
 **In a table, scope the span to the cell**: `{ "cell": "r2c1", "quote": "…" }`

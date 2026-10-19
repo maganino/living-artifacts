@@ -18,6 +18,7 @@
  * which words moved, every round, with no judgement call.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
+import { normaliseNotes } from './build.mjs';
 
 const args = process.argv.slice(2);
 const [prevPath, nextPath] = args.filter((a) => !a.startsWith('--'));
@@ -25,8 +26,8 @@ const opt = (name, dflt) => { const i = args.indexOf(name); return i >= 0 ? args
 const by = opt('--by', 'claude');
 const keepViewer = args.includes('--keep-viewer');
 
-const prev = JSON.parse(readFileSync(prevPath, 'utf8'));
-const next = JSON.parse(readFileSync(nextPath, 'utf8'));
+const prev = normaliseNotes(JSON.parse(readFileSync(prevPath, 'utf8')));
+const next = normaliseNotes(JSON.parse(readFileSync(nextPath, 'utf8')));
 const rev = Number(opt('--rev', (next.rev ?? 0)));
 const prevById = new Map(prev.blocks.map((b) => [b.id, b]));
 
@@ -114,18 +115,24 @@ function alignedSurfaces(was, b) {
 /* A note answered since the previous model gets the round stamped on it, so
    the page can tell a fresh answer (purple) from a settled one (green). */
 function stampAnswers(was, b) {
-  if (b.noteDone && b.noteDone !== (was && was.noteDone)) b.noteDoneRev = rev;
-  if (b.cellNotesDone) {
-    for (const k of Object.keys(b.cellNotesDone)) {
-      if (b.cellNotesDone[k] !== ((was && was.cellNotesDone) || {})[k]) { b.cellNotesDoneRev = b.cellNotesDoneRev || {}; b.cellNotesDoneRev[k] = rev; }
+  /* every note is its own entry with its own id, so an answer is new when the
+     entry with that id had no answer, or a different one, in the previous
+     model — whichever element it sits on */
+  const stamp = (now, before) => {
+    const old = new Map((before ?? []).map((n) => [n.id, n]));
+    for (const n of now ?? []) {
+      if (!n.done) continue;
+      const o = old.get(n.id);
+      if (!o || o.done !== n.done) n.doneRev = rev;
     }
+  };
+  stamp(b.notes, was && was.notes);
+  for (const k of Object.keys(b.cellNotes ?? {})) stamp(b.cellNotes[k], ((was && was.cellNotes) ?? {})[k]);
+  const oldMarks = (was && was.marks) ?? [];
+  for (const mk of b.marks ?? []) {
+    const o = oldMarks.find((x) => x.quote === mk.quote);
+    stamp(mk.notes, o && o.notes);
   }
-  const oldMarks = (was && was.marks) || [];
-  (b.marks ?? []).forEach((mk) => {
-    if (!mk.noteDone) return;
-    const o = oldMarks.find((x) => x.quote === mk.quote && x.note === mk.note);
-    if (!o || o.noteDone !== mk.noteDone) mk.noteDoneRev = rev;
-  });
 }
 let marked = 0, whole = 0, cleared = 0, viewerCleared = 0;
 for (const b of next.blocks) {

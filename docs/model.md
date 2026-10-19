@@ -40,10 +40,14 @@ later round. Never renumber, never reuse a dead id.
   "author": "claude",      // "viewer" once the human has edited it
   "marks": [{ "tag": "verify", "quote": "94.2% of indexable URLs" },
              { "quote": "three bot-registry IDs" }],   // tag is OPTIONAL
-  "note": "recheck this against the June cohort",  // pinned request, not content
-  "noteDone": "Rechecked; the June figure stands.", // Claude's answer, set when it acts
-  "cellNotes": { "r3c1": "weeks of what?" },        // TABLES only: a note on ONE cell
-  "cellNotesDone": { "r3c1": "said calendar weeks" },
+  "notes": [                                        // requests pinned to the block, not content
+    { "id": "n1", "text": "recheck this against the June cohort",
+      "done": "Rechecked; the June figure stands.", // Claude's answer, per note
+      "doneRev": 8 },
+    { "id": "n-k3f2", "text": "and name who owns the number" }   // open
+  ],
+  "cellNotes": { "r3c1": [ { "id": "n1", "text": "weeks of what?",  // TABLES only: notes on ONE cell
+                             "done": "said calendar weeks" } ] },
   "decision": "b",         // DECISION CALLOUTS only: the option the reader chose
                            // by clicking its chip. Recorded as a `decide` op;
                            // clicking the chosen chip again clears it. The
@@ -281,7 +285,7 @@ One entry per revision, holding every op in it.
 | `move` | `block`, `from`, `to` | an argument about order |
 | `highlight` / `unhighlight` | `block`, `quote`, `tag?` | they singled out a passage — signal even with no tag on it |
 | `tag` / `untag` | `block`, `tag`, `quote?`, `withBlocks?` | an intent — for the block, for a passage (`quote`), or for each of several blocks at once (`withBlocks`) |
-| `note` | `block`, `text`, `cell?`, `quote?` | a request pinned to a block, a table cell or a passage |
+| `note` | `block`, `noteId`, `text`, `cell?`, `quote?` | a request pinned to a block, a table cell or a passage. Several can sit on one element; `noteId` says which. Empty `text` deletes that note |
 | `decide` | `block`, `option`, `was` | they answered a decision by clicking its chip. `option` is `null` when they cleared it, and a note on the same decision stays its own op |
 | `style` | `action`, `text` | a standing instruction for the whole document |
 | `publish` | `rev`, `changed[]` | they cut a read-only copy of that revision. The block ids are what the copy's changelog listed |
@@ -344,7 +348,7 @@ block carries notes keyed by cell:
 
 ```jsonc
 "cellNotes":     { "h2": "rename this column", "r3c1": "weeks of what?" },
-"cellNotesDone": { "r3c1": "said calendar weeks, and named who owns it" }
+"cellNotes": { "r3c1": [ { "id": "n1", "text": "weeks of what?", "done": "said calendar weeks, and named who owns it" } ] }
 ```
 
 `h<col>` is a heading cell, `r<row>c<col>` a body cell, both zero-based. The note
@@ -465,10 +469,10 @@ colour picker, and there will not be one.
 `cellNotes` keyed `r{i}c2` for a step and `r{i}c0` for an item, since each is a
 row of the block that drives it), or on a passage: select words inside a block,
 choose `+ note`, and the runtime records a mark with `note` set
-(`marks: [{ quote, note, noteDone }]`, journal op `note` with a `quote`).
+(`marks: [{ quote, notes: [{ id, text, done }] }]`, journal op `note` with a `quote` and a `noteId`).
 A passage note renders as `✎` on the highlighted words and `✓` once answered,
 and `renderMeta` lists it under the block with its text. Answer it with
-`noteDone` on the mark, as for the other two kinds.
+`done` on the note entry in `marks[].notes`, as for the other two kinds.
 
 **Moves are section-aware.** Moving a level-3 or level-4 heading, by the arrows
 or by drag, takes every block it owns until the next heading of the same or a
@@ -585,12 +589,21 @@ never widens its neighbours: the space stays empty, which is the point of
 narrowing. The section grid does not fit rows: there a half-width block leaves
 the rest of its row empty and the next block starts a new row.
 
-**A handled note is green, a freshly handled one purple.** `noteDone` renders
+**Several notes can sit on one element.** Since 19 October 2026 every note is
+an entry — `{ id, text, done?, doneRev? }` — in a list: `notes` on a block,
+`cellNotes[cell]` on a table cell, `marks[].notes` on a passage. The form lists
+what is there, numbered, each in its own box, plus one for a new note; an
+emptied box deletes its note. The journal's `note` op carries the `noteId`,
+and an op with empty `text` is a delete. Documents saved under the old
+one-string-per-element shape are migrated on load and at build, into one
+entry with id `n1`.
+
+**A handled note is green, a freshly handled one purple.** `done` renders
 in the handled colour (`--handled`, green) once it is older than Claude's
-latest round; a note answered in that round (`noteDoneRev` at or above the
+latest round; a note answered in that round (`doneRev` at or above the
 highest claude `touched.rev`) keeps the round's purple so it reads as news.
-`mark-changes.mjs` stamps `noteDoneRev`, `cellNotesDoneRev[cell]` and
-`marks[].noteDoneRev` when an answer is new against the previous model.
+`mark-changes.mjs` stamps `doneRev` on the entry, by its id, when its answer
+is new against the previous model — whichever element it sits on.
 
 **Lists and rows are aligned by content, not position.** A new first item in
 a list, or a new first row in a table, shifts every index after it; marking

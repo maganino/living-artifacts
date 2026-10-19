@@ -658,7 +658,7 @@ clickBody(cell());
   await settle();
   const back = extractModel(e.published[e.published.length - 1]);
   const tb = back.blocks.find((x) => x.id === 'b-t');
-  eq('the model keeps them keyed by cell', JSON.stringify(tb.cellNotes), '{"r0c1":"weeks of what — calendar or work?"}');
+  eq('the model keeps them keyed by cell, as entries', tb.cellNotes.r0c1.map((n) => n.text).join(), 'weeks of what — calendar or work?');
 }
 
 console.log('\nread mode: the published look, in the same page, from the same model');
@@ -869,7 +869,7 @@ console.log('\nread mode: the published look, in the same page, from the same mo
   await w.w.__la.flush();
   await settle();
   const back = extractModel(w.published[w.published.length - 1]);
-  ok('the model records the passage note', back.blocks.find((b) => b.id === 'b-c1').marks.some((m) => m.note === 'why careful?'));
+  ok('the model records the passage note', back.blocks.find((b) => b.id === 'b-c1').marks.some((m) => (m.notes || []).some((n) => n.text === 'why careful?')));
   ok('as a note op carrying the quote', JSON.stringify(back.journal).includes('"quote":"Careful."'));
   ok('the section move is one op with a count', JSON.stringify(back.journal).includes('"count":'));
   ok('and the in-place edit', back.blocks.find((b) => b.id === 'b-p1').text === 'Context, rewritten in place.');
@@ -1402,7 +1402,7 @@ console.log('\nnotes: a note is a paragraph, not a line');
 
   field.dispatchEvent(new w.w.KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true }));
   await settle();
-  eq('Cmd+Enter commits, newline intact', w.model().blocks[1].note, 'first line\nsecond line');
+  eq('Cmd+Enter commits, newline intact', w.model().blocks[1].notes[0].text, 'first line\nsecond line');
 }
 
 
@@ -1722,6 +1722,89 @@ console.log('\nnotes: clicking into the note you are writing keeps it');
         !!blockEl(w.d, 'b-three').querySelector('.la-noteform textarea'));
     }
   }
+}
+
+
+/* ------------------------------------------------------------------------- */
+console.log('\nnotes: several on one element, each its own entry');
+{
+  /* a document saved under the old shape migrates on load, nothing lost */
+  const old = fixture();
+  old.blocks[1].note = 'first ask'; old.blocks[1].noteDone = 'done it'; old.blocks[1].noteDoneRev = 2;
+  old.blocks[3].cellNotes = { r0c1: 'cell ask' }; old.blocks[3].cellNotesDone = { r0c1: 'cell done' };
+  old.blocks[2].marks = [{ quote: 'beta', note: 'passage ask' }];
+  const w = boot(wrap(buildBody(old), 'Notes'), { page: true });
+  await settle();
+  const b2 = () => w.model().blocks.find((b) => b.id === 'b-two');
+  eq('an old block note becomes one entry', b2().notes.length, 1);
+  eq('with its text', b2().notes[0].text, 'first ask');
+  eq('its answer', b2().notes[0].done, 'done it');
+  eq('and the round it was answered in', b2().notes[0].doneRev, 2);
+  ok('the old fields are gone', !('note' in b2()) && !('noteDone' in b2()));
+  const tb = w.model().blocks.find((b) => b.id === 'b-four');
+  eq('an old cell note becomes an entry on that cell', tb.cellNotes.r0c1[0].done, 'cell done');
+  const mk = w.model().blocks.find((b) => b.id === 'b-three').marks[0];
+  eq('an old passage note becomes an entry on the mark', mk.notes[0].text, 'passage ask');
+
+  /* the form lists what is there and offers a new box */
+  btn(blockEl(w.d, 'b-two'), 'note').click();
+  await settle();
+  const form = blockEl(w.d, 'b-two').querySelector('.la-noteform');
+  const boxes = [...form.querySelectorAll('textarea')];
+  eq('one box per existing note, plus one for a new one', boxes.length, 2);
+  eq('the existing note is in its box', boxes[0].value, 'first ask');
+  ok('and its answer is shown beside it', /answered: done it/.test(form.textContent));
+  ok('the boxes are numbered', form.querySelector('.la-notes-n').textContent === '1');
+
+  /* add a second note without touching the first */
+  boxes[1].value = 'second ask';
+  w.d.body.dispatchEvent(new w.w.MouseEvent('mousedown', { bubbles: true }));
+  await settle();
+  eq('the element now holds two notes', b2().notes.length, 2);
+  eq('the first is untouched, answer and all', b2().notes[0].done, 'done it');
+  eq('the second is new and open', b2().notes[1].text + '/' + (b2().notes[1].done || 'open'), 'second ask/open');
+  ok('they have distinct ids', b2().notes[0].id !== b2().notes[1].id);
+  const added = w.ops().filter((o) => o.op === 'note').pop();
+  ok('the op names the note it created', added && added.noteId === b2().notes[1].id && added.text === 'second ask');
+  ok('and only one op was recorded: the untouched note did not fire', w.ops().filter((o) => o.op === 'note').length === 1);
+  eq('both render on the block, numbered', blockEl(w.d, 'b-two').querySelectorAll('.la-note').length, 2);
+
+  /* change the first: re-asking reopens it */
+  btn(blockEl(w.d, 'b-two'), 'note').click();
+  await settle();
+  const again = [...blockEl(w.d, 'b-two').querySelectorAll('.la-noteform textarea')];
+  eq('three boxes now: two notes and a new one', again.length, 3);
+  again[0].value = 'first ask, revised';
+  w.d.body.dispatchEvent(new w.w.MouseEvent('mousedown', { bubbles: true }));
+  await settle();
+  eq('the first note was changed in place', b2().notes[0].text, 'first ask, revised');
+  ok('and its answer dropped, because it is a new ask', !b2().notes[0].done);
+  const edited = w.ops().filter((o) => o.op === 'note').pop();
+  ok('the op names the note it changed', edited.noteId === b2().notes[0].id);
+
+  /* empty a box to delete that note */
+  btn(blockEl(w.d, 'b-two'), 'note').click();
+  await settle();
+  const once = [...blockEl(w.d, 'b-two').querySelectorAll('.la-noteform textarea')];
+  once[1].value = '';
+  w.d.body.dispatchEvent(new w.w.MouseEvent('mousedown', { bubbles: true }));
+  await settle();
+  eq('emptying a box deletes that note', b2().notes.length, 1);
+  ok('the delete is an op with that id and no text',
+    (() => { const o = w.ops().filter((x) => x.op === 'note').pop(); return o.text === '' && !!o.noteId; })());
+
+  /* the registry counts open notes across every anchor */
+  await w.w.__la.flush();
+  await settle();
+  const reg = w.dbWrites.find((x) => /^docs\/[^/]+$/.test(x.path));
+  /* one open on the block, one on the passage; the cell note is answered,
+     so it is not open — answered notes never count */
+  ok('open notes are counted across every anchor, answered ones excluded', reg && reg.data.openNotes === 2, reg && String(reg.data.openNotes));
+
+  /* a reader sees every note on a block, none of the forms */
+  const r = boot(wrap(buildBody(old), 'Notes'), { use: async () => null });
+  await settle();
+  ok('a reader gets no note form', !r.d.querySelector('.la-noteform'));
 }
 
 console.log(failed ? `\n${failed} failing\n` : '\nall green\n');

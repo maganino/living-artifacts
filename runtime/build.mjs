@@ -120,6 +120,7 @@ export function iconsJs(model) {
 }
 
 export function modelJs(model) {
+  normaliseNotes(model);
   return iconsJs(model) + 'window.__laModel = ' + JSON.stringify(model, null, 1) + ';\n';
 }
 export function shellHtml(model) {
@@ -141,6 +142,7 @@ ${S} src="runtime.js">${E}
 `;
 }
 export function writeShell(model, dir) {
+  normaliseNotes(model);
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, 'index.html'), shellHtml(model));
   writeFileSync(join(dir, 'model.js'), modelJs(model));
@@ -199,6 +201,7 @@ function iconsScript(model) {
   return js ? `${S}>\n${js}${E}\n` : '';
 }
 export function buildBody(model) {
+  normaliseNotes(model);
   const css = styleBundle();
   const js = runtimeSource();
   return `<title>${esc(model.title)}</title>
@@ -400,6 +403,43 @@ export function scaffold(t, { docId, title, thread, component } = {}) {
   return model;
 }
 
+
+/* --- notes: one list per element -------------------------------------------
+ * Mirrors normaliseNotes() in la-runtime.js, for the build side: a seed written
+ * under the old one-string-per-element shape is migrated when it is built, and
+ * a model pulled down from a page is already in this shape. Keep the two in
+ * step; the runtime's is the one the page runs. */
+function noteEntries(text, done, doneRev) {
+  if (!text) return [];
+  const e = { id: 'n1', text };
+  if (done) e.done = done;
+  if (doneRev != null) e.doneRev = doneRev;
+  return [e];
+}
+export function normaliseNotes(m) {
+  for (const b of m.blocks ?? []) {
+    if (!Array.isArray(b.notes)) b.notes = noteEntries(b.note, b.noteDone, b.noteDoneRev);
+    delete b.note; delete b.noteDone; delete b.noteDoneRev;
+    if (!b.notes.length) delete b.notes;
+    if (b.cellNotes) {
+      for (const k of Object.keys(b.cellNotes)) {
+        if (!Array.isArray(b.cellNotes[k])) {
+          b.cellNotes[k] = noteEntries(b.cellNotes[k], (b.cellNotesDone ?? {})[k], (b.cellNotesDoneRev ?? {})[k]);
+        }
+        if (!b.cellNotes[k].length) delete b.cellNotes[k];
+      }
+      if (!Object.keys(b.cellNotes).length) delete b.cellNotes;
+    }
+    delete b.cellNotesDone; delete b.cellNotesDoneRev;
+    for (const mk of b.marks ?? []) {
+      if (!Array.isArray(mk.notes)) mk.notes = noteEntries(mk.note, mk.noteDone, mk.noteDoneRev);
+      delete mk.note; delete mk.noteDone; delete mk.noteDoneRev;
+      if (!mk.notes.length) delete mk.notes;
+    }
+  }
+  return m;
+}
+
 /* --- validation: catch what only shows up after publishing ---------------- */
 export function validate(model) {
   const errs = [];
@@ -544,7 +584,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     console.log(`${out}  (${(html.length / 1024).toFixed(1)} KB, ${kept} of ${model.blocks.length} blocks`
       + `${tags.length ? ', labels ' + tags.map((t) => '#' + t).join(' ') : ', unfiltered'}, no editor)`);
   } else if (cmd === 'extract') {
-    const model = extractModel(readFileSync(input, 'utf8'));
+    const model = normaliseNotes(extractModel(readFileSync(input, 'utf8')));
     const out = output ?? join(REPO, 'examples', model.docId + '.doc.json');
     mkdirSync(dirname(out), { recursive: true });
     writeFileSync(out, JSON.stringify(model, null, 2) + '\n');
