@@ -3179,7 +3179,12 @@
             render();
             return;
           }
-          if (e.target.closest('a, .la-cite, .la-cite-pop, .la-handle, .la-acts, .la-resize, .la-note, .la-cellpin, .la-cellnote, .la-cellnoteform, .la-meta, .la-addhouse, [role="tab"]')) return;
+          /* A click inside any inline form, or on any control, is for that
+             form — never a way into the block editor. The list used to name
+             each form's class and missed the note form, so putting the cursor
+             back into a half-written note threw the note away. */
+          if (e.target.closest('.la-inline, textarea, input, select, button, label')) return;
+          if (e.target.closest('a, .la-cite, .la-cite-pop, .la-handle, .la-acts, .la-resize, .la-note, .la-cellpin, .la-cellnote, .la-meta, .la-addhouse, [role="tab"]')) return;
           if (placing) return;
           /* a click inside a nested block belongs to that block */
           if (e.target.closest('.la-blk') !== node) return;

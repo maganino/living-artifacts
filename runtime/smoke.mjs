@@ -1684,5 +1684,45 @@ console.log('\nprototype: a working screen whose strings the reader owns');
   ok('a published copy carries the screen, strings written in', /srcdoc=/.test(saves[0].data) && /Sign in/.test(saves[0].data));
 }
 
+
+/* ------------------------------------------------------------------------- */
+console.log('\nnotes: clicking into the note you are writing keeps it');
+{
+  const m = fixture();
+  const w = boot(wrap(buildBody(m), 'Note Doc'), { page: true });
+  await settle();
+  const host = () => blockEl(w.d, 'b-two');
+  btn(host(), 'note').click();
+  await settle();
+  const ta = host().querySelector('.la-noteform textarea');
+  ok('the note form opens', !!ta);
+  ta.value = 'half a note';
+  /* the reader puts the cursor back in the box: a click that bubbles to the
+     block used to open the block editor and throw the form away */
+  ta.dispatchEvent(new w.w.MouseEvent('mousedown', { bubbles: true }));
+  ta.dispatchEvent(new w.w.MouseEvent('click', { bubbles: true }));
+  await settle();
+  ok('clicking into the box does not open the block editor', !host().querySelector('textarea.la-edit'));
+  ok('and the note being written is still there',
+    !!host().querySelector('.la-noteform textarea') && host().querySelector('.la-noteform textarea').value === 'half a note');
+
+  /* the same for a note on a passage */
+  w.w.__la.offerTag('b-three', 'beta', null);
+  await settle();
+  const sel = w.d.getElementById('la-selchip') || w.d.querySelector('.la-selchip');
+  const noteBtn = sel && [...sel.querySelectorAll('button')].find((b) => /note/.test(b.textContent));
+  if (noteBtn) {
+    noteBtn.click(); await settle();
+    const pta = blockEl(w.d, 'b-three').querySelector('.la-noteform textarea');
+    if (pta) {
+      pta.value = 'on beta';
+      pta.dispatchEvent(new w.w.MouseEvent('click', { bubbles: true }));
+      await settle();
+      ok('a passage note survives a click into its box too',
+        !!blockEl(w.d, 'b-three').querySelector('.la-noteform textarea'));
+    }
+  }
+}
+
 console.log(failed ? `\n${failed} failing\n` : '\nall green\n');
 process.exit(failed ? 1 : 0);
