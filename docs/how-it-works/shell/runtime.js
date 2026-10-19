@@ -1,4 +1,4 @@
-/* living-artifacts a78fab1 · built 2026-10-19 */
+/* living-artifacts 8978def · built 2026-10-19 */
 /* living-artifacts runtime — v1.1 (direct manipulation).
  *
  * The document's truth is the JSON in <script id="la-model">. The DOM is a
@@ -153,8 +153,11 @@
         if (m && m.chg) return '<mark class="la-chg' + (chgOwner === 'viewer' ? ' mine' : '') + '">';
         /* a passage with a note on it says so where it stands, and says whether
            the note has been acted on */
-        var noted = m && m.note ? ' has-note' + (m.noteDone ? doneCls(m.noteDoneRev) : '') : '';
-        var title = m && m.note ? ' title="' + esc(m.note + (m.noteDone ? ' \u2192 ' + m.noteDone : '')) + '"' : '';
+        var mnotes = (m && m.notes) || [], mopen = openNotesIn(mnotes);
+        var noted = mnotes.length ? ' has-note' + (mopen.length ? '' : doneCls(mnotes[mnotes.length - 1].doneRev)) : '';
+        var title = mnotes.length ? ' title="' + esc(mnotes.map(function (n, i) {
+          return (mnotes.length > 1 ? (i + 1) + '. ' : '') + n.text + (n.done ? ' \u2192 ' + n.done : '');
+        }).join('\n')) + '"' : '';
         return m && m.tag
           ? '<mark class="la-mark' + noted + '" style="--tag-h:' + tagHue(m.tag) + '"' + title + '>'
           : '<mark class="la-mark untagged' + noted + '"' + title + '>';
@@ -332,6 +335,52 @@
   }
 
   /* ----------------------------------------------------------- model access */
+  /* ------------------------------------------------------------ notes */
+  /* A note is one of several on an element, each its own entry with its own
+     answer. Documents saved before 19 October 2026 carried one string per
+     element — `note`, `cellNotes[key]`, `marks[].note` — with the answer in a
+     sibling field. They are migrated here, on load and at build, so nothing
+     already published has to be touched and nothing written since has to
+     know the old shape. Entry ids are what the journal names. */
+  function noteEntries(text, done, doneRev) {
+    if (!text) return [];
+    var e = { id: 'n1', text: text };
+    if (done) e.done = done;
+    if (doneRev != null) e.doneRev = doneRev;
+    return [e];
+  }
+  function normaliseNotes(m) {
+    (m.blocks || []).forEach(function (b) {
+      if (!Array.isArray(b.notes)) b.notes = noteEntries(b.note, b.noteDone, b.noteDoneRev);
+      delete b.note; delete b.noteDone; delete b.noteDoneRev;
+      if (!b.notes.length) delete b.notes;
+      if (b.cellNotes) {
+        Object.keys(b.cellNotes).forEach(function (k) {
+          if (!Array.isArray(b.cellNotes[k])) {
+            b.cellNotes[k] = noteEntries(b.cellNotes[k],
+              (b.cellNotesDone || {})[k], (b.cellNotesDoneRev || {})[k]);
+          }
+          if (!b.cellNotes[k].length) delete b.cellNotes[k];
+        });
+        if (!Object.keys(b.cellNotes).length) delete b.cellNotes;
+      }
+      delete b.cellNotesDone; delete b.cellNotesDoneRev;
+      (b.marks || []).forEach(function (mk) {
+        if (!Array.isArray(mk.notes)) mk.notes = noteEntries(mk.note, mk.noteDone, mk.noteDoneRev);
+        delete mk.note; delete mk.noteDone; delete mk.noteDoneRev;
+        if (!mk.notes.length) delete mk.notes;
+      });
+    });
+    return m;
+  }
+  function openNotesIn(list) { return (list || []).filter(function (n) { return !n.done; }); }
+  function allNotes(b) {
+    var out = (b.notes || []).slice();
+    Object.keys(b.cellNotes || {}).forEach(function (k) { out = out.concat(b.cellNotes[k]); });
+    (b.marks || []).forEach(function (mk) { out = out.concat(mk.notes || []); });
+    return out;
+  }
+
   function loadModel() {
     /* A shared-runtime document ships its model as model.js, which sets this
        global before the runtime runs. The inline script element is the older
@@ -790,18 +839,18 @@
      editor moves them when a row or a column goes. */
   function cellNoteUi(host, b, key, forStatic) {
     if (forStatic) return;
-    var note = (b.cellNotes || {})[key], done = (b.cellNotesDone || {})[key];
-    if (note) {
-      var n = el('div', 'la-cellnote' + (done ? doneCls(((b.cellNotesDoneRev || {})[key])) : ''));
-      n.appendChild(el('b', null, done ? 'note handled' : 'note'));
-      n.appendChild(document.createTextNode(note));
-      if (done) n.appendChild(el('div', 'la-cellnote-a', done));
+    var notes = (b.cellNotes || {})[key] || [];
+    notes.forEach(function (nt, i) {
+      var n = el('div', 'la-cellnote' + (nt.done ? doneCls(nt.doneRev) : ''));
+      n.appendChild(el('b', null, (notes.length > 1 ? (i + 1) + ' \u00b7 ' : '') + (nt.done ? 'note handled' : 'note')));
+      n.appendChild(document.createTextNode(nt.text));
+      if (nt.done) n.appendChild(el('div', 'la-cellnote-a', nt.done));
       n.onclick = function (e) { e.stopPropagation(); };
       host.appendChild(n);
-    }
+    });
     if (readOnly) return;
-    var pin = el('button', 'la-cellpin', note ? '\u270E' : '+');
-    pin.title = note ? 'Edit the note on this cell' : 'Pin a note to Claude on this cell';
+    var pin = el('button', 'la-cellpin', notes.length ? '\u270E' : '+');
+    pin.title = notes.length ? 'The notes on this cell: change one, or add another' : 'Pin a note to Claude on this cell';
     pin.setAttribute('aria-label', pin.title);
     pin.onmousedown = function (e) { e.stopPropagation(); };
     pin.onclick = function (e) { e.stopPropagation(); cellNoteForm(host, b, key); };
@@ -809,28 +858,15 @@
   }
 
   function cellNoteForm(host, b, key) {
-    if (host.querySelector('.la-cellnoteform')) return;
-    var form = el('div', 'la-inline la-cellnoteform');
-    var committed = false;
-    function commit() {
-      if (committed) return; committed = true;
-      var v = inp.value.trim();
-      b.cellNotes = b.cellNotes || {};
-      if (v) b.cellNotes[key] = v; else delete b.cellNotes[key];
-      if (b.cellNotesDone) delete b.cellNotesDone[key];
-      record({ op: 'note', block: b.id, cell: key, text: v });
-      render();
-    }
-    function discard() { committed = true; dropEditorHooks(); form.remove(); }
-    var inp = noteField(form, (b.cellNotes || {})[key],
+    notesForm(host, 'la-cellnoteform', (b.cellNotes || {})[key],
       'what should Claude do with this cell?', 'Note to Claude on this cell',
-      commit, discard);
-    var ok = el('button', 'la-btn primary', 'Save note');
-    ok.onclick = function (e) { e.stopPropagation(); commit(); };
-    form.onclick = function (e) { e.stopPropagation(); };
-    form.appendChild(ok);
-    host.appendChild(form);
-    inp.focus();
+      function (note, text) {
+        b.cellNotes = b.cellNotes || {};
+        var r = applyNote(b.cellNotes[key], note, text);
+        if (r.list.length) b.cellNotes[key] = r.list; else delete b.cellNotes[key];
+        if (!Object.keys(b.cellNotes).length) delete b.cellNotes;
+        record({ op: 'note', block: b.id, cell: key, noteId: r.id, text: text });
+      });
   }
 
   /* ------------------------------------------------------------- mermaid */
@@ -923,7 +959,7 @@
       openTagPop(b.id, null, null,
         r && r.width ? { top: r.bottom + window.scrollY + 6, left: r.left + window.scrollX - 150 } : null);
     });
-    act('note', b.note ? 'Edit the note to Claude' : 'Pin a note to Claude on this block',
+    act('note', (b.notes || []).length ? 'The notes on this block: change one, or add another' : 'Pin a note to Claude on this block',
       function () { promptNote(b); });
     /* Width and look stay in the model (`layout.w`, `variant`) for Claude to
        set, and off the chrome: two more buttons on every block bought nothing a
@@ -952,18 +988,19 @@
       chip.title = readOnly ? (mk.tag || 'highlighted') : 'Remove this highlight';
       if (!readOnly) chip.onclick = function () {
         b.marks = b.marks.filter(function (o) { return o !== mk; });
-        record({ op: 'unhighlight', block: b.id, tag: mk.tag, quote: mk.quote, note: mk.note });
+        record({ op: 'unhighlight', block: b.id, tag: mk.tag, quote: mk.quote,
+          notes: (mk.notes || []).map(function (n) { return n.text; }) });
         render();
       };
       m.appendChild(chip);
-      if (mk.note) {
-        /* the note on a passage, next to the passage's chip, answered or not */
-        var n = el('span', 'la-marknote' + (mk.noteDone ? doneCls(mk.noteDoneRev) : ''));
-        n.appendChild(el('b', null, mk.noteDone ? 'handled' : 'note'));
-        n.appendChild(document.createTextNode(mk.note));
-        if (mk.noteDone) n.appendChild(el('i', null, mk.noteDone));
+      (mk.notes || []).forEach(function (nt, i) {
+        /* each note on the passage, next to its chip, answered or not */
+        var n = el('span', 'la-marknote' + (nt.done ? doneCls(nt.doneRev) : ''));
+        n.appendChild(el('b', null, (mk.notes.length > 1 ? (i + 1) + ' \u00b7 ' : '') + (nt.done ? 'handled' : 'note')));
+        n.appendChild(document.createTextNode(nt.text));
+        if (nt.done) n.appendChild(el('i', null, nt.done));
         m.appendChild(n);
-      }
+      });
     });
     return m;
   }
@@ -1283,19 +1320,17 @@
     /* Cell notes are anchored by position, so removing a row or a column has to
        move them too, or a note ends up pointing at somebody else's cell. They
        are edited in the read view, never here: this editor is for values. */
-    var notes = {}, notesDone = {};
+    var notes = {};
     Object.keys(b.cellNotes || {}).forEach(function (k) { notes[k] = b.cellNotes[k]; });
-    Object.keys(b.cellNotesDone || {}).forEach(function (k) { notesDone[k] = b.cellNotesDone[k]; });
     function parseKey(k) {
       var h = k.match(/^h(\d+)$/); if (h) return { head: true, c: Number(h[1]) };
       var m = k.match(/^r(\d+)c(\d+)$/);
       return m ? { head: false, r: Number(m[1]), c: Number(m[2]) } : null;
     }
     function remap(fn) {
-      var a = {}, d = {};
+      var a = {};
       Object.keys(notes).forEach(function (k) { var nk = fn(k); if (nk) a[nk] = notes[k]; });
-      Object.keys(notesDone).forEach(function (k) { var nk = fn(k); if (nk) d[nk] = notesDone[k]; });
-      notes = a; notesDone = d;
+      notes = a;
     }
     function dropRow(ri) {
       remap(function (k) {
@@ -1314,11 +1349,12 @@
       });
     }
     function noteInto(td, key) {
-      var cn = notes[key]; if (!cn) return;
-      var nb = el('div', 'la-cellnote' + (notesDone[key] ? ' done' : ''));
-      nb.appendChild(el('b', null, notesDone[key] ? 'note handled' : 'note'));
-      nb.appendChild(document.createTextNode(cn));
-      td.appendChild(nb);
+      (notes[key] || []).forEach(function (nt, i) {
+        var nb = el('div', 'la-cellnote' + (nt.done ? ' done' : ''));
+        nb.appendChild(el('b', null, ((notes[key].length > 1) ? (i + 1) + ' \u00b7 ' : '') + (nt.done ? 'note handled' : 'note')));
+        nb.appendChild(document.createTextNode(nt.text));
+        td.appendChild(nb);
+      });
     }
 
     function normalise() {
@@ -1331,7 +1367,7 @@
       normalise();
       return [head.join('\t')].concat(rows.map(function (r) { return r.join('\t'); })).join('\n');
     }
-    function commit() { b.cellNotes = notes; b.cellNotesDone = notesDone; commitSource(b, source()); }
+    function commit() { if (Object.keys(notes).length) b.cellNotes = notes; else delete b.cellNotes; commitSource(b, source()); }
     function redraw(focus) { focusCell = focus || null; wrap.textContent = ''; build(); }
 
     function cell(value, onInput, cls, label) {
@@ -1540,28 +1576,72 @@
     return wrap;
   }
 
+  /* The notes form, for a block, a cell or a passage alike. Every note already
+     on the element is listed, numbered, in its own box so it can be changed or
+     emptied; the last box is a new one. Click away keeps everything: each box
+     that changed is its own op, carrying its note's id, and an emptied box is
+     a delete. Escape discards the lot. */
+  function notesForm(host, cls, notes, placeholder, aria, onNote) {
+    if (host.querySelector('.' + cls)) return null;
+    var form = el('div', 'la-inline la-notes ' + cls);
+    var fields = [], committed = false;
+    function commitAll() {
+      if (committed) return; committed = true;
+      fields.forEach(function (f) {
+        var v = f.ta.value.trim();
+        if (f.note) { if (v !== f.note.text) onNote(f.note, v); }
+        else if (v) onNote(null, v);
+      });
+      render();
+    }
+    function discardAll() { committed = true; dropEditorHooks(); form.remove(); render(); }
+    (notes || []).forEach(function (n, i) {
+      var row = el('div', 'la-notes-row');
+      row.appendChild(el('span', 'la-notes-n', String(i + 1)));
+      var ta = noteField(row, n.text, placeholder, aria + ', note ' + (i + 1), commitAll, discardAll);
+      if (n.done) row.appendChild(el('span', 'la-notes-done', 'answered: ' + n.done));
+      fields.push({ note: n, ta: ta });
+      form.appendChild(row);
+    });
+    var fresh = el('div', 'la-notes-row la-notes-new');
+    fresh.appendChild(el('span', 'la-notes-n', notes && notes.length ? String(notes.length + 1) : '+'));
+    var nta = noteField(fresh, '', placeholder, aria + ', new note', commitAll, discardAll);
+    fields.push({ note: null, ta: nta });
+    form.appendChild(fresh);
+    var ok = el('button', 'la-btn primary', notes && notes.length ? 'Save notes' : 'Save note');
+    ok.onclick = function (e) { e.stopPropagation(); commitAll(); };
+    form.onclick = function (e) { e.stopPropagation(); };
+    form.onmousedown = function (e) { e.stopPropagation(); };
+    form.appendChild(ok);
+    host.appendChild(form);
+    (notes && notes.length ? nta : fields[0].ta).focus();
+    return form;
+  }
+  /* One change to a notes list: edit by entry, add, or delete on empty text.
+     Re-asking reopens: a changed note drops its answer. */
+  function applyNote(list, note, text) {
+    var out = (list || []).slice();
+    if (note) {
+      var i = out.indexOf(note);
+      if (!text) { if (i > -1) out.splice(i, 1); return { list: out, id: note.id }; }
+      note.text = text; delete note.done; delete note.doneRev;
+      return { list: out, id: note.id };
+    }
+    var fresh = { id: uid('n'), text: text };
+    out.push(fresh);
+    return { list: out, id: fresh.id };
+  }
+
   /* Modal dialogs do nothing in a sandboxed artifact frame — always inline. */
   function promptNote(b) {
     var host = document.querySelector('[data-block-id="' + b.id + '"]');
-    if (!host || host.querySelector('.la-noteform')) return;
-    var form = el('div', 'la-inline la-noteform');
-    var committed = false;
-    function commit() {
-      if (committed) return; committed = true;
-      var v = inp.value.trim();
-      b.note = v || undefined;
-      delete b.noteDone;          /* re-asking reopens it */
-      record({ op: 'note', block: b.id, text: v });
-      render();
-    }
-    function discard() { committed = true; dropEditorHooks(); form.remove(); }
-    var inp = noteField(form, b.note, 'what should Claude do here?',
-      'Note to Claude', commit, discard);
-    var ok = el('button', 'la-btn primary', 'Save note');
-    ok.onclick = commit;
-    form.appendChild(ok);
-    host.appendChild(form);
-    inp.focus();
+    if (!host) return;
+    notesForm(host, 'la-noteform', b.notes, 'what should Claude do here?', 'Note to Claude',
+      function (note, text) {
+        var r = applyNote(b.notes, note, text);
+        b.notes = r.list; if (!b.notes.length) delete b.notes;
+        record({ op: 'note', block: b.id, noteId: r.id, text: text });
+      });
   }
 
 
@@ -2196,27 +2276,14 @@
     var mk = (b.marks || []).filter(function (o) { return o.quote === quote; })[0];
     if (!mk) { mk = { quote: quote }; b.marks = (b.marks || []).concat([mk]); }
     var host = document.querySelector('[data-block-id="' + b.id + '"]');
-    if (!host || host.querySelector('.la-noteform')) return true;
-    var form = el('div', 'la-inline la-noteform');
-    var committed = false;
-    function commit() {
-      if (committed) return; committed = true;
-      var v = inp.value.trim();
-      if (v) mk.note = v; else delete mk.note;
-      delete mk.noteDone;
-      record({ op: 'note', block: b.id, quote: quote, text: v });
-      render();
-    }
-    function discard() { committed = true; dropEditorHooks(); form.remove(); render(); }
-    var inp = noteField(form, mk.note,
-      'note on \u201C' + clip(quote, 40) + '\u201D',
-      'Note to Claude on this passage', commit, discard);
-    var ok = el('button', 'la-btn primary', 'Save note');
-    ok.onclick = function (e) { e.stopPropagation(); commit(); };
-    form.onclick = function (e) { e.stopPropagation(); };
-    form.appendChild(ok);
-    host.appendChild(form);
-    inp.focus();
+    if (!host) return true;
+    notesForm(host, 'la-noteform', mk.notes,
+      'note on \u201C' + clip(quote, 40) + '\u201D', 'Note to Claude on this passage',
+      function (note, text) {
+        var r = applyNote(mk.notes, note, text);
+        mk.notes = r.list; if (!mk.notes.length) delete mk.notes;
+        record({ op: 'note', block: b.id, quote: quote, noteId: r.id, text: text });
+      });
     return true;
   }
   function showSelChip(ids, text, sel) {
@@ -3115,11 +3182,13 @@
       if (b.touched) node.dataset.touched = b.touched.by === 'claude' ? 'claude' : 'viewer';
       if (changedWhole(b)) node.dataset.changed = 'all';
       node.insertBefore(renderChrome(b), node.firstChild);
-      if (b.note) {
-        var n = el('div', 'la-note' + (b.noteDone ? doneCls(b.noteDoneRev) : ''));
-        n.appendChild(el('b', null, b.noteDone ? 'note handled' : 'note to claude'));
-        n.appendChild(document.createTextNode(b.note));
-        if (b.noteDone) n.appendChild(el('div', 'la-note-a', b.noteDone));
+      var bnotes = b.notes || [];
+      for (var ni = bnotes.length - 1; ni >= 0; ni--) {
+        var nt = bnotes[ni];
+        var n = el('div', 'la-note' + (nt.done ? doneCls(nt.doneRev) : ''));
+        n.appendChild(el('b', null, (bnotes.length > 1 ? (ni + 1) + ' \u00b7 ' : '') + (nt.done ? 'note handled' : 'note to claude')));
+        n.appendChild(document.createTextNode(nt.text));
+        if (nt.done) n.appendChild(el('div', 'la-note-a', nt.done));
         node.insertBefore(n, node.children[1] || null);
       }
       if (editing === b.id) {
@@ -3826,7 +3895,7 @@
       thread: model.thread || '', component: model.component || '',
       rev: model.rev, updatedAt: nowIso(),
       blockCount: model.blocks.length, tagCounts: tagCounts(),
-      openNotes: model.blocks.filter(function (b) { return b.note; }).length,
+      openNotes: model.blocks.reduce(function (n, b) { return n + openNotesIn(allNotes(b)).length; }, 0),
       styleDirectives: ((model.style || {}).directives || [])
         .filter(function (d) { return d.active; }).map(function (d) { return d.text; })
     };
@@ -3974,6 +4043,7 @@
   /* ----------------------------------------------------------------- boot */
   function boot() {
     model = loadModel();
+    if (model) normaliseNotes(model);
     var root = document.getElementById('la-root');
     if (!model || !Array.isArray(model.blocks)) {
       root.textContent = 'This document has no readable model.';
@@ -4065,6 +4135,7 @@
        harness reads these, because the embedded JSON is only rewritten on save
        and reading it mid-round reports the state before the gesture */
     model: function () { return model; },
+    normaliseNotes: normaliseNotes,
     ops: function () { return pending.slice(); },
     offerTag: function (id, q, targets) { return offerTag(id, q, targets); },
     moveTo: function (id, to) { var r = moveTo(id, to); render(); return r; },
@@ -4106,9 +4177,9 @@
       var b = getBlock(id); if (!b) return false;
       var mk = (b.marks || []).filter(function (o) { return o.quote === quote; })[0];
       if (!mk) { mk = { quote: quote }; b.marks = (b.marks || []).concat([mk]); }
-      if (text) mk.note = text; else delete mk.note;
-      delete mk.noteDone;
-      record({ op: 'note', block: id, quote: quote, text: text || '' });
+      var r = applyNote(mk.notes, null, text || '');
+      mk.notes = r.list; if (!mk.notes.length) delete mk.notes;
+      record({ op: 'note', block: id, quote: quote, noteId: r.id, text: text || '' });
       render();
       return true;
     },

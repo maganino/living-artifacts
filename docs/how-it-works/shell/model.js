@@ -33,9 +33,6 @@ window.__laModel = {
    "type": "para",
    "eyebrow": "",
    "text": "Nothing here is one program, and the split decides what you can do alone. Writing a document and building it need no Claude session: `build.mjs` is a plain command you can run yourself. Editing one needs no session either, because the editor is already inside the published page. Only two things need a session — giving a new document its URL the first time, and reading a round of your edits back as intent.",
-   "note": "clarify this",
-   "noteDone": "Said which of the three can act alone, and named the two things that still need a session. The old sentence asserted the split without saying what it costs you.",
-   "noteDoneRev": 3,
    "touched": {
     "rev": 3,
     "by": "claude",
@@ -46,7 +43,15 @@ window.__laModel = {
      "plain command you can run yourself. Editing one needs no session either, because the editor is already inside the published page. Only two things need a session — giving a new document its URL the first time,",
      "reading a round of your edits back as intent."
     ]
-   }
+   },
+   "notes": [
+    {
+     "id": "n1",
+     "text": "clarify this",
+     "done": "Said which of the three can act alone, and named the two things that still need a session. The old sentence asserted the split without saying what it costs you.",
+     "doneRev": 3
+    }
+   ]
   },
   {
    "id": "b-hands-dia",
@@ -178,13 +183,14 @@ window.__laModel = {
     ]
    ],
    "cellNotes": {
-    "h2": "give examples to understand practically"
-   },
-   "cellNotesDone": {
-    "h2": "Each cell in that column now carries a real example from this document rather than only the shape of what it holds."
-   },
-   "cellNotesDoneRev": {
-    "h2": 3
+    "h2": [
+     {
+      "id": "n1",
+      "text": "give examples to understand practically",
+      "done": "Each cell in that column now carries a real example from this document rather than only the shape of what it holds.",
+      "doneRev": 3
+     }
+    ]
    },
    "touched": {
     "rev": 3,
